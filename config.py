@@ -1,21 +1,46 @@
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
 # 專案根目錄
 BASE_DIR = Path(__file__).resolve().parent
 
-# 載入 .env
+# 嘗試載入 .env (若有)
 load_dotenv(BASE_DIR / ".env")
 
-# API Keys 與設定 (統一由系統環境變數讀取，不在程式碼中硬編碼任何金鑰)
-IAI_API_KEY = os.getenv("IAI_API_KEY", "")
-IAI_BASE_URL = os.getenv("IAI_BASE_URL", "https://www.iai.nkust.edu.tw/aihub/v1").rstrip("/")
-IAI_MODEL = os.getenv("IAI_MODEL", "Furen-large")
 
-GOOGLE_CSE_API_KEY = os.getenv("GOOGLE_CSE_API_KEY", "")
-GOOGLE_CSE_CX = os.getenv("GOOGLE_CSE_CX", "")
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
+def get_secure_env(key: str, default: str = "") -> str:
+    """
+    安全獲取環境變數：
+    1. 優先從 os.environ 讀取
+    2. 若未設定且在 Windows 系統，直接讀取使用者登錄檔 (避免金鑰出現在任何檔案中)
+    """
+    val = os.getenv(key)
+    if val:
+        return val
+
+    if sys.platform == "win32":
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Environment") as reg_key:
+                reg_val, _ = winreg.QueryValueEx(reg_key, key)
+                if reg_val:
+                    return str(reg_val)
+        except Exception:
+            pass
+
+    return default
+
+
+# API Keys 與設定 (統一由系統環境變數讀取，程式碼中不包含任何金鑰)
+IAI_API_KEY = get_secure_env("IAI_API_KEY", "")
+IAI_BASE_URL = get_secure_env("IAI_BASE_URL", "https://www.iai.nkust.edu.tw/aihub/v1").rstrip("/")
+IAI_MODEL = get_secure_env("IAI_MODEL", "Furen-large")
+
+GOOGLE_CSE_API_KEY = get_secure_env("GOOGLE_CSE_API_KEY", "")
+GOOGLE_CSE_CX = get_secure_env("GOOGLE_CSE_CX", "")
+GITHUB_TOKEN = get_secure_env("GITHUB_TOKEN", "")
 
 # 每日新聞總結目錄名稱
 DAILY_SUMMARY_FOLDER_NAME = "8.每日新聞總結"
