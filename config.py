@@ -1,0 +1,88 @@
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# 專案根目錄
+BASE_DIR = Path(__file__).resolve().parent
+
+# 載入 .env
+load_dotenv(BASE_DIR / ".env")
+
+# API Keys 與設定 (統一由系統環境變數讀取，不在程式碼中硬編碼任何金鑰)
+IAI_API_KEY = os.getenv("IAI_API_KEY", "")
+IAI_BASE_URL = os.getenv("IAI_BASE_URL", "https://www.iai.nkust.edu.tw/aihub/v1").rstrip("/")
+IAI_MODEL = os.getenv("IAI_MODEL", "Furen-large")
+
+GOOGLE_CSE_API_KEY = os.getenv("GOOGLE_CSE_API_KEY", "")
+GOOGLE_CSE_CX = os.getenv("GOOGLE_CSE_CX", "")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
+
+# 每日新聞總結目錄名稱
+DAILY_SUMMARY_FOLDER_NAME = "8.每日新聞總結"
+
+# 7天主題定義 (0: 禮拜一, 1: 禮拜二, ..., 6: 禮拜日)
+TOPICS = {
+    0: {
+        "id": 1,
+        "name": "LLM、RAG、Fine tune",
+        "folder": "1.LLM、RAG、Fine tune",
+        "weekday_name": "禮拜一",
+        "news_query": "LLM OR RAG OR Fine-tuning 大語言模型",
+        "arxiv_query": "cat:cs.CL",
+        "github_query": "LLM RAG fine-tuning in:name,description,topics stars:>100",
+    },
+    1: {
+        "id": 2,
+        "name": "機器學習",
+        "folder": "2.機器學習",
+        "weekday_name": "禮拜二",
+        "news_query": "機器學習 OR \"Machine Learning\" AI 演算法",
+        "arxiv_query": "cat:cs.LG",
+        "github_query": "machine-learning in:name,description,topics stars:>100",
+    },
+    2: {
+        "id": 3,
+        "name": "深度學習",
+        "folder": "3.深度學習",
+        "weekday_name": "禮拜三",
+        "news_query": "深度學習 OR \"Deep Learning\" 神經網路",
+        "arxiv_query": "cat:cs.CV OR cat:cs.NE",
+        "github_query": "deep-learning in:name,description,topics stars:>100",
+    },
+    3: {
+        "id": 4,
+        "name": "ai agent",
+        "folder": "4.ai agent",
+        "weekday_name": "禮拜四",
+        "news_query": "\"AI Agent\" OR \"AI代理\" OR \"智慧代理\" OR \"autonomous agent\"",
+        "arxiv_query": "cat:cs.AI AND (ti:agent OR ti:autonomous OR abs:agent)",
+        "github_query": "AI-agent OR autonomous-agent in:name,description,topics stars:>100",
+    },
+    4: {
+        "id": 5,
+        "name": "智慧機器人",
+        "folder": "5.智慧機器人",
+        "weekday_name": "禮拜五",
+        "news_query": "智慧機器人 OR 具身智能 OR \"Embodied AI\" OR \"Robotics\"",
+        "arxiv_query": "cat:cs.RO",
+        "github_query": "robotics OR embodied-ai in:name,description,topics stars:>50",
+    },
+    5: {
+        "id": 6,
+        "name": "AI硬體應用、AI自動化",
+        "folder": "6.AI硬體應用、AI自動化",
+        "weekday_name": "禮拜六",
+        "news_query": "\"AI晶片\" OR \"AI硬體\" OR \"AI自動化\" OR \"NPU\" OR \"GPU AI\"",
+        "arxiv_query": "cat:cs.AR",
+        "github_query": "AI-hardware OR edge-ai OR automation in:name,description,topics stars:>50",
+    },
+    6: {
+        "id": 7,
+        "name": "海事AI",
+        "folder": "7.海事AI",
+        "weekday_name": "禮拜日",
+        "news_query": "海事AI OR 智慧航運 OR \"Maritime AI\" OR \"autonomous ship\"",
+        "arxiv_query": "cat:cs.AI AND (ti:maritime OR ti:shipping OR ti:vessel OR abs:maritime)",
+        "github_query": "maritime OR shipping OR vessel in:name,description,topics stars:>10",
+    },
+}
