@@ -47,7 +47,7 @@ def call_iai(prompt: str, max_retries: int = 2) -> str:
                     if cleaned:
                         return cleaned
             else:
-                print(f"[AI Summarizer] 呼叫失敗 (狀態碼 {response.status_code}): {response.text[:100]}")
+                print(f"[AI Summarizer] 呼叫失敗 (狀態碼 {response.status_code})")
         except Exception as e:
             print(f"[AI Summarizer] 請求例外 (第 {attempt + 1} 次): {e}")
 
@@ -136,4 +136,31 @@ def generate_daily_overview(topic_name: str, news_list: list, paper_list: list, 
     result = call_iai(prompt)
     if not result:
         return f"今日彙整了關於【{topic_name}】的 5 篇重要新聞、5 篇前沿論文與 3 個優秀開源專案。各項目詳細內容請參見下方章節。"
+    return result
+
+
+def generate_daily_summary(topic_name: str, news_list: list, paper_list: list, repo_list: list) -> str:
+    """結合今日所有資訊，生成「今日匯報總結」精簡摘要（與詳細總覽互補）"""
+    news_titles = "\n".join([f"- {n.get('title')}" for n in news_list])
+    paper_titles = "\n".join([f"- {p.get('title')}" for p in paper_list])
+    repo_names = "\n".join([f"- {r.get('full_name')} (⭐ {r.get('stars')})" for r in repo_list])
+
+    prompt = f"""今日主題為【{topic_name}】的每日 AI 科技新聞匯報已收集完成。
+請為其生成一份「今日匯報總結」，重點是「精簡」，約 150-250 字（繁體中文）：
+1. 用 2-3 句話指出今日最重要的 1~2 個焦點或趨勢。
+2. 點出今日資訊對相關開發者/研究者的整體參考價值。
+請勿逐條重複清單細節。
+
+【今日新聞清單】：
+{news_titles}
+
+【今日論文清單】：
+{paper_titles}
+
+【今日專案清單】：
+{repo_names}
+"""
+    result = call_iai(prompt)
+    if not result:
+        return f"今日針對【{topic_name}】彙整了 {len(news_list)} 篇新聞、{len(paper_list)} 篇論文與 {len(repo_list)} 個開源專案，詳細內容請參見主題資料夾中的完整日報。"
     return result

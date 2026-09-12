@@ -76,28 +76,78 @@ def format_report_markdown(
     return "\n".join(md)
 
 
-def save_reports(date_str: str, topic_info: dict, content: str) -> tuple[Path, Path]:
-    """
-    將 Markdown 報告同時儲存至：
-    1. 該主題資料夾 (例如 1.LLM、RAG、Fine tune)
-    2. 8.每日新聞總結
-    """
-    # 建立檔案名稱：YYYY-MM-DD_{主題名稱}.md (檔名過濾特殊字元)
-    safe_topic_name = topic_info['name'].replace("、", "_").replace(" ", "_").replace("/", "_")
-    filename = f"{date_str}_{safe_topic_name}.md"
+def format_summary_markdown(
+    date_str: str,
+    weekday_name: str,
+    topic_name: str,
+    daily_summary: str,
+    news_items: list[dict],
+    paper_items: list[dict],
+    repo_items: list[dict],
+) -> str:
+    """生成精簡的「今日匯報總結」Markdown（存放於每日新聞總結資料夾）"""
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # 1. 該主題資料夾
+    md = []
+    md.append(f"# 📋 今日匯報總結 — {topic_name}")
+    md.append(f"> 📅 **日期**：{date_str} ({weekday_name})  |  🏷️ **今日主題**：`{topic_name}`  |  🕒 **生成時間**：{now_str}\n")
+    md.append("---\n")
+
+    md.append("## ✨ 今日摘要\n")
+    md.append(daily_summary.strip())
+    md.append("\n\n---\n")
+
+    md.append(f"## 📰 重點新聞（{len(news_items)} 篇）\n")
+    if not news_items:
+        md.append("> *今日暫無新聞資料*")
+    for i, news in enumerate(news_items, 1):
+        md.append(f"{i}. [{news.get('title')}]({news.get('link')}) — `{news.get('source', '來源')}`")
+
+    md.append("\n---\n")
+
+    md.append(f"## 📄 前沿論文（{len(paper_items)} 篇）\n")
+    if not paper_items:
+        md.append("> *今日暫無論文資料*")
+    for i, paper in enumerate(paper_items, 1):
+        md.append(f"{i}. [{paper.get('title')}]({paper.get('url')}) — 作者群：{paper.get('authors')}")
+
+    md.append("\n---\n")
+
+    md.append(f"## 💻 熱門專案（{len(repo_items)} 個）\n")
+    if not repo_items:
+        md.append("> *今日暫無 GitHub 專案資料*")
+    for i, repo in enumerate(repo_items, 1):
+        md.append(f"{i}. [{repo.get('full_name')}]({repo.get('url')}) — ⭐ `{repo.get('stars'):,}` · `{repo.get('language')}`")
+
+    md.append("\n---\n")
+    md.append("> 📌 *本總結由 AI Agent 自動彙整，完整詳細日報存放於對應主題資料夾。*")
+
+    return "\n".join(md)
+
+
+def save_reports(date_str: str, topic_info: dict, full_content: str, summary_content: str) -> tuple[Path, Path]:
+    """
+    儲存 Markdown 報告：
+    1. 完整詳細日報 → 該主題資料夾 (例如 1.LLM、RAG、Fine tune)
+    2. 精簡「今日匯報總結」→ 8.每日新聞總結
+    """
+    # 建立檔案名稱 (檔名過濾特殊字元)
+    safe_topic_name = topic_info['name'].replace("、", "_").replace(" ", "_").replace("/", "_")
+    full_filename = f"{date_str}_{safe_topic_name}.md"
+    summary_filename = f"{date_str}_今日匯報總結.md"
+
+    # 1. 該主題資料夾 (完整詳細日報)
     topic_dir = BASE_DIR / topic_info["folder"]
     topic_dir.mkdir(parents=True, exist_ok=True)
-    topic_file = topic_dir / filename
+    topic_file = topic_dir / full_filename
     with open(topic_file, "w", encoding="utf-8") as f:
-        f.write(content)
+        f.write(full_content)
 
-    # 2. 每日新聞總結資料夾
+    # 2. 每日新聞總結資料夾 (精簡總結)
     summary_dir = BASE_DIR / DAILY_SUMMARY_FOLDER_NAME
     summary_dir.mkdir(parents=True, exist_ok=True)
-    summary_file = summary_dir / filename
+    summary_file = summary_dir / summary_filename
     with open(summary_file, "w", encoding="utf-8") as f:
-        f.write(content)
+        f.write(summary_content)
 
     return topic_file, summary_file

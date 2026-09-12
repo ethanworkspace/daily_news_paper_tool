@@ -19,14 +19,17 @@ from summarizer.ai_summarizer import (
     summarize_paper,
     summarize_repo,
     generate_daily_overview,
+    generate_daily_summary,
 )
 from report.markdown_generator import (
     format_report_markdown,
+    format_summary_markdown,
     save_reports,
 )
+from git_pusher import push_to_github
 
 
-def run_agent(weekday: int = None, test_mode: bool = False, custom_date: str = None):
+def run_agent(weekday: int = None, test_mode: bool = False, custom_date: str = None, no_push: bool = False):
     """執行自動化新聞匯報 Agent"""
     now = datetime.now()
     if weekday is None:
@@ -79,6 +82,11 @@ def run_agent(weekday: int = None, test_mode: bool = False, custom_date: str = N
         topic_info["name"], news_items, paper_items, repo_items
     )
 
+    print("  -> 正在生成今日匯報總結（精簡版）...")
+    daily_summary = generate_daily_summary(
+        topic_info["name"], news_items, paper_items, repo_items
+    )
+
     # 3. 生成與儲存報告
     print("\n【階段 3/3】正在生成 Markdown 日報並儲存至指定資料夾...")
     report_markdown = format_report_markdown(
@@ -90,14 +98,29 @@ def run_agent(weekday: int = None, test_mode: bool = False, custom_date: str = N
         paper_items=paper_items,
         repo_items=repo_items,
     )
+    summary_markdown = format_summary_markdown(
+        date_str=date_str,
+        weekday_name=topic_info["weekday_name"],
+        topic_name=topic_info["name"],
+        daily_summary=daily_summary,
+        news_items=news_items,
+        paper_items=paper_items,
+        repo_items=repo_items,
+    )
 
-    path1, path2 = save_reports(date_str, topic_info, report_markdown)
+    path1, path2 = save_reports(date_str, topic_info, report_markdown, summary_markdown)
 
     print("\n" + "=" * 60)
     print("🎉 匯報生成完畢！")
-    print(f"📄 已儲存至分類資料夾：{path1.relative_to(BASE_DIR)}")
-    print(f"📄 已儲存至每日總結：  {path2.relative_to(BASE_DIR)}")
+    print(f"📄 詳細日報已儲存至分類資料夾：{path1.relative_to(BASE_DIR)}")
+    print(f"📄 今日總結已儲存至每日總結：  {path2.relative_to(BASE_DIR)}")
     print("=" * 60)
+
+    # 4. 每日自動推送到 GitHub (測試模式不推送)
+    if not test_mode and not no_push:
+        print("\n🚀 正在將今日報表自動推送到 GitHub...")
+        commit_message = f"docs: 每日AI新聞匯報 {date_str} {topic_info['name']}"
+        push_to_github(files=[path1, path2], commit_message=commit_message)
 
 
 def main():
@@ -120,9 +143,19 @@ def main():
         default=None,
         help="手動指定日期字串 (格式: YYYY-MM-DD)",
     )
+    parser.add_argument(
+        "--no-push",
+        action="store_true",
+        help="不執行 GitHub 自動推送 (測試或暫時不想上傳時使用)",
+    )
     args = parser.parse_args()
 
-    run_agent(weekday=args.weekday, test_mode=args.test, custom_date=args.date)
+    run_agent(
+        weekday=args.weekday,
+        test_mode=args.test,
+        custom_date=args.date,
+        no_push=args.no_push,
+    )
 
 
 if __name__ == "__main__":
