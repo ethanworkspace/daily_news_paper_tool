@@ -12,7 +12,7 @@ if sys.platform == "win32":
 
 from config import TOPICS, BASE_DIR
 from collectors.news_collector import collect_news
-from collectors.arxiv_collector import collect_papers
+from collectors.scholar_collector import collect_papers_multisource
 from collectors.github_collector import collect_repos
 from summarizer.ai_summarizer import (
     summarize_news,
@@ -55,10 +55,11 @@ def run_agent(weekday: int = None, test_mode: bool = False, custom_date: str = N
     # 1. 收集資料
     print("\n【階段 1/3】開始並行收集情報資料...")
     news_items = collect_news(topic_info["news_query"], count=news_target)
-    paper_items = collect_papers(
+    paper_items = collect_papers_multisource(
         topic_info["arxiv_query"],
         count=paper_target,
         category=topic_info.get("arxiv_category", "cs.AI"),
+        word_query=topic_info.get("scholar_query", ""),
     )
     repo_items = collect_repos(topic_info["github_query"], count=repo_target)
 

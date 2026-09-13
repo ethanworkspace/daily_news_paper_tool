@@ -41,6 +41,8 @@ IAI_MODEL = get_secure_env("IAI_MODEL", "Furen-large")
 GOOGLE_CSE_API_KEY = get_secure_env("GOOGLE_CSE_API_KEY", "")
 GOOGLE_CSE_CX = get_secure_env("GOOGLE_CSE_CX", "")
 GITHUB_TOKEN = get_secure_env("GITHUB_TOKEN", "")
+SEMANTIC_SCHOLAR_API_KEY = get_secure_env("SEMANTIC_SCHOLAR_API_KEY", "")
+MAILTO_CONTACT = "daily_agent@nkust.edu.tw"
 
 # 每日新聞總結目錄名稱
 DAILY_SUMMARY_FOLDER_NAME = "8.每日新聞總結"
@@ -55,6 +57,7 @@ TOPICS = {
         "news_query": "LLM OR RAG OR Fine-tuning 大語言模型",
         "arxiv_query": "cat:cs.CL",
         "github_query": "LLM RAG fine-tuning in:name,description,topics stars:>100",
+        "scholar_query": "LLM RAG fine-tuning large language model",
     },
     1: {
         "id": 2,
@@ -64,6 +67,7 @@ TOPICS = {
         "news_query": "機器學習 OR \"Machine Learning\" AI 演算法",
         "arxiv_query": "cat:cs.LG",
         "github_query": "machine-learning in:name,description,topics stars:>100",
+        "scholar_query": "machine learning algorithm",
     },
     2: {
         "id": 3,
@@ -73,6 +77,7 @@ TOPICS = {
         "news_query": "深度學習 OR \"Deep Learning\" 神經網路",
         "arxiv_query": "cat:cs.CV OR cat:cs.NE",
         "github_query": "deep-learning in:name,description,topics stars:>100",
+        "scholar_query": "deep learning neural network",
     },
     3: {
         "id": 4,
@@ -82,6 +87,7 @@ TOPICS = {
         "news_query": "\"AI Agent\" OR \"AI代理\" OR \"智慧代理\" OR \"autonomous agent\"",
         "arxiv_query": "cat:cs.AI AND (ti:agent OR ti:autonomous OR abs:agent)",
         "github_query": "AI-agent OR autonomous-agent in:name,description,topics stars:>100",
+        "scholar_query": "AI agent autonomous multi-agent",
     },
     4: {
         "id": 5,
@@ -91,6 +97,7 @@ TOPICS = {
         "news_query": "智慧機器人 OR 具身智能 OR \"Embodied AI\" OR \"Robotics\"",
         "arxiv_query": "cat:cs.RO",
         "github_query": "robotics OR embodied-ai in:name,description,topics stars:>50",
+        "scholar_query": "embodied AI robotics",
     },
     5: {
         "id": 6,
@@ -100,6 +107,7 @@ TOPICS = {
         "news_query": "\"AI晶片\" OR \"AI硬體\" OR \"AI自動化\" OR \"NPU\" OR \"GPU AI\"",
         "arxiv_query": "cat:cs.AR",
         "github_query": "AI-hardware OR edge-ai OR automation in:name,description,topics stars:>50",
+        "scholar_query": "AI hardware chip NPU accelerator",
     },
     6: {
         "id": 7,
@@ -109,5 +117,6 @@ TOPICS = {
         "news_query": "海事AI OR 智慧航運 OR \"Maritime AI\" OR \"Medical AI\" OR 醫療AI OR 智慧醫療",
         "arxiv_query": "(abs:maritime OR abs:shipping OR abs:medical OR abs:health) AND (cat:cs.AI OR cat:eess.SP OR cat:q-bio.BM OR cat:q-bio.QM)",
         "github_query": "maritime OR shipping OR medical OR healthcare OR medical-ai in:name,description,topics stars:>50",
+        "scholar_query": "maritime AI medical AI healthcare",
     },
 }

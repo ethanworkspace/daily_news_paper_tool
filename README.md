@@ -28,9 +28,9 @@ Agent 每日會依據星期自動鎖定專屬領域進行深度採集：
    - 支援 Google Custom Search API / 即時 Google News RSS
    - 提取標題、報導連結、來源媒體、時間與原文摘要
    - 由 Furen-large 提供【事件詳細解說】【技術與產業意義】【總結】完整分析
-2. **📄 5 篇前沿學術論文 (arXiv，優先挑選附帶 GitHub 程式碼專案的論文)**：
-   - 檢索最新提交的頂級學術論文，並優先尋找含 GitHub 專案連結的論文
-   - 提取論文標題、作者群、提交日期、arXiv 網址、PDF 下載連結與 GitHub 專案
+2. **📄 5 篇前沿學術論文 (多來源，優先挑選附帶 GitHub 程式碼專案的論文)**：
+   - 依序從多個學術管道收集並去重：**arXiv**（官方 API/RSS，優先含 GitHub 專案連結）→ **Google Scholar**（被 Google 阻擋時自動跳過）→ **Semantic Scholar API** → **OpenAlex API** → **PubMed**（醫療/生醫主題尤佳）
+   - 提取論文標題、作者群、發布年份、原文網址、PDF 下載連結、期刊/資料庫來源與 GitHub 專案
    - 由 Furen-large 深度導讀：【這篇在做什麼】【研究目的】【架構設計】【核心方法】【實驗結果】【總結】
 3. **💻 5 個熱門開源專案 (GitHub)**：
    - 篩選高星數、近期活躍更新的開源倉庫
@@ -65,6 +65,9 @@ GOOGLE_CSE_CX=
 
 # GitHub API 設定 (選填：填入可提升每分鐘搜尋次數)
 GITHUB_TOKEN=your_github_token_here
+
+# Semantic Scholar API 設定 (選填：若無金鑰則易觸發共用額度 429；有金鑰更穩定)
+SEMANTIC_SCHOLAR_API_KEY=your_semantic_scholar_key_here
 ```
 
 ### 3. 手動執行

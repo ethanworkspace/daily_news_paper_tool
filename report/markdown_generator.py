@@ -42,18 +42,26 @@ def format_report_markdown(
     md.append("---\n")
 
     # 2. 論文章節 (5 篇)
-    md.append(f"## 📄 前沿學術論文 (arXiv 最新 {len(paper_items)} 篇)\n")
+    sources = ", ".join(sorted({p.get("source_db", "arXiv") for p in paper_items})) or "arXiv"
+    md.append(f"## 📄 前沿學術論文 (最新 {len(paper_items)} 篇)\n")
     if not paper_items:
         md.append("> *今日暫無檢索到論文資料*\n")
     for i, paper in enumerate(paper_items, 1):
         md.append(f"### {i}. {paper.get('title')}")
         md.append(f"- 👥 **作者群**：{paper.get('authors')}")
-        md.append(f"- 📅 **提交日期**：{paper.get('published')}")
-        md.append(f"- 🔗 **論文連結**：[arXiv 頁面]({paper.get('url')})  |  📥 **全文 PDF**：[直接下載]({paper.get('pdf_url')})")
+        md.append(f"- 📅 **發布日期**：{paper.get('published')}")
+        md.append(f"- 🔗 **論文連結**：[原始頁面]({paper.get('url')})  |  📥 **全文 PDF**：[直接下載]({paper.get('pdf_url')})")
+        if paper.get('source_db'):
+            db_line = paper.get('source_db')
+            if paper.get('journal'):
+                db_line += f" ｜ 📚 **來源期刊**：{paper.get('journal')}"
+            md.append(f"- 🗂️ **資料來源**：{db_line}")
         if paper.get('project_url'):
             md.append(f"- 💻 **官方 GitHub 專案**：[{paper.get('project_url')}]({paper.get('project_url')})")
         md.append("\n**🔬 AI 專業導讀與技術突破**：")
         md.append(f"{paper.get('summary', '').strip()}\n")
+
+    md.append(f"> 📌 *論文來自多個學術管道（{sources}），優先收錄含官方 GitHub 專案的論文。*\n")
 
     md.append("---\n")
 
@@ -126,7 +134,8 @@ def format_summary_markdown(
         for paper in paper_items:
             author_note = f" — 作者群：{paper.get('authors')}" if paper.get('authors') else ""
             code_note = f" 💻[程式碼]({paper.get('project_url')})" if paper.get('project_url') else ""
-            md.append(f"- [{paper.get('title')}]({paper.get('url')}){author_note}{code_note}")
+            src_note = f" (`{paper.get('source_db')}`)" if paper.get('source_db') else ""
+            md.append(f"- [{paper.get('title')}]({paper.get('url')}){author_note}{src_note}{code_note}")
 
     md.append("\n---\n")
 
