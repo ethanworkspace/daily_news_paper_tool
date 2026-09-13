@@ -20,6 +20,9 @@ from summarizer.ai_summarizer import (
     summarize_repo,
     generate_daily_overview,
     generate_daily_summary,
+    summarize_news_list,
+    summarize_paper_list,
+    summarize_repo_list,
 )
 from report.markdown_generator import (
     format_report_markdown,
@@ -47,7 +50,7 @@ def run_agent(weekday: int = None, test_mode: bool = False, custom_date: str = N
 
     news_target = 1 if test_mode else 5
     paper_target = 1 if test_mode else 5
-    repo_target = 1 if test_mode else 3
+    repo_target = 1 if test_mode else 5
 
     # 1. 收集資料
     print("\n【階段 1/3】開始並行收集情報資料...")
@@ -87,6 +90,11 @@ def run_agent(weekday: int = None, test_mode: bool = False, custom_date: str = N
         topic_info["name"], news_items, paper_items, repo_items
     )
 
+    print("  -> 正在分別總結新聞、論文、專案...")
+    news_summary = summarize_news_list(news_items)
+    paper_summary = summarize_paper_list(paper_items)
+    repo_summary = summarize_repo_list(repo_items)
+
     # 3. 生成與儲存報告
     print("\n【階段 3/3】正在生成 Markdown 日報並儲存至指定資料夾...")
     report_markdown = format_report_markdown(
@@ -103,6 +111,9 @@ def run_agent(weekday: int = None, test_mode: bool = False, custom_date: str = N
         weekday_name=topic_info["weekday_name"],
         topic_name=topic_info["name"],
         daily_summary=daily_summary,
+        news_summary=news_summary,
+        paper_summary=paper_summary,
+        repo_summary=repo_summary,
         news_items=news_items,
         paper_items=paper_items,
         repo_items=repo_items,

@@ -50,12 +50,14 @@ def format_report_markdown(
         md.append(f"- 👥 **作者群**：{paper.get('authors')}")
         md.append(f"- 📅 **提交日期**：{paper.get('published')}")
         md.append(f"- 🔗 **論文連結**：[arXiv 頁面]({paper.get('url')})  |  📥 **全文 PDF**：[直接下載]({paper.get('pdf_url')})")
+        if paper.get('project_url'):
+            md.append(f"- 💻 **官方 GitHub 專案**：[{paper.get('project_url')}]({paper.get('project_url')})")
         md.append("\n**🔬 AI 專業導讀與技術突破**：")
         md.append(f"{paper.get('summary', '').strip()}\n")
 
     md.append("---\n")
 
-    # 3. GitHub 專案章節 (3 個)
+    # 3. GitHub 專案章節
     md.append(f"## 💻 熱門開源專案 (GitHub 精選 {len(repo_items)} 個)\n")
     if not repo_items:
         md.append("> *今日暫無檢索到 GitHub 專案*\n")
@@ -81,11 +83,14 @@ def format_summary_markdown(
     weekday_name: str,
     topic_name: str,
     daily_summary: str,
+    news_summary: str,
+    paper_summary: str,
+    repo_summary: str,
     news_items: list[dict],
     paper_items: list[dict],
     repo_items: list[dict],
 ) -> str:
-    """生成精簡的「今日匯報總結」Markdown（存放於每日新聞總結資料夾）"""
+    """生成「今日匯報總結」Markdown：先分別對新聞/論文/專案做 AI 總結，再附重點清單"""
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     md = []
@@ -93,31 +98,48 @@ def format_summary_markdown(
     md.append(f"> 📅 **日期**：{date_str} ({weekday_name})  |  🏷️ **今日主題**：`{topic_name}`  |  🕒 **生成時間**：{now_str}\n")
     md.append("---\n")
 
-    md.append("## ✨ 今日摘要\n")
+    md.append("## ✨ 整體總結\n")
     md.append(daily_summary.strip())
     md.append("\n\n---\n")
 
-    md.append(f"## 📰 重點新聞（{len(news_items)} 篇）\n")
+    # 1. 新聞總結
+    md.append(f"## 📰 新聞總結\n")
+    md.append(news_summary.strip())
+    md.append("\n")
     if not news_items:
         md.append("> *今日暫無新聞資料*")
-    for i, news in enumerate(news_items, 1):
-        md.append(f"{i}. [{news.get('title')}]({news.get('link')}) — `{news.get('source', '來源')}`")
+    else:
+        md.append("**精選新聞清單：**")
+        for news in news_items:
+            md.append(f"- [{news.get('title')}]({news.get('link')}) — `{news.get('source', '來源')}`")
 
     md.append("\n---\n")
 
-    md.append(f"## 📄 前沿論文（{len(paper_items)} 篇）\n")
+    # 2. 論文總結
+    md.append(f"## 📄 論文總結\n")
+    md.append(paper_summary.strip())
+    md.append("\n")
     if not paper_items:
         md.append("> *今日暫無論文資料*")
-    for i, paper in enumerate(paper_items, 1):
-        md.append(f"{i}. [{paper.get('title')}]({paper.get('url')}) — 作者群：{paper.get('authors')}")
+    else:
+        md.append("**精選論文清單：**")
+        for paper in paper_items:
+            author_note = f" — 作者群：{paper.get('authors')}" if paper.get('authors') else ""
+            code_note = f" 💻[程式碼]({paper.get('project_url')})" if paper.get('project_url') else ""
+            md.append(f"- [{paper.get('title')}]({paper.get('url')}){author_note}{code_note}")
 
     md.append("\n---\n")
 
-    md.append(f"## 💻 熱門專案（{len(repo_items)} 個）\n")
+    # 3. 專案總結
+    md.append(f"## 💻 專案總結\n")
+    md.append(repo_summary.strip())
+    md.append("\n")
     if not repo_items:
         md.append("> *今日暫無 GitHub 專案資料*")
-    for i, repo in enumerate(repo_items, 1):
-        md.append(f"{i}. [{repo.get('full_name')}]({repo.get('url')}) — ⭐ `{repo.get('stars'):,}` · `{repo.get('language')}`")
+    else:
+        md.append("**精選專案清單：**")
+        for repo in repo_items:
+            md.append(f"- [{repo.get('full_name')}]({repo.get('url')}) — ⭐ `{repo.get('stars'):,}` · `{repo.get('language')}`")
 
     md.append("\n---\n")
     md.append("> 📌 *本總結由 AI Agent 自動彙整，完整詳細日報存放於對應主題資料夾。*")

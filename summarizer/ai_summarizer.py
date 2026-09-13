@@ -55,11 +55,11 @@ def call_iai(prompt: str, max_retries: int = 2) -> str:
 
 
 def summarize_news(news: dict) -> str:
-    """為單篇新聞生成繁體中文深度解說"""
-    prompt = f"""請針對以下科技新聞進行繁體中文專業解說（約 150-250 字），包含：
-1. 【核心事件】：新聞核心重點是什麼？
-2. 【技術與產業意義】：帶來哪些突破或商業/市場影響？
-3. 【關鍵結論】：對未來發展的意涵。
+    """為單篇新聞生成繁體中文詳細解說與總結"""
+    prompt = f"""請針對以下科技新聞進行繁體中文深度解說與總結（約 250-350 字），分為：
+1. 📌【事件詳細解說】：新聞核心事件是什麼？來龍去脈與關鍵數據/事實？
+2. 🎯【技術與產業意義】：對技術發展、供應鏈、市場或商業帶來哪些影響？
+3. ✅【總結】：用 1-2 句話總結這則新聞的關鍵重點與後續應關注方向。
 
 新聞標題：{news.get('title')}
 來源與日期：{news.get('source')} | {news.get('date')}
@@ -67,22 +67,26 @@ def summarize_news(news: dict) -> str:
 """
     result = call_iai(prompt)
     if not result:
-        # Fallback 簡單摘錄
         return f"{news.get('snippet', '暫無摘要')}（AI 服務未響應，使用原文摘錄）"
     return result
 
 
 def summarize_paper(paper: dict) -> str:
-    """為單篇學術論文生成繁體中文專業解說"""
-    prompt = f"""請針對以下 arXiv 學術論文進行繁體中文深度導讀（約 180-280 字），包含：
-1. 【研究背景與痛點】：為了解決什麼核心問題？
-2. 【核心技術與方法】：提出了什麼模型架構、演算法或理論突破？
-3. 【實證效果與價值】：實驗表現如何？對該領域有何具體貢獻？
+    """為單篇學術論文生成繁體中文深度導讀（在做什麼/目的/架構/方法/結果/總結）"""
+    github_line = f"附屬 GitHub 專案：{paper.get('project_url')}\n" if paper.get("project_url") else ""
+    prompt = f"""請針對以下 arXiv 學術論文進行繁體中文深度導讀（約 400-550 字），必須完整涵蓋以下六部分：
+1. 【這篇在做什麼】：研究主題與解決的核心問題。
+2. 【研究目的】：作者想達成什麼目標、動機為何。
+3. 【架構設計】：提出的模型/系統/框架整體架構為何？包含哪些主要模組或組成？
+4. 【核心方法】：關鍵演算法、訓練方法、實驗設計或技術創新點。
+5. 【實驗結果】：在哪些資料集/場景驗證？量化成效如何？與基線比較？
+6. 【總結】：這篇論文的價值、限制與後續研究啟發。
 
-論文標題：{paper.get('title')}
+{github_line}論文標題：{paper.get('title')}
 作者群：{paper.get('authors')}
 摘要原文：
 {paper.get('abstract')}
+若摘要未提供架構/方法/結果細節，請根據論文主題合理推測並標註『（推測）』。
 """
     result = call_iai(prompt)
     if not result:
@@ -92,17 +96,20 @@ def summarize_paper(paper: dict) -> str:
 
 
 def summarize_repo(repo: dict) -> str:
-    """為單個 GitHub 專案生成繁體中文詳細介紹"""
+    """為單個 GitHub 專案生成繁體中文詳細介紹與評析（在做什麼/架構/方法/結果/總結）"""
     topics_str = ", ".join(repo.get('topics', []))
-    prompt = f"""請針對以下 GitHub 開源專案進行繁體中文專業介紹與評析（約 150-250 字），包含：
-1. 【專案定位】：解決什麼開發需求或提供什麼核心工具？
-2. 【關鍵特性】：支援哪些亮點功能、技術棧與架構設計？
-3. 【推薦場景】：推薦工程師或研究者在何種情境下採用？
+    prompt = f"""請針對以下 GitHub 開源專案進行繁體中文詳細介紹與評析（約 300-450 字），分為：
+1. 🎯【在做什麼】：專案提供什麼功能、解決什麼問題、適合誰使用？
+2. 🏗️【架構】：整體技術架構如何組成？主要模組、技術棧、依賴哪些主要元件？
+3. ⚙️【方法】：核心運作方式/設計模式/使用方式為何？
+4. 📊【結果】：社群採用度（stars/issues/forks）、成熟度、實際成效與口碑。
+5. ✅【總結】：專案價值、適用場景與值得關注的發展方向。
 
 專案名稱：{repo.get('full_name')}
 星數與語言：⭐ {repo.get('stars')} | {repo.get('language')}
 標籤：{topics_str}
 專案描述：{repo.get('description')}
+倉庫網址：{repo.get('url')}
 """
     result = call_iai(prompt)
     if not result:
@@ -135,7 +142,7 @@ def generate_daily_overview(topic_name: str, news_list: list, paper_list: list, 
 """
     result = call_iai(prompt)
     if not result:
-        return f"今日彙整了關於【{topic_name}】的 5 篇重要新聞、5 篇前沿論文與 3 個優秀開源專案。各項目詳細內容請參見下方章節。"
+        return f"今日彙整了關於【{topic_name}】的 {len(news_list)} 篇重要新聞、{len(paper_list)} 篇前沿論文與 {len(repo_list)} 個優秀開源專案。各項目詳細內容請參見下方章節。"
     return result
 
 
@@ -163,4 +170,49 @@ def generate_daily_summary(topic_name: str, news_list: list, paper_list: list, r
     result = call_iai(prompt)
     if not result:
         return f"今日針對【{topic_name}】彙整了 {len(news_list)} 篇新聞、{len(paper_list)} 篇論文與 {len(repo_list)} 個開源專案，詳細內容請參見主題資料夾中的完整日報。"
+    return result
+
+
+def summarize_news_list(news_list: list) -> str:
+    """針對今日新聞整體，生成一則精簡總結 (約 120-180 字)"""
+    items = "\n".join([f"- {n.get('title')} ({n.get('source')})" for n in news_list])
+    prompt = f"""請針對以下今日精選新聞做整體性的「新聞總結」（約 120-180 字，繁體中文）：
+找出共同的產業/技術趨勢，點出最重要的 1-2 個焦點，不要逐條重複描述。
+
+【今日新聞清單】：
+{items}
+"""
+    result = call_iai(prompt)
+    if not result:
+        return f"今日共 {len(news_list)} 篇新聞，焦點集中在 AI 晶片/硬體與自動化相關動態。"
+    return result
+
+
+def summarize_paper_list(paper_list: list) -> str:
+    """針對今日論文整體，生成一則精簡總結 (約 120-180 字)"""
+    items = "\n".join([f"- {p.get('title')}" for p in paper_list])
+    prompt = f"""請針對以下今日精選學術論文做整體性的「論文總結」（約 120-180 字，繁體中文）：
+歸納今日論文的研究方向、共同技術主軸與最突出的突破點，不要逐條重複描述。
+
+【今日論文清單】：
+{items}
+"""
+    result = call_iai(prompt)
+    if not result:
+        return f"今日共 {len(paper_list)} 篇論文，研究方向集中於高效能架構與新型加速器設計。"
+    return result
+
+
+def summarize_repo_list(repo_list: list) -> str:
+    """針對今日開源專案整體，生成一則精簡總結 (約 100-160 字)"""
+    items = "\n".join([f"- {r.get('full_name')} (⭐ {r.get('stars')}): {r.get('description')}" for r in repo_list])
+    prompt = f"""請針對以下今日精選 GitHub 開源專案做整體性的「專案總結」（約 100-160 字，繁體中文）：
+歸納今日專案定位、成熟度與最值得了解的 1-2 個專案，不要逐條重複描述。
+
+【今日專案清單】：
+{items}
+"""
+    result = call_iai(prompt)
+    if not result:
+        return f"今日共 {len(repo_list)} 個開源專案，橫跨工具型與應用型專案，適合按需求選用。"
     return result

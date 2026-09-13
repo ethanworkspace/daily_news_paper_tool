@@ -103,11 +103,11 @@ TOPICS = {
     },
     6: {
         "id": 7,
-        "name": "海事AI",
-        "folder": "7.海事AI",
+        "name": "海事AI、醫療AI",
+        "folder": "7.海事AI、醫療AI",
         "weekday_name": "禮拜日",
-        "news_query": "海事AI OR 智慧航運 OR \"Maritime AI\" OR \"autonomous ship\"",
-        "arxiv_query": "cat:cs.AI AND (ti:maritime OR ti:shipping OR ti:vessel OR abs:maritime)",
-        "github_query": "maritime OR shipping OR vessel in:name,description,topics stars:>10",
+        "news_query": "海事AI OR 智慧航運 OR \"Maritime AI\" OR \"Medical AI\" OR 醫療AI OR 智慧醫療",
+        "arxiv_query": "(abs:maritime OR abs:shipping OR abs:medical OR abs:health) AND (cat:cs.AI OR cat:eess.SP OR cat:q-bio.BM OR cat:q-bio.QM)",
+        "github_query": "maritime OR shipping OR medical OR healthcare OR medical-ai in:name,description,topics stars:>50",
     },
 }
