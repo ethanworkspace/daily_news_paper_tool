@@ -2,15 +2,27 @@ import requests
 from config import GITHUB_TOKEN
 
 
-def collect_repos(query: str, count: int = 3) -> list[dict]:
-    """使用 GitHub REST API 搜尋熱門/最新開源專案"""
-    print(f"[GitHub Collector] 正在搜尋專案：{query} (目標: {count} 個)")
+def _relevance_score(name: str, topics: list[str], description: str, keywords: list[str]) -> int:
+    """相關性計分：名稱/主題標籤命中 3 分，描述命中 1 分。回傳 0 表示不符合主題"""
+    if not keywords:
+        return 1
+    primary = f"{name} {' '.join(topics)}".lower()
+    score = 0
+    if any(kw in primary for kw in keywords):
+        score += 3
+    if any(kw in (description or "").lower() for kw in keywords):
+        score += 1
+    return score
+
+
+def collect_repos(query: str, count: int = 3, keywords: list[str] | None = None) -> list[dict]:
+    """使用 GitHub REST API 搜尋熱門/最新開源專案，並以主題關鍵字嚴格過濾"""
+    print(f"[GitHub Collector] 正在搜尋專案：{query} (目標: {count} 個, 過濾關鍵字: {keywords})")
     url = "https://api.github.com/search/repositories"
+    pool_size = max(count * 8, 30)
     params = {
         "q": query,
-        "sort": "updated",
-        "order": "desc",
-        "per_page": count,
+        "per_page": pool_size,
     }
 
     headers = {
@@ -40,8 +52,35 @@ def collect_repos(query: str, count: int = 3) -> list[dict]:
             if response.status_code == 200:
                 items = response.json().get("items", [])
 
+        # 依主題關鍵字嚴格過濾：名稱/主題標籤命中(primary)優先，描述命中僅在不足時補位
+        scored = []
+        primary = []
+        secondary = []
+        if keywords:
+            for item in items:
+                score = _relevance_score(
+                    item.get("name", ""),
+                    item.get("topics", []) or [],
+                    item.get("description") or "",
+                    keywords,
+                )
+                if score >= 3:
+                    primary.append(item)
+                elif score == 1:
+                    secondary.append(item)
+            skipped = len(items) - len(primary) - len(secondary)
+            print(f"[GitHub Collector] 關鍵字過濾：{len(items)} -> 主命中 {len(primary)} + 描述補位 {len(secondary)} (剔除 {skipped} 個)")
+            primary.sort(key=lambda x: x.get("stargazers_count", 0), reverse=True)
+            secondary.sort(key=lambda x: x.get("stargazers_count", 0), reverse=True)
+            matched = primary[:count]
+            if len(matched) < count:
+                matched += secondary[: count - len(matched)]
+        else:
+            items.sort(key=lambda x: x.get("stargazers_count", 0), reverse=True)
+            matched = items
+
         repos = []
-        for item in items[:count]:
+        for item in matched[:count]:
             updated_at = item.get("updated_at", "")
             if updated_at and "T" in updated_at:
                 updated_at = updated_at.split("T")[0]

@@ -48,6 +48,7 @@ MAILTO_CONTACT = "daily_agent@nkust.edu.tw"
 DAILY_SUMMARY_FOLDER_NAME = "8.每日新聞總結"
 
 # 7天主題定義 (0: 禮拜一, 1: 禮拜二, ..., 6: 禮拜日)
+# keywords: 對題關鍵字（小寫），用於嚴格過濾論文/專案，確保當日資料符合主題
 TOPICS = {
     0: {
         "id": 1,
@@ -58,16 +59,18 @@ TOPICS = {
         "arxiv_query": "cat:cs.CL",
         "github_query": "LLM RAG fine-tuning in:name,description,topics stars:>100",
         "scholar_query": "LLM RAG fine-tuning large language model",
+        "keywords": ["llm", "rag", "large language model", "fine-tun", "retrieval-augmented", "prompt", "language model"],
     },
     1: {
         "id": 2,
-        "name": "機器學習",
-        "folder": "2.機器學習",
+        "name": "機器學習、AI資訊安全",
+        "folder": "2.機器學習、AI資訊安全",
         "weekday_name": "禮拜二",
-        "news_query": "機器學習 OR \"Machine Learning\" AI 演算法",
-        "arxiv_query": "cat:cs.LG",
-        "github_query": "machine-learning in:name,description,topics stars:>100",
-        "scholar_query": "machine learning algorithm",
+        "news_query": "\"機器學習\" OR \"Machine Learning\" OR AI資訊安全 OR 資安 OR \"AI Security\"",
+        "arxiv_query": "(cat:cs.LG OR cat:cs.CR)",
+        "github_query": "machine-learning security in:name,description,topics stars:>100",
+        "scholar_query": "machine learning AI security intrusion detection",
+        "keywords": ["machine learning", "neural", "security", "cybersecurity", "intrusion", "malware", "vulnerab", "anomaly", "adversarial", "information security", "encryption", "ai security"],
     },
     2: {
         "id": 3,
@@ -78,6 +81,7 @@ TOPICS = {
         "arxiv_query": "cat:cs.CV OR cat:cs.NE",
         "github_query": "deep-learning in:name,description,topics stars:>100",
         "scholar_query": "deep learning neural network",
+        "keywords": ["deep learning", "neural network", "cnn", "transformer", "vision", "reinforcement", "self-supervised", "diffusion", "语言模型", "language model"],
     },
     3: {
         "id": 4,
@@ -88,6 +92,7 @@ TOPICS = {
         "arxiv_query": "cat:cs.AI AND (ti:agent OR ti:autonomous OR abs:agent)",
         "github_query": "AI-agent OR autonomous-agent in:name,description,topics stars:>100",
         "scholar_query": "AI agent autonomous multi-agent",
+        "keywords": ["agent", "autonomous", "multi-agent", "tool use", "planning", "agentic"],
     },
     4: {
         "id": 5,
@@ -98,6 +103,7 @@ TOPICS = {
         "arxiv_query": "cat:cs.RO",
         "github_query": "robotics OR embodied-ai in:name,description,topics stars:>50",
         "scholar_query": "embodied AI robotics",
+        "keywords": ["robot", "robotics", "embodied", "manipulation", "navigation", "drone", "autonomous", "grasp"],
     },
     5: {
         "id": 6,
@@ -108,6 +114,7 @@ TOPICS = {
         "arxiv_query": "cat:cs.AR",
         "github_query": "AI-hardware OR edge-ai OR automation in:name,description,topics stars:>50",
         "scholar_query": "AI hardware chip NPU accelerator",
+        "keywords": ["gpu", "npu", "asic", "chip", "accelerator", "edge", "quantization", "inference", "fpga", "hardware"],
     },
     6: {
         "id": 7,
@@ -118,5 +125,6 @@ TOPICS = {
         "arxiv_query": "(abs:maritime OR abs:shipping OR abs:medical OR abs:health) AND (cat:cs.AI OR cat:eess.SP OR cat:q-bio.BM OR cat:q-bio.QM)",
         "github_query": "maritime OR shipping OR medical OR healthcare OR medical-ai in:name,description,topics stars:>50",
         "scholar_query": "maritime AI medical AI healthcare",
+        "keywords": ["maritime", "shipping", "vessel", "nautical", "port", "ocean", "medical", "health", "clinical", "radiology", "patient", "hospital", "diagnos", "biomed", "imaging", "海事", "醫療"],
     },
 }

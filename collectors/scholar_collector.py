@@ -26,6 +26,25 @@ def _norm_title(title: str) -> str:
     return re.sub(r"\W+", "", (title or "").lower())
 
 
+def _match_keywords(text: str, keywords: list[str]) -> bool:
+    if not keywords:
+        return True
+    lower_text = (text or "").lower()
+    return any(kw in lower_text for kw in keywords)
+
+
+def _paper_relevance_score(title: str, abstract: str, keywords: list[str]) -> int:
+    """論文對題計分：標題命中 3 分，摘要命中 1 分。回傳 0 表示不符合主題"""
+    if not keywords:
+        return 1
+    score = 0
+    if any(kw in (title or "").lower() for kw in keywords):
+        score += 3
+    if any(kw in (abstract or "").lower() for kw in keywords):
+        score += 1
+    return score
+
+
 def _dedupe(papers: list[dict], seen: set | None = None) -> list[dict]:
     if seen is None:
         seen = set()
@@ -357,6 +376,7 @@ def collect_papers_multisource(
     count: int = 5,
     category: str = "cs.AI",
     word_query: str = "",
+    keywords: list[str] | None = None,
     enable_google_scholar: bool = True,
 ) -> list[dict]:
     """依序從多個來源收集論文，去重後填滿 count 篇：
@@ -365,8 +385,12 @@ def collect_papers_multisource(
     3. Semantic Scholar API
     4. OpenAlex API
     5. PubMed (適用於醫療/生醫相關主題)
+    學術資料庫來源 (Google Scholar/Semantic Scholar/OpenAlex/PubMed) 會依 keywords
+    嚴格過濾，確保論文符合當日主題；arXiv 本身以分類/檢索詞限縮範疇。
     """
     from collectors.arxiv_collector import collect_papers
+
+    keywords = keywords or []
 
     seen: set = set()
     papers: list[dict] = []
@@ -389,10 +413,17 @@ def collect_papers_multisource(
             if len(papers) >= count:
                 break
             try:
-                extra = _dedupe(fetcher(word_query, need), seen)
+                extra = _dedupe(fetcher(word_query, need * 4), seen)
             except Exception as e:
                 print(f"[Scholar Collect] {getattr(fetcher, '__name__', '來源')} 執行失敗: {e}")
                 extra = []
+            if keywords:
+                before = len(extra)
+                extra = [p for p in extra if _paper_relevance_score(
+                    p.get("title", ""), p.get("abstract", ""), keywords) > 0]
+                extra.sort(key=lambda p: -_paper_relevance_score(
+                    p.get("title", ""), p.get("abstract", ""), keywords))
+                print(f"[Scholar Collect] 對題過濾：{before} -> {len(extra)} 篇")
             papers.extend(extra)
 
     return _dedupe(papers)[:count]

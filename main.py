@@ -60,8 +60,9 @@ def run_agent(weekday: int = None, test_mode: bool = False, custom_date: str = N
         count=paper_target,
         category=topic_info.get("arxiv_category", "cs.AI"),
         word_query=topic_info.get("scholar_query", ""),
+        keywords=topic_info.get("keywords", []),
     )
-    repo_items = collect_repos(topic_info["github_query"], count=repo_target)
+    repo_items = collect_repos(topic_info["github_query"], count=repo_target, keywords=topic_info.get("keywords", []))
 
     # 2. AI 智慧解說與總結
     print("\n【階段 2/3】正在使用高科 iAI (Furen-large) 進行智慧解說與專業分析...")
