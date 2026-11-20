@@ -3,3 +3,8 @@ __pycache__/
 *.pyc
 *.log
 .system_generated/
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+*.tmp
