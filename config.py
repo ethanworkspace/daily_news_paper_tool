@@ -33,10 +33,65 @@ def get_secure_env(key: str, default: str = "") -> str:
     return default
 
 
+def parse_api_keys(multi: str = "", single: str = "", numbered: list[str] | None = None) -> list[str]:
+    """解析多組 API key（支援逗號分隔、單一 key、編號 key），去重並保留順序。"""
+    raw: list[str] = []
+    if multi:
+        raw.extend(multi.split(","))
+    if single:
+        raw.append(single)
+    if numbered:
+        raw.extend(numbered)
+
+    keys: list[str] = []
+    seen: set[str] = set()
+    for item in raw:
+        key = (item or "").strip()
+        if key and key not in seen:
+            seen.add(key)
+            keys.append(key)
+    return keys
+
+
 # API Keys 與設定 (統一由系統環境變數讀取，程式碼中不包含任何金鑰)
-IAI_API_KEY = get_secure_env("IAI_API_KEY", "")
 IAI_BASE_URL = get_secure_env("IAI_BASE_URL", "https://www.iai.nkust.edu.tw/aihub/v1").rstrip("/")
-IAI_MODEL = get_secure_env("IAI_MODEL", "Furen-large")
+
+# 多模型設定（Furen-max 主力、Furen-large 輔助、Furen-coder 工程、Pic-large 生圖）
+IAI_MODEL_MAX = get_secure_env("IAI_MODEL_MAX", "Furen-max")
+IAI_MODEL_LARGE = get_secure_env("IAI_MODEL_LARGE", "Furen-large")
+IAI_MODEL_CODER = get_secure_env("IAI_MODEL_CODER", "Furen-coder")
+IAI_MODEL_IMAGE = get_secure_env("IAI_MODEL_IMAGE", "Pic-large")
+
+# 舊版單一模型設定（保留相容）
+IAI_MODEL = get_secure_env("IAI_MODEL", IAI_MODEL_LARGE)
+
+# 金鑰池（支援 IAI_API_KEYS=a,b,c,d 或 IAI_API_KEY / IAI_API_KEY_1..4）
+# 若已設定 IAI_API_KEYS，則忽略舊版單一 IAI_API_KEY，避免混入失效金鑰。
+_MULTI_KEYS = parse_api_keys(get_secure_env("IAI_API_KEYS", ""))
+IAI_API_KEYS = _MULTI_KEYS or parse_api_keys(
+    "",
+    get_secure_env("IAI_API_KEY", ""),
+    [get_secure_env(f"IAI_API_KEY_{i}", "") for i in range(1, 5)],
+)
+# 相容舊版單一 key
+IAI_API_KEY = IAI_API_KEYS[0] if IAI_API_KEYS else get_secure_env("IAI_API_KEY", "")
+
+# 併發與重試（控制多模型同時協作）
+IAI_MAX_CONCURRENCY = int(get_secure_env("IAI_MAX_CONCURRENCY", "6"))
+IAI_PER_KEY_CONCURRENCY = int(get_secure_env("IAI_PER_KEY_CONCURRENCY", "2"))
+IAI_TIMEOUT = int(get_secure_env("IAI_TIMEOUT", "120"))
+IAI_MAX_RETRIES = int(get_secure_env("IAI_MAX_RETRIES", "3"))
+
+# 時效窗（天）
+NEWS_MAX_AGE_DAYS = int(get_secure_env("NEWS_MAX_AGE_DAYS", "14"))
+PAPER_MAX_AGE_DAYS = int(get_secure_env("PAPER_MAX_AGE_DAYS", "30"))
+REPO_MAX_AGE_DAYS = int(get_secure_env("REPO_MAX_AGE_DAYS", "30"))
+
+# 每日產出量
+DAILY_NEWS_COUNT = 10
+DAILY_PAPER_COUNT = 5
+DAILY_REPO_COUNT = 5
+DAILY_DIGEST_FOLDER_NAME = "每日匯報"
 
 GOOGLE_CSE_API_KEY = get_secure_env("GOOGLE_CSE_API_KEY", "")
 GOOGLE_CSE_CX = get_secure_env("GOOGLE_CSE_CX", "")
