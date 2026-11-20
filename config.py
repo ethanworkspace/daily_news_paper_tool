@@ -102,6 +102,71 @@ MAILTO_CONTACT = "daily_agent@nkust.edu.tw"
 # 每日新聞總結目錄名稱
 DAILY_SUMMARY_FOLDER_NAME = "8.每日新聞總結"
 
+# ===== P2：新聞蒐集設定 =====
+NEWS_HTTP_TIMEOUT = int(get_secure_env("NEWS_HTTP_TIMEOUT", "20"))
+NEWS_MAX_BYTES = int(get_secure_env("NEWS_MAX_BYTES", str(5 * 1024 * 1024)))
+NEWS_MAX_PER_SOURCE = int(get_secure_env("NEWS_MAX_PER_SOURCE", "3"))
+NEWS_MAX_PER_DOMAIN = int(get_secure_env("NEWS_MAX_PER_DOMAIN", "4"))
+NEWS_ROBOTS_CHECK = get_secure_env("NEWS_ROBOTS_CHECK", "true").lower() in {"1", "true", "yes"}
+NEWS_BING_ENABLED = get_secure_env("NEWS_BING_ENABLED", "true").lower() in {"1", "true", "yes"}
+NEWS_USER_AGENT = get_secure_env(
+    "NEWS_USER_AGENT",
+    "DailyAIReportBot/2.0 (+https://github.com/ethanworkspace/daily_news_paper_tool)",
+)
+
+# 聚合搜尋查詢（Bing News RSS；遵守 robots.txt）
+# 注意：Bing News RSS 不支援 OR 語法（會回傳 0 筆），因此每個概念拆成獨立查詢。
+NEWS_QUERIES = [
+    {"query": "人工智慧", "lang": "zh-tw", "cc": "TW", "hint": "general"},
+    {"query": "大語言模型", "lang": "zh-tw", "cc": "TW", "hint": "general"},
+    {"query": "生成式 AI", "lang": "zh-tw", "cc": "TW", "hint": "general"},
+    {"query": "機器學習", "lang": "zh-tw", "cc": "TW", "hint": "general"},
+    {"query": "海事 AI", "lang": "zh-tw", "cc": "TW", "hint": "maritime"},
+    {"query": "智慧航運", "lang": "zh-tw", "cc": "TW", "hint": "maritime"},
+    {"query": "船舶 AI", "lang": "zh-tw", "cc": "TW", "hint": "maritime"},
+    {"query": "醫療 AI", "lang": "zh-tw", "cc": "TW", "hint": "medical"},
+    {"query": "智慧醫療", "lang": "zh-tw", "cc": "TW", "hint": "medical"},
+    {"query": "AI 資安", "lang": "zh-tw", "cc": "TW", "hint": "cybersecurity"},
+    {"query": "資訊安全 AI", "lang": "zh-tw", "cc": "TW", "hint": "cybersecurity"},
+    {"query": "具身智慧", "lang": "zh-tw", "cc": "TW", "hint": "robotics"},
+    {"query": "人形機器人", "lang": "zh-tw", "cc": "TW", "hint": "robotics"},
+    {"query": "AI 晶片", "lang": "zh-tw", "cc": "TW", "hint": "electronics"},
+    {"query": "半導體 AI", "lang": "zh-tw", "cc": "TW", "hint": "electronics"},
+    {"query": "artificial intelligence", "lang": "en-us", "cc": "US", "hint": "general"},
+    {"query": "large language model", "lang": "en-us", "cc": "US", "hint": "general"},
+    {"query": "maritime AI", "lang": "en-us", "cc": "US", "hint": "maritime"},
+    {"query": "autonomous vessel", "lang": "en-us", "cc": "US", "hint": "maritime"},
+    {"query": "shipping AI", "lang": "en-us", "cc": "US", "hint": "maritime"},
+    {"query": "medical AI", "lang": "en-us", "cc": "US", "hint": "medical"},
+    {"query": "healthcare AI", "lang": "en-us", "cc": "US", "hint": "medical"},
+    {"query": "AI cybersecurity", "lang": "en-us", "cc": "US", "hint": "cybersecurity"},
+    {"query": "AI security", "lang": "en-us", "cc": "US", "hint": "cybersecurity"},
+    {"query": "humanoid robot", "lang": "en-us", "cc": "US", "hint": "robotics"},
+    {"query": "embodied AI", "lang": "en-us", "cc": "US", "hint": "robotics"},
+    {"query": "AI chip", "lang": "en-us", "cc": "US", "hint": "electronics"},
+    {"query": "semiconductor AI", "lang": "en-us", "cc": "US", "hint": "electronics"},
+]
+
+# 直接訂閱的國內外媒體 RSS（來源可插拔；失敗不影響其他來源）
+NEWS_FEEDS = [
+    {"name": "TechCrunch AI", "url": "https://techcrunch.com/category/artificial-intelligence/feed/", "lang": "en", "country": "US", "hint": "general"},
+    {"name": "VentureBeat AI", "url": "https://venturebeat.com/category/ai/feed/", "lang": "en", "country": "US", "hint": "general"},
+    {"name": "MIT Technology Review", "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed", "lang": "en", "country": "US", "hint": "general"},
+    {"name": "Ars Technica", "url": "https://feeds.arstechnica.com/arstechnica/index", "lang": "en", "country": "US", "hint": "general"},
+    {"name": "IEEE Spectrum AI", "url": "https://spectrum.ieee.org/feeds/topic/artificial-intelligence.rss", "lang": "en", "country": "US", "hint": "general"},
+    {"name": "The Hacker News", "url": "https://feeds.feedburner.com/TheHackersNews", "lang": "en", "country": "US", "hint": "cybersecurity"},
+    {"name": "BleepingComputer", "url": "https://www.bleepingcomputer.com/feed/", "lang": "en", "country": "US", "hint": "cybersecurity"},
+    {"name": "SecurityWeek", "url": "https://www.securityweek.com/feed/", "lang": "en", "country": "US", "hint": "cybersecurity"},
+    {"name": "Healthcare IT News", "url": "https://www.healthcareitnews.com/rss.xml", "lang": "en", "country": "US", "hint": "medical"},
+    {"name": "Fierce Healthcare", "url": "https://www.fiercehealthcare.com/rss/xml", "lang": "en", "country": "US", "hint": "medical"},
+    {"name": "The Maritime Executive", "url": "https://www.maritime-executive.com/rss", "lang": "en", "country": "US", "hint": "maritime"},
+    {"name": "gCaptain", "url": "https://gcaptain.com/feed/", "lang": "en", "country": "US", "hint": "maritime"},
+    {"name": "Splash247", "url": "https://splash247.com/feed/", "lang": "en", "country": "SG", "hint": "maritime"},
+    {"name": "EE Times", "url": "https://www.eetimes.com/feed/", "lang": "en", "country": "US", "hint": "electronics"},
+    {"name": "The Robot Report", "url": "https://www.therobotreport.com/feed/", "lang": "en", "country": "US", "hint": "robotics"},
+    {"name": "IEEE Spectrum Robotics", "url": "https://spectrum.ieee.org/feeds/topic/robotics.rss", "lang": "en", "country": "US", "hint": "robotics"},
+]
+
 # 7天主題定義 (0: 禮拜一, 1: 禮拜二, ..., 6: 禮拜日)
 # keywords: 對題關鍵字（小寫），用於嚴格過濾論文/專案，確保當日資料符合主題
 TOPICS = {

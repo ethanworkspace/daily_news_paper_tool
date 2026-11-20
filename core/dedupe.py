@@ -74,6 +74,8 @@ def is_similar_title(left: object, right: object, threshold: float = 0.92) -> bo
     if a == b:
         return True
     shorter, longer = sorted((a, b), key=len)
+    if len(shorter) / max(len(longer), 1) < 0.8:
+        return False
     if len(shorter) >= 12 and shorter in longer:
         return True
     return SequenceMatcher(None, a, b).ratio() >= threshold

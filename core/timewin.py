@@ -26,6 +26,11 @@ _FALLBACK_FORMATS = (
     "%Y年%m月%d日",
     "%d %b %Y %H:%M:%S",
     "%d %B %Y %H:%M:%S",
+    "%b %d, %Y %I:%M%p",
+    "%b %d, %Y %I:%M %p",
+    "%B %d, %Y %I:%M%p",
+    "%b %d, %Y",
+    "%B %d, %Y",
 )
 
 

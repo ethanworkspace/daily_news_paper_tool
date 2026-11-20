@@ -37,6 +37,8 @@ class TestParseDatetime(unittest.TestCase):
     def test_common_formats(self):
         self.assertEqual(parse_date("2026/11/20"), date(2026, 11, 20))
         self.assertEqual(parse_date("2026年11月20日"), date(2026, 11, 20))
+        self.assertEqual(parse_date("Nov 19, 2026 2:47pm"), date(2026, 11, 19))
+        self.assertEqual(parse_date("November 19, 2026 2:47 PM"), date(2026, 11, 19))
 
     def test_date_object_becomes_midnight_utc(self):
         self.assertEqual(
