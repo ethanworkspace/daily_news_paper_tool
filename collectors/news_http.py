@@ -91,7 +91,14 @@ class SafeHttpFetcher:
         return parser.can_fetch(self.user_agent, path)
 
     # ---------- 抓取 ----------
-    def fetch(self, url: str, *, check_robots: bool | None = None, _skip_robots: bool = False) -> FetchResult:
+    def fetch(
+        self,
+        url: str,
+        *,
+        check_robots: bool | None = None,
+        _skip_robots: bool = False,
+        headers: dict[str, str] | None = None,
+    ) -> FetchResult:
         try:
             current = assert_public_http_url(url)
         except UnsafeURLError as exc:
@@ -105,16 +112,18 @@ class SafeHttpFetcher:
                 return FetchResult(url=current, error=f"robots_error: {type(exc).__name__}")
 
         redirects: list[str] = []
-        headers = {
+        request_headers = {
             "User-Agent": self.user_agent,
-            "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
+            "Accept": "application/json, application/atom+xml, application/rss+xml, application/xml, text/html, text/plain, */*",
         }
+        if headers:
+            request_headers.update(headers)
 
         for _ in range(self.max_redirects + 1):
             try:
                 response = self.session.get(
                     current,
-                    headers=headers,
+                    headers=request_headers,
                     timeout=self.timeout,
                     allow_redirects=False,
                     stream=True,

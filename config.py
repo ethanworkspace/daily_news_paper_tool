@@ -248,3 +248,35 @@ TOPICS = {
         "keywords": ["maritime", "shipping", "vessel", "nautical", "port", "ocean", "medical", "health", "clinical", "radiology", "patient", "hospital", "diagnos", "biomed", "imaging", "海事", "醫療"],
     },
 }
+
+# ===== P3：論文蒐集設定 =====
+PAPER_HTTP_TIMEOUT = int(get_secure_env("PAPER_HTTP_TIMEOUT", "25"))
+PAPER_MAX_BYTES = int(get_secure_env("PAPER_MAX_BYTES", str(8 * 1024 * 1024)))
+PAPER_ROBOTS_CHECK = get_secure_env("PAPER_ROBOTS_CHECK", "true").lower() in {"1", "true", "yes"}
+PAPER_MAX_PER_SOURCE = int(get_secure_env("PAPER_MAX_PER_SOURCE", "3"))
+PAPER_MIN_PAIRED = int(get_secure_env("PAPER_MIN_PAIRED", "3"))  # 目標值，來源不足時記錄 warning
+
+# 查詢詞（可擴充）；hint 對應領域偏好，實際仍以內容判斷
+PAPER_QUERIES = [
+    {"query": "large language model", "hint": "general"},
+    {"query": "multimodal foundation model", "hint": "general"},
+    {"query": "AI agent reasoning", "hint": "general"},
+    {"query": "maritime AI autonomous vessel", "hint": "maritime"},
+    {"query": "shipping port artificial intelligence", "hint": "maritime"},
+    {"query": "medical AI clinical diagnosis", "hint": "medical"},
+    {"query": "healthcare machine learning", "hint": "medical"},
+    {"query": "cybersecurity machine learning intrusion detection", "hint": "cybersecurity"},
+    {"query": "embodied AI humanoid robot", "hint": "robotics"},
+    {"query": "edge AI semiconductor chip", "hint": "electronics"},
+]
+
+# 來源優先層級（1=頂級期刊/會議，2=重要OA/會議，3=預印本）
+TIER1_VENUES = (
+    "nature", "science", "cell", "lancet", "jama", "nejm",
+    "neurips", "iclr", "icml", "aaai", "cvpr", "iccv", "eccv", "acl", "emnlp", "naacl",
+    "ieee transactions", "acm transactions",
+)
+TIER2_VENUES = (
+    "plos", "science advances", "scientific reports", "jmir", "frontiers",
+    "bioinformatics", "jmlr", "pmlr", "openreview",
+)

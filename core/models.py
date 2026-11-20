@@ -145,6 +145,12 @@ class PaperItem:
     code_url: str = ""
     doi: str = ""
     arxiv_id: str = ""
+    journal: str = ""
+    venue: str = ""
+    impact_factor: str = ""
+    impact_factor_source: str = ""
+    cited_by_count: int = 0
+    fulltext_excerpt: str = ""
     parse_level: str = "metadata"
     paired_repo: str = ""
     sections: dict[str, str] = field(default_factory=dict)
@@ -159,11 +165,20 @@ class PaperItem:
         if not isinstance(self.authors, list):
             _fail("paper.authors", "必須是字串陣列")
         self.authors = [_text(f"paper.authors[{i}]", a, max_len=200) for i, a in enumerate(self.authors)]
+        if not isinstance(self.afflictions, list):
+            _fail("paper.afflictions", "必須是字串陣列")
+        self.afflictions = [_text(f"paper.afflictions[{i}]", a, max_len=300) for i, a in enumerate(self.afflictions)]
         self.abstract = _text("paper.abstract", self.abstract, required=False, max_len=20000)
         self.pdf_url = _url("paper.pdf_url", self.pdf_url, required=False)
         self.code_url = _url("paper.code_url", self.code_url, required=False)
         self.doi = _text("paper.doi", self.doi, required=False, max_len=200)
         self.arxiv_id = _text("paper.arxiv_id", self.arxiv_id, required=False, max_len=64)
+        self.journal = _text("paper.journal", self.journal, required=False, max_len=300)
+        self.venue = _text("paper.venue", self.venue, required=False, max_len=300)
+        self.impact_factor = _text("paper.impact_factor", self.impact_factor, required=False, max_len=120)
+        self.impact_factor_source = _text("paper.impact_factor_source", self.impact_factor_source, required=False, max_len=200)
+        self.cited_by_count = _int("paper.cited_by_count", self.cited_by_count)
+        self.fulltext_excerpt = _text("paper.fulltext_excerpt", self.fulltext_excerpt, required=False, max_len=40000)
         if self.parse_level not in PARSE_LEVELS:
             _fail("paper.parse_level", f"必須是 {PARSE_LEVELS}")
         self.paired_repo = _text("paper.paired_repo", self.paired_repo, required=False, max_len=200)
