@@ -211,7 +211,10 @@ class RepoItem:
     created_at: datetime | None = None
     paper_url: str = ""
     paired_paper: str = ""
+    readme_text: str = ""
     readme_excerpt: str = ""
+    quality_score: int = 0
+    quality_flags: list[str] = field(default_factory=list)
     sections: dict[str, str] = field(default_factory=dict)
 
     def validate(self, *, require_sections: bool = False, min_section_chars: int = 0) -> "RepoItem":
@@ -231,7 +234,14 @@ class RepoItem:
         self.created_at = _datetime("repo.created_at", self.created_at, required=False)
         self.paper_url = _url("repo.paper_url", self.paper_url, required=False)
         self.paired_paper = _text("repo.paired_paper", self.paired_paper, required=False, max_len=300)
+        self.readme_text = _text("repo.readme_text", self.readme_text, required=False, max_len=200000)
         self.readme_excerpt = _text("repo.readme_excerpt", self.readme_excerpt, required=False, max_len=20000)
+        self.quality_score = _int("repo.quality_score", self.quality_score)
+        if self.quality_score > 10:
+            _fail("repo.quality_score", "不可大於 10")
+        if not isinstance(self.quality_flags, list):
+            _fail("repo.quality_flags", "必須是字串陣列")
+        self.quality_flags = [_text(f"repo.quality_flags[{i}]", f, max_len=32) for i, f in enumerate(self.quality_flags)]
         self.sections = _validate_sections(
             "repo.sections", self.sections, ("what", "tech", "architecture"),
             require_sections=require_sections, min_chars=min_section_chars,

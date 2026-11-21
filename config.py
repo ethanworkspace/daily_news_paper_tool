@@ -296,6 +296,9 @@ REPO_MAX_BYTES = int(get_secure_env("REPO_MAX_BYTES", str(6 * 1024 * 1024)))
 REPO_ROBOTS_CHECK = get_secure_env("REPO_ROBOTS_CHECK", "true").lower() in {"1", "true", "yes"}
 REPO_MAX_PER_SOURCE = int(get_secure_env("REPO_MAX_PER_SOURCE", "2"))
 REPO_MIN_PAIRED = int(get_secure_env("REPO_MIN_PAIRED", "3"))  # 目標值，來源不足時記錄 warning
+REPO_MIN_QUALITY_SCORE = int(get_secure_env("REPO_MIN_QUALITY_SCORE", "2"))  # 0–10，低於此值視為低訊號
+REPO_ENRICH_LIMIT = int(get_secure_env("REPO_ENRICH_LIMIT", "24"))  # 最多深入抓取幾個 README
+REPO_EXCLUDE_COLLECTIONS = get_secure_env("REPO_EXCLUDE_COLLECTIONS", "true").lower() in {"1", "true", "yes"}
 
 REPO_QUERIES = [
     {"query": "large language model OR llm agent", "hint": "general", "min_stars": 50},
