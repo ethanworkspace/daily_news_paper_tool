@@ -23,10 +23,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-write", action="store_true", help="只跑收集/驗證，不寫檔")
     parser.add_argument("--push", action="store_true", help="寫檔後 git push")
     parser.add_argument("--no-ai", action="store_true", help="停用 iAI，使用規則式 fallback")
+    parser.add_argument("--force", action="store_true", help="覆寫既有當日輸出")
     return parser
 
 
-def run_agent(target_date: str | None = None, no_push: bool = True, no_ai: bool = False) -> dict:
+def run_agent(target_date: str | None = None, no_push: bool = True, no_ai: bool = False, force: bool = False) -> dict:
     """相容舊介面：供 scheduler/run_daily 呼叫。"""
     return run_daily_pipeline(
         target=target_date,
@@ -36,6 +37,7 @@ def run_agent(target_date: str | None = None, no_push: bool = True, no_ai: bool 
         write=True,
         push=not no_push,
         use_ai=not no_ai,
+        force=force,
     )
 
 
@@ -49,6 +51,7 @@ def main() -> int:
         write=not args.no_write,
         push=args.push,
         use_ai=not args.no_ai,
+        force=args.force,
     )
     print(json.dumps({
         "status": report.get("status"),

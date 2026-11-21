@@ -71,6 +71,7 @@ class DailyPipeline:
         write: bool = True,
         push: bool = False,
         use_ai: bool = True,
+        force: bool = False,
     ) -> dict[str, Any]:
         day = _target_day(target)
         reference = end_of_day_utc(day)
@@ -85,6 +86,22 @@ class DailyPipeline:
         }
 
         try:
+            day_dir = self.root / str((day.isoweekday() % 7) + 0)  # placeholder
+            # compute expected day dir via core.paths
+            from core.paths import day_dir as _day_dir, digest_path as _digest_path
+            out_day_dir = _day_dir(self.root, day)
+            out_digest = _digest_path(self.root, day)
+            existing = out_day_dir.exists() and any(out_day_dir.glob('*.md')) and out_digest.exists()
+            report["existing_output"] = bool(existing)
+            if existing and not force:
+                report["status"] = "skipped_existing"
+                report["warnings"].append("existing_output_found_use_force_to_overwrite")
+                manifest.warning("existing_output_found_use_force_to_overwrite")
+                manifest.finish("skipped")
+                report["manifest"] = str(manifest.save())
+                report["files"] = sorted([str(p) for p in out_day_dir.glob('*.md')] + ([str(out_digest)] if out_digest.exists() else []))
+                return report
+
             with manifest.stage("collect_news"):
                 news_sel = self.news_engine.collect(news_count, now=reference)
             manifest.counts["news_raw"] = int(news_sel.report.get("raw_count", 0))
@@ -205,8 +222,10 @@ class DailyPipeline:
                 with manifest.stage("git_push"):
                     from git_pusher import push_to_github
 
-                    ok = push_to_github([Path(p) for p in report["files"]], f"docs: 每日AI匯報 {day.isoformat()}")
+                    push_files = [Path(p) for p in report["files"] if str(p).replace('\\','/').endswith('.md')]
+                    ok = push_to_github(push_files, f"docs: 每日AI匯報 {day.isoformat()} ({len(push_files)} files)")
                     report["pushed"] = bool(ok)
+                    report["push_files"] = [str(p) for p in push_files]
                     if not ok:
                         report["warnings"].append("git_push_failed")
                         manifest.warning("git_push_failed")
