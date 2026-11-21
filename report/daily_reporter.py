@@ -156,36 +156,78 @@ def render_tech_markdown(tech: Any, bundle: DailyBundle) -> str:
     ]).strip() + "\n"
 
 
+def _short(text: object, limit: int = 140) -> str:
+    t = " ".join(str(text or "").replace("\n", " ").split()).strip()
+    if len(t) <= limit:
+        return t
+    return t[: limit - 1].rstrip() + "…"
+
+
 def render_digest_markdown(bundle: DailyBundle, report: dict[str, Any]) -> str:
-    lines = [f"# 每日 AI 匯報 - {bundle.date}", ""]
-    lines.append("## 新聞（10）")
+    lines = [f"# 每日 AI 匯報 - {bundle.date}", "", "> 本頁為每日總覽：每則項目含簡短摘要與連結。", ""]
+
+    lines.append(f"## 新聞（{len(bundle.news)}）")
     for i, n in enumerate(bundle.news, 1):
-        lines.append(f"- {i}. {n.title}｜{n.source}｜{_link(n.url)}")
-    lines.append("")
-    lines.append("## 論文（5）")
+        lines.append(f"### {i}. {n.title}")
+        lines.append(f"- 來源/時間：{n.source or '未知'}｜{_dt(n.published_at)}")
+        lines.append(f"- 領域：{', '.join(n.domains)}{'（海事）' if n.is_maritime else ''}")
+        lines.append(f"- 摘要：{_short(n.summary, 180)}")
+        lines.append(f"- 影響：{_short(n.key_point or n.summary, 120)}")
+        lines.append(f"- 連結：{_link(n.url)}")
+        lines.append("")
+
+    lines.append(f"## 論文（{len(bundle.papers)}）")
     for i, p in enumerate(bundle.papers, 1):
+        s = p.sections or {}
         venue = p.journal or p.venue or p.source_name
-        lines.append(f"- {i}. {p.title}｜{venue}｜IF/Impact: {p.impact_factor}｜{_link(p.url)}")
-    lines.append("")
-    lines.append("## GitHub 專案（5）")
+        lines.append(f"### {i}. {p.title}")
+        lines.append(f"- 來源/發表：{venue}｜{_dt(p.published_at)}｜IF/Impact: {p.impact_factor}")
+        lines.append(f"- 摘要：{_short(s.get('background') or p.abstract, 180)}")
+        lines.append(f"- 方法/結果：{_short(s.get('method'), 90)} / {_short(s.get('results'), 90)}")
+        lines.append(f"- 連結：{_link(p.url)}")
+        if p.code_url:
+            lines.append(f"- 程式碼：{_link(p.code_url)}")
+        lines.append("")
+
+    lines.append(f"## GitHub 專案（{len(bundle.repos)}）")
     for i, r in enumerate(bundle.repos, 1):
-        pair = f"｜paper: {r.paper_url}" if r.paper_url else ""
-        lines.append(f"- {i}. {r.full_name}（★{r.stars}, {r.language or 'unknown'}）{pair}｜{_link(r.html_url)}")
-    lines.append("")
+        s = r.sections or {}
+        lines.append(f"### {i}. {r.full_name}")
+        lines.append(f"- 資訊：★{r.stars}｜{r.language or 'unknown'}｜更新 {_dt(r.updated_at)}")
+        lines.append(f"- 在做什麼：{_short(s.get('what') or r.description, 160)}")
+        lines.append(f"- 技術/架構：{_short(s.get('tech'), 90)} / {_short(s.get('architecture'), 90)}")
+        lines.append(f"- 連結：{_link(r.html_url)}")
+        if r.paper_url or r.paired_paper:
+            lines.append(f"- 配對論文：{_link(r.paper_url) or r.paired_paper}")
+        lines.append("")
+
     lines.append("## AI 架構深度拆解（1）")
     if bundle.tech:
-        lines.append(f"- {bundle.tech.name}｜{_link(bundle.tech.reference_urls[0]) if bundle.tech.reference_urls else ''}")
+        t = bundle.tech
+        lines.append(f"### {t.name}")
+        lines.append(f"- 選題理由：{_short(t.rationale, 160)}")
+        lines.append(f"- 原理摘要：{_short(t.principle, 220)}")
+        lines.append(f"- 海事應用：{_short(t.applications_maritime, 140)}")
+        lines.append(f"- 醫療應用：{_short(t.applications_medical, 140)}")
+        lines.append(f"- 其他應用：{_short(t.applications_general, 120)}")
+        lines.append(f"- 限制風險：{_short(t.limitations, 120)}")
+        if t.reference_urls:
+            lines.append("- 參考來源：" + "；".join(_link(u) for u in t.reference_urls[:3] if _link(u)))
     lines.append("")
+
     lines.append("## 驗收摘要")
-    q = report.get('quotas', {})
+    q = report.get("quotas", {})
     lines.append(f"- 跨域新聞：{q.get('cross_domain', 0)}（需 >=3）")
     lines.append(f"- 海事新聞：{q.get('maritime', 0)}（需 >=1）")
     lines.append(f"- 實際配對論文：{q.get('paired_papers', 0)}（目標 >=3）；seed/code_url配對：{q.get('paired_papers_seed', 0)}")
     lines.append(f"- 實際配對repo：{q.get('paired_repos', 0)}；seed配對：{q.get('paired_repos_seed', 0)}")
     if q.get("stale_backfill") or report.get("allow_stale"):
         lines.append("- stale_backfill：true（回補模式，已放寬時效窗；需人工/後續補驗證）")
-    if report.get("warnings"):
-        lines.append(f"- warnings：{len(report['warnings'])}")
+    warnings = report.get("warnings") or []
+    if warnings:
+        lines.append(f"- warnings：{len(warnings)}")
+        for w in warnings[:8]:
+            lines.append(f"  - {redact_secrets(w)}")
     return "\n".join(lines).strip() + "\n"
 
 
