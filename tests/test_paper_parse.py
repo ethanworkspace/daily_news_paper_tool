@@ -6,6 +6,7 @@ from collectors.paper_parse import (
     arxiv_id_from_text,
     extract_github_urls,
     extract_text_from_html,
+    extract_text_from_pdf,
     first_github_url,
     format_impact_factor,
     parse_arxiv_atom,
@@ -85,6 +86,30 @@ class TestExtractors(unittest.TestCase):
     def test_arxiv_doi_helpers(self):
         self.assertEqual(arxiv_id_from_text("https://arxiv.org/abs/2601.01234v3"), "2601.01234")
         self.assertEqual(arxiv_id_from_text("arxiv:2601.01234"), "2601.01234")
+
+    def test_extract_text_from_pdf(self):
+        # 以 mock PdfReader 測試萃取邏輯，不依賴 pypdf 內部寫入 API
+        import collectors.paper_parse as pp
+
+        class FakePage:
+            def extract_text(self):
+                return "Hello AI paper PDF extraction test\n\nMethods: deep learning."
+
+        class FakeReader:
+            def __init__(self, _buf):
+                self.pages = [FakePage()]
+
+        old = pp.PdfReader
+        try:
+            pp.PdfReader = FakeReader
+            text = extract_text_from_pdf(b"%PDF-1.4 fake")
+            self.assertIn("AI paper PDF extraction", text)
+            self.assertIn("Methods", text)
+        finally:
+            pp.PdfReader = old
+
+    def test_extract_text_from_pdf_empty(self):
+        self.assertEqual(extract_text_from_pdf(b""), "")
 
 
 class TestImpactFactor(unittest.TestCase):

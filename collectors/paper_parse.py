@@ -12,6 +12,11 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from collectors.news_parse import strip_html
+
+try:
+    from pypdf import PdfReader  # type: ignore
+except Exception:  # pragma: no cover - optional dependency/runtime guard
+    PdfReader = None  # type: ignore[assignment]
 from core.dedupe import extract_arxiv_id, normalize_doi
 from core.timewin import parse_datetime
 
@@ -119,6 +124,40 @@ def extract_text_from_html(raw: object, max_length: int = 40000) -> str:
     text = re.sub(r"\n{3,}", "\n\n", text)
     text = "\n".join(line.strip() for line in text.splitlines()).strip()
     return text[:max_length]
+
+
+def extract_text_from_pdf(raw: bytes | bytearray | None, max_length: int = 40000) -> str:
+    """從 PDF bytes 萃取文字；失敗時回傳空字串，不拋例外。"""
+    if not raw:
+        return ""
+    if PdfReader is None:
+        return ""
+    try:
+        from io import BytesIO
+
+        reader = PdfReader(BytesIO(bytes(raw)))
+        parts: list[str] = []
+        total = 0
+        for page in getattr(reader, "pages", [])[:40]:
+            try:
+                text = page.extract_text() or ""
+            except Exception:  # noqa: BLE001
+                text = ""
+            if not text:
+                continue
+            text = _CONTROL_CHARS.sub(" ", text)
+            text = re.sub(r"[ \t]+", " ", text)
+            text = re.sub(r"\n{3,}", "\n\n", text).strip()
+            if not text:
+                continue
+            parts.append(text)
+            total += len(text)
+            if total >= max_length:
+                break
+        merged = "\n\n".join(parts).strip()
+        return merged[:max_length]
+    except Exception:  # noqa: BLE001
+        return ""
 
 
 def extract_github_urls(text: object) -> list[str]:

@@ -20,6 +20,7 @@ from collectors.paper_parse import (
     PaperCandidate,
     extract_github_urls,
     extract_text_from_html,
+    extract_text_from_pdf,
     format_impact_factor,
     parse_arxiv_atom,
     parse_openalex_work,
@@ -261,33 +262,48 @@ class PaperSources:
 
     # ---------- content enrichment (crawl/parse) ----------
     def enrich_fulltext(self, paper: PaperCandidate, max_chars: int = 40000) -> PaperCandidate:
-        """抓取並解析可公開取得的全文/頁面內容；不嘗試下載解析 PDF（環境無解析器），改抓 HTML 頁。"""
-        candidates: list[str] = []
+        """抓取並解析可公開取得的全文/頁面內容：優先 HTML，必要時解析 PDF（pypdf）。"""
+        candidates: list[tuple[str, str]] = []  # (url, kind)
         # 優先 arXiv HTML
         if paper.arxiv_id:
-            candidates.append(f"https://arxiv.org/html/{paper.arxiv_id}")
-            candidates.append(f"https://arxiv.org/abs/{paper.arxiv_id}")
+            candidates.append((f"https://arxiv.org/html/{paper.arxiv_id}", "html"))
+            candidates.append((f"https://arxiv.org/abs/{paper.arxiv_id}", "html"))
         # PMC 頁面可直接抓 HTML
         pmc_id = str((paper.extra or {}).get("pmc_id") or "")
         if pmc_id:
-            candidates.append(f"https://pmc.ncbi.nlm.nih.gov/articles/{pmc_id}/")
-        # landing/fulltext
+            candidates.append((f"https://pmc.ncbi.nlm.nih.gov/articles/{pmc_id}/", "html"))
+        # landing/fulltext 頁面
         for url in (paper.fulltext_url, paper.url):
-            if url and url not in candidates and not str(url).lower().endswith(".pdf"):
-                candidates.append(url)
+            if not url or url in {c[0] for c in candidates}:
+                continue
+            kind = "pdf" if str(url).lower().endswith(".pdf") else "html"
+            candidates.append((url, kind))
+        # PDF 作為補充（若 HTML 失敗或不可用）
+        for url in (paper.pdf_url,):
+            if not url or url in {c[0] for c in candidates}:
+                continue
+            candidates.append((url, "pdf"))
+        if paper.arxiv_id:
+            candidates.append((f"https://arxiv.org/pdf/{paper.arxiv_id}.pdf", "pdf"))
 
-        for url in candidates:
+        for url, kind in candidates:
             result = self.fetcher.fetch(url, check_robots=self.robots_check)
             if not result.ok:
                 continue
             ctype = (result.content_type or "").lower()
-            if "pdf" in ctype:
-                continue
-            text = extract_text_from_html(result.content.decode("utf-8", errors="replace"), max_length=max_chars)
+            is_pdf = kind == "pdf" or "pdf" in ctype or result.content[:4] == b"%PDF"
+            if is_pdf:
+                text = extract_text_from_pdf(result.content, max_length=max_chars)
+                parsed_kind = "pdf"
+            else:
+                text = extract_text_from_html(result.content.decode("utf-8", errors="replace"), max_length=max_chars)
+                parsed_kind = "html"
             if len(text) < 400:
                 continue
             paper.fulltext_excerpt = text
             paper.parse_level = "fulltext"
+            paper.extra["fulltext_source"] = url
+            paper.extra["fulltext_kind"] = parsed_kind
             if not paper.code_url:
                 codes = extract_github_urls(text)
                 if codes:
