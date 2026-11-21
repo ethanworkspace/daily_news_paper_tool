@@ -130,10 +130,17 @@ class DailyPipeline:
                 "collections_excluded": repo_sel.report.get("collections_excluded"),
                 "rejected_counts": repo_sel.report.get("rejected_counts", {}),
             }
+            seed_status = repo_sel.report.get("seed_status", []) or []
+            seed_fetch_errors = [s for s in seed_status if not s.get("fetched")]
+            report["repo_seed_fetch_errors"] = len(seed_fetch_errors)
             if repo_sel.report.get("seed_warning"):
                 report["warnings"].append(str(repo_sel.report["seed_warning"]))
                 manifest.warning(repo_sel.report["seed_warning"])
-            if not GITHUB_TOKEN and repo_sel.report.get("seed_warning"):
+            if seed_fetch_errors:
+                msg = f"seed_repo_fetch_failed={len(seed_fetch_errors)}/{len(seed_status)}"
+                report["warnings"].append(msg)
+                manifest.warning(msg)
+            if not GITHUB_TOKEN and seed_fetch_errors:
                 report["warnings"].append("github_auth_blocked: missing GITHUB_TOKEN; seed repo fetch may be rate-limited")
                 manifest.warning("github_auth_blocked: missing GITHUB_TOKEN")
 
