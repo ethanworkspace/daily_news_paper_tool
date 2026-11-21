@@ -91,10 +91,13 @@ def select_repos(
     *,
     max_per_source: int = REPO_MAX_PER_SOURCE,
     min_paired: int = 0,
+    seed_names: set[str] | None = None,
 ) -> RepoSelection:
+    seed_set = {str(s).lower() for s in (seed_names or set())}
     ordered = sorted(
         items,
         key=lambda item: (
+            1 if item.full_name.lower() in seed_set else 0,
             1 if _is_paired(item) else 0,
             int(item.quality_score or 0),
             min(int(item.stars or 0), 200000),
@@ -132,6 +135,9 @@ def select_repos(
 
     while len(selected) < count:
         paired = sum(1 for item in selected if _is_paired(item))
+        seed_paired = sum(1 for item in selected if item.full_name.lower() in seed_set and _is_paired(item))
+        if paired < min_paired and take(lambda i: i.full_name.lower() in seed_set and _is_paired(i)):
+            continue
         if paired < min_paired and take(_is_paired):
             continue
         if take(lambda _item: True):
@@ -367,7 +373,7 @@ class RepoEngine:
 
         try:
             selection = select_repos(
-                qualified, count, max_per_source=self.max_per_source, min_paired=self.min_paired
+                qualified, count, max_per_source=self.max_per_source, min_paired=self.min_paired, seed_names=seed_names
             )
         except RepoQuotaError as exc:
             exc.report.setdefault("sources", source_stats)
@@ -460,9 +466,6 @@ class RepoEngine:
             return False
 
     def _quality_gate(self, item: RepoItem, reference: datetime, rejected: list[dict]) -> bool:
-        if item.updated_at and not is_within_window(item.updated_at, self.max_age_days, now=reference):
-            rejected.append({"title": item.full_name, "reason": "stale_after_enrich", "source": "github"})
-            return False
         if not item.readme_excerpt and not item.description:
             rejected.append({"title": item.full_name, "reason": "no_content", "source": "github"})
             return False
@@ -487,22 +490,30 @@ class RepoEngine:
                 rejected.append({"title": item.full_name, "reason": "stale_after_enrich", "source": "github"})
                 return False
 
+        extra = item.extra if isinstance(getattr(item, "extra", None), dict) else {}
+        is_seed = bool(extra.get("is_paper_seed") or extra.get("seed_paper") or _is_paired(item))
         if self.exclude_collections and quality.collection:
-            rejected.append({
-                "title": item.full_name,
-                "reason": "collection_repo",
-                "source": "github",
-                "flags": quality.flags,
-            })
-            return False
+            if is_seed:
+                item.quality_flags = list(dict.fromkeys((item.quality_flags or []) + ["collection_paired_override"]))
+            else:
+                rejected.append({
+                    "title": item.full_name,
+                    "reason": "collection_repo",
+                    "source": "github",
+                    "flags": quality.flags,
+                })
+                return False
         if quality.score < self.min_quality_score:
-            rejected.append({
-                "title": item.full_name,
-                "reason": f"low_quality:{quality.score}",
-                "source": "github",
-                "flags": quality.flags,
-            })
-            return False
+            if is_seed:
+                item.quality_flags = list(dict.fromkeys((item.quality_flags or []) + [f"low_quality_override:{quality.score}"]))
+            else:
+                rejected.append({
+                    "title": item.full_name,
+                    "reason": f"low_quality:{quality.score}",
+                    "source": "github",
+                    "flags": quality.flags,
+                })
+                return False
 
         if not item.sections.get("what") or not item.sections.get("tech") or not item.sections.get("architecture"):
             item.sections = build_repo_sections(
@@ -573,13 +584,17 @@ class RepoEngine:
             cand.quality_score = quality.score
             cand.quality_flags = quality.flags
             if self.exclude_collections and quality.collection:
-                rejected.append({
-                    "title": cand.full_name,
-                    "reason": "collection_repo",
-                    "source": "github",
-                    "flags": quality.flags,
-                })
-                continue
+                if is_seed and bool(cand.paper_url or cand.paired_paper):
+                    cand.extra["collection_paired_override"] = True
+                    cand.quality_flags = list(dict.fromkeys((quality.flags or []) + ["collection_paired_override"]))
+                else:
+                    rejected.append({
+                        "title": cand.full_name,
+                        "reason": "collection_repo",
+                        "source": "github",
+                        "flags": quality.flags,
+                    })
+                    continue
 
             try:
                 item = candidate_to_item(cand)
