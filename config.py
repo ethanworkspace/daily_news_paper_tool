@@ -251,10 +251,18 @@ TOPICS = {
 
 # ===== P3：論文蒐集設定 =====
 PAPER_HTTP_TIMEOUT = int(get_secure_env("PAPER_HTTP_TIMEOUT", "25"))
-PAPER_MAX_BYTES = int(get_secure_env("PAPER_MAX_BYTES", str(8 * 1024 * 1024)))
+PAPER_MAX_BYTES = int(get_secure_env("PAPER_MAX_BYTES", str(20 * 1024 * 1024)))
 PAPER_ROBOTS_CHECK = get_secure_env("PAPER_ROBOTS_CHECK", "true").lower() in {"1", "true", "yes"}
 PAPER_MAX_PER_SOURCE = int(get_secure_env("PAPER_MAX_PER_SOURCE", "3"))
 PAPER_MIN_PAIRED = int(get_secure_env("PAPER_MIN_PAIRED", "3"))  # 目標值，來源不足時記錄 warning
+PAPER_FULLTEXT_MAX_CHARS = int(get_secure_env("PAPER_FULLTEXT_MAX_CHARS", "300000"))  # 預設保留完整論文文字，不限頁數
+
+# OCR / 字型解析（掃描型 PDF 補救；缺少套件時自動停用）
+PAPER_OCR_ENABLED = get_secure_env("PAPER_OCR_ENABLED", "true").lower() in {"1", "true", "yes"}
+PAPER_OCR_MAX_PAGES = int(get_secure_env("PAPER_OCR_MAX_PAGES", "120"))  # 0 = 不限頁數
+PAPER_OCR_MAX_SECONDS = float(get_secure_env("PAPER_OCR_MAX_SECONDS", "600"))
+PAPER_OCR_DPI = int(get_secure_env("PAPER_OCR_DPI", "200"))
+PAPER_OCR_MIN_CHARS = int(get_secure_env("PAPER_OCR_MIN_CHARS", "40"))  # 每頁文字低於此值視為掃描頁
 
 # 查詢詞（可擴充）；hint 對應領域偏好，實際仍以內容判斷
 PAPER_QUERIES = [
@@ -273,10 +281,28 @@ PAPER_QUERIES = [
 # 來源優先層級（1=頂級期刊/會議，2=重要OA/會議，3=預印本）
 TIER1_VENUES = (
     "nature", "science", "cell", "lancet", "jama", "nejm",
-    "neurips", "iclr", "icml", "aaai", "cvpr", "iccv", "eccv", "acl", "emnlp", "naacl",
+    "neurips", "nips", "iclr", "icml", "aaai", "cvpr", "iccv", "eccv", "acl", "emnlp", "naacl",
+    "siggraph", "kdd", "www", "icra", "iros", "rss", "ijcai",
     "ieee transactions", "acm transactions",
 )
 TIER2_VENUES = (
     "plos", "science advances", "scientific reports", "jmir", "frontiers",
-    "bioinformatics", "jmlr", "pmlr", "openreview",
+    "bioinformatics", "jmlr", "pmlr", "openreview", "tmlr", "aistats", "uai", "coling",
 )
+
+# ===== P4：GitHub 專案蒐集設定 =====
+REPO_HTTP_TIMEOUT = int(get_secure_env("REPO_HTTP_TIMEOUT", "25"))
+REPO_MAX_BYTES = int(get_secure_env("REPO_MAX_BYTES", str(6 * 1024 * 1024)))
+REPO_ROBOTS_CHECK = get_secure_env("REPO_ROBOTS_CHECK", "true").lower() in {"1", "true", "yes"}
+REPO_MAX_PER_SOURCE = int(get_secure_env("REPO_MAX_PER_SOURCE", "2"))
+REPO_MIN_PAIRED = int(get_secure_env("REPO_MIN_PAIRED", "3"))  # 目標值，來源不足時記錄 warning
+
+REPO_QUERIES = [
+    {"query": "large language model OR llm agent", "hint": "general", "min_stars": 50},
+    {"query": "multimodal AI OR vision language model", "hint": "general", "min_stars": 50},
+    {"query": "maritime AI OR autonomous vessel", "hint": "maritime", "min_stars": 10},
+    {"query": "medical AI OR healthcare machine learning", "hint": "medical", "min_stars": 20},
+    {"query": "cybersecurity AI OR intrusion detection machine learning", "hint": "cybersecurity", "min_stars": 30},
+    {"query": "embodied AI OR humanoid robot learning", "hint": "robotics", "min_stars": 30},
+    {"query": "edge AI chip OR NPU inference", "hint": "electronics", "min_stars": 20},
+]

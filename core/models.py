@@ -151,6 +151,10 @@ class PaperItem:
     impact_factor_source: str = ""
     cited_by_count: int = 0
     fulltext_excerpt: str = ""
+    fulltext_source: str = ""
+    fulltext_kind: str = ""  # pdf/pdf+ocr/html/abstract/metadata
+    fulltext_pages: int = 0
+    ocr_pages: int = 0
     parse_level: str = "metadata"
     paired_repo: str = ""
     sections: dict[str, str] = field(default_factory=dict)
@@ -178,7 +182,11 @@ class PaperItem:
         self.impact_factor = _text("paper.impact_factor", self.impact_factor, required=False, max_len=120)
         self.impact_factor_source = _text("paper.impact_factor_source", self.impact_factor_source, required=False, max_len=200)
         self.cited_by_count = _int("paper.cited_by_count", self.cited_by_count)
-        self.fulltext_excerpt = _text("paper.fulltext_excerpt", self.fulltext_excerpt, required=False, max_len=40000)
+        self.fulltext_excerpt = _text("paper.fulltext_excerpt", self.fulltext_excerpt, required=False, max_len=400000)
+        self.fulltext_source = _url("paper.fulltext_source", self.fulltext_source, required=False)
+        self.fulltext_kind = _text("paper.fulltext_kind", self.fulltext_kind, required=False, max_len=32)
+        self.fulltext_pages = _int("paper.fulltext_pages", self.fulltext_pages)
+        self.ocr_pages = _int("paper.ocr_pages", self.ocr_pages)
         if self.parse_level not in PARSE_LEVELS:
             _fail("paper.parse_level", f"必須是 {PARSE_LEVELS}")
         self.paired_repo = _text("paper.paired_repo", self.paired_repo, required=False, max_len=200)

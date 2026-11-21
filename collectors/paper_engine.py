@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Iterable
 
 from config import (
+    PAPER_FULLTEXT_MAX_CHARS,
     PAPER_MAX_AGE_DAYS,
     PAPER_MAX_PER_SOURCE,
     PAPER_MIN_PAIRED,
@@ -44,6 +45,7 @@ def candidate_to_item(candidate: PaperCandidate) -> PaperItem:
         m = __import__("re").search(r"github\.com/([A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+)", code_url, __import__("re").IGNORECASE)
         if m:
             paired_repo = m.group(1).rstrip(".")
+    extra = candidate.extra if isinstance(candidate.extra, dict) else {}
     return PaperItem(
         title=candidate.title,
         url=candidate.url,
@@ -62,6 +64,10 @@ def candidate_to_item(candidate: PaperCandidate) -> PaperItem:
         impact_factor_source=candidate.impact_factor_source or "",
         cited_by_count=int(candidate.cited_by_count or 0),
         fulltext_excerpt=candidate.fulltext_excerpt or candidate.abstract or "",
+        fulltext_source=str(extra.get("fulltext_source", "") or ""),
+        fulltext_kind=str(extra.get("fulltext_kind", "") or ("abstract" if candidate.abstract else "metadata")),
+        fulltext_pages=int(extra.get("fulltext_pages") or 0),
+        ocr_pages=int(extra.get("ocr_pages") or 0),
         parse_level=candidate.parse_level or ("abstract" if candidate.abstract else "metadata"),
         paired_repo=paired_repo,
     )
@@ -151,6 +157,7 @@ class PaperEngine:
         min_paired: int = PAPER_MIN_PAIRED,
         enrich_fulltext: bool = True,
         enrich_limit: int = 8,
+        fulltext_max_chars: int = PAPER_FULLTEXT_MAX_CHARS,
     ) -> None:
         self.sources = sources or PaperSources()
         self.queries = PAPER_QUERIES if queries is None else queries
@@ -159,6 +166,7 @@ class PaperEngine:
         self.min_paired = min_paired
         self.enrich_fulltext = enrich_fulltext
         self.enrich_limit = enrich_limit
+        self.fulltext_max_chars = fulltext_max_chars
 
     def collect(self, count: int = 5, *, now: datetime | None = None) -> PaperSelection:
         reference = now or now_utc()
@@ -230,10 +238,14 @@ class PaperEngine:
                         m = _re.search(r"/articles/(PMC\d+)", (item.pdf_url or item.url))
                         if m:
                             candidate.extra["pmc_id"] = m.group(1)
-                    enriched = self.sources.enrich_fulltext(candidate)
+                    enriched = self.sources.enrich_fulltext(candidate, max_chars=self.fulltext_max_chars)
                     if enriched.fulltext_excerpt:
                         item.fulltext_excerpt = enriched.fulltext_excerpt
                         item.parse_level = enriched.parse_level
+                        item.fulltext_source = str((enriched.extra or {}).get("fulltext_source", "") or item.fulltext_source)
+                        item.fulltext_kind = str((enriched.extra or {}).get("fulltext_kind", "") or item.fulltext_kind)
+                        item.fulltext_pages = int((enriched.extra or {}).get("fulltext_pages") or item.fulltext_pages)
+                        item.ocr_pages = int((enriched.extra or {}).get("ocr_pages") or item.ocr_pages)
                     if enriched.code_url and not item.code_url:
                         item.code_url = enriched.code_url
                         import re as _re

@@ -46,6 +46,10 @@ def item_to_dict(item) -> dict:  # noqa: ANN001
         "parse_level": item.parse_level,
         "abstract_len": len(item.abstract or ""),
         "fulltext_len": len(item.fulltext_excerpt or ""),
+        "fulltext_kind": getattr(item, "fulltext_kind", ""),
+        "fulltext_source": getattr(item, "fulltext_source", ""),
+        "fulltext_pages": getattr(item, "fulltext_pages", 0),
+        "ocr_pages": getattr(item, "ocr_pages", 0),
     }
 
 

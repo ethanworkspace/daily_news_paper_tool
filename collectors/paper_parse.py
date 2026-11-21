@@ -9,14 +9,9 @@ from datetime import datetime
 from html import unescape
 from html.parser import HTMLParser
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 from collectors.news_parse import strip_html
-
-try:
-    from pypdf import PdfReader  # type: ignore
-except Exception:  # pragma: no cover - optional dependency/runtime guard
-    PdfReader = None  # type: ignore[assignment]
 from core.dedupe import extract_arxiv_id, normalize_doi
 from core.timewin import parse_datetime
 
@@ -126,38 +121,22 @@ def extract_text_from_html(raw: object, max_length: int = 40000) -> str:
     return text[:max_length]
 
 
-def extract_text_from_pdf(raw: bytes | bytearray | None, max_length: int = 40000) -> str:
-    """從 PDF bytes 萃取文字；失敗時回傳空字串，不拋例外。"""
-    if not raw:
-        return ""
-    if PdfReader is None:
-        return ""
-    try:
-        from io import BytesIO
+def extract_pdf_document(raw: bytes | bytearray | None, **kwargs):
+    """PDF 全文萃取（委派 collectors.pdf_text：pypdf + fontTools + RapidOCR）。"""
+    from collectors.pdf_text import extract_pdf_document as _extract
 
-        reader = PdfReader(BytesIO(bytes(raw)))
-        parts: list[str] = []
-        total = 0
-        for page in getattr(reader, "pages", [])[:40]:
-            try:
-                text = page.extract_text() or ""
-            except Exception:  # noqa: BLE001
-                text = ""
-            if not text:
-                continue
-            text = _CONTROL_CHARS.sub(" ", text)
-            text = re.sub(r"[ \t]+", " ", text)
-            text = re.sub(r"\n{3,}", "\n\n", text).strip()
-            if not text:
-                continue
-            parts.append(text)
-            total += len(text)
-            if total >= max_length:
-                break
-        merged = "\n\n".join(parts).strip()
-        return merged[:max_length]
-    except Exception:  # noqa: BLE001
-        return ""
+    return _extract(raw, **kwargs)
+
+
+def extract_text_from_pdf(
+    raw: bytes | bytearray | None,
+    max_length: int = 300000,
+    max_pages: int | None = None,
+    *,
+    ocr: bool = True,
+) -> str:
+    """從 PDF bytes 萃取全文文字；預設不限頁數，掃描頁可自動 OCR。失敗回傳空字串。"""
+    return extract_pdf_document(raw, max_length=max_length, max_pages=max_pages, ocr=ocr).text
 
 
 def extract_github_urls(text: object) -> list[str]:
@@ -182,6 +161,48 @@ def extract_github_urls(text: object) -> list[str]:
 def first_github_url(text: object) -> str:
     urls = extract_github_urls(text)
     return urls[0] if urls else ""
+
+
+def extract_pdf_urls(html: object, *, base_url: str = "") -> list[str]:
+    """從 HTML 中找出可能的 PDF 連結（meta citation_pdf_url / a[href*pdf] / .pdf）。"""
+    if not html:
+        return []
+    text = str(html)
+    urls: list[str] = []
+    seen: set[str] = set()
+
+    def add(raw: str) -> None:
+        value = (raw or "").strip().replace("&amp;", "&")
+        if not value or value.lower().startswith(("javascript:", "mailto:", "data:")):
+            return
+        if base_url:
+            value = urljoin(base_url, value)
+        try:
+            parts = urlsplit(value)
+        except Exception:
+            return
+        if parts.scheme not in {"http", "https"} or not parts.netloc:
+            return
+        norm = parts._replace(fragment="").geturl()
+        if norm.lower() in seen:
+            return
+        seen.add(norm.lower())
+        urls.append(norm)
+
+    for m in re.finditer(r'<meta[^>]+name=["\']citation_pdf_url["\'][^>]+content=["\']([^"\']+)["\']', text, re.IGNORECASE):
+        add(m.group(1))
+    for m in re.finditer(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']citation_pdf_url["\']', text, re.IGNORECASE):
+        add(m.group(1))
+    for m in re.finditer(r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', text, re.IGNORECASE | re.DOTALL):
+        href = m.group(1)
+        label = re.sub(r"<[^>]+>", " ", m.group(2) or " ")
+        label = " ".join(label.split()).lower()
+        href_low = href.lower()
+        if ".pdf" in href_low or "pdf" in label or "download" in label:
+            add(href)
+    for m in re.finditer(r'https?://[^\s"\'<>]+\.pdf(?:\?[^\s"\'<>]*)?', text, re.IGNORECASE):
+        add(m.group(0))
+    return urls[:12]
 
 
 def extract_doi(text: object) -> str:
@@ -296,6 +317,27 @@ def venue_tier(journal: str = "", venue: str = "", source_name: str = "") -> int
     return 2
 
 
+def canonical_venue(journal: str = "", venue: str = "", url: str = "") -> str:
+    """回傳較適合顯示的期刊/會議名稱；避免將 arXiv 等 preprint 誤標為期刊。"""
+    preprint_tokens = ("arxiv", "biorxiv", "medrxiv", "preprint")
+    for c in (str(journal or "").strip(), str(venue or "").strip()):
+        low = c.lower()
+        if not c or any(token in low for token in preprint_tokens):
+            continue
+        return c
+    low_url = (url or "").lower()
+    if "biorxiv.org" in low_url:
+        return "bioRxiv preprint"
+    if "medrxiv.org" in low_url:
+        return "medRxiv preprint"
+    if "arxiv.org" in low_url:
+        return "arXiv preprint"
+    for c in (str(journal or "").strip(), str(venue or "").strip()):
+        if c:
+            return c
+    return ""
+
+
 def _atom_text(elem: ET.Element | None) -> str:
     if elem is None:
         return ""
@@ -358,9 +400,9 @@ def parse_arxiv_atom(content: bytes) -> list[PaperCandidate]:
                 doi=doi,
                 arxiv_id=arxiv_id,
                 journal="arXiv",
-                venue="arXiv preprint",
+                venue=canonical_venue(journal="", venue="arXiv preprint", url=abs_url),
                 impact_factor="N/A (preprint)",
-                impact_factor_source="arXiv preprint has no journal impact factor",
+                impact_factor_source="arXiv preprint (not peer-reviewed journal/conference)",
                 fulltext_url=(f"https://arxiv.org/html/{arxiv_id}" if arxiv_id else ""),
                 parse_level="abstract" if abstract else "metadata",
             )
@@ -423,17 +465,14 @@ def parse_openalex_work(work: dict, *, source_stats_cache: dict[str, dict] | Non
         if not pdf_url and loc.get("pdf_url"):
             pdf_url = str(loc.get("pdf_url") or "")
 
-    src_name = "OpenAlex"
-    if journal:
-        src_name = journal
-    elif arxiv_id:
-        src_name = "arXiv"
+    display_venue = canonical_venue(journal=journal, venue=venue, url=str(url))
+    src_name = journal or display_venue or ("arXiv" if arxiv_id else "OpenAlex")
 
     candidate = PaperCandidate(
         title=title,
         url=str(url),
         source_name=src_name,
-        source_tier=venue_tier(journal=journal, venue=venue, source_name=source.get("type", "")),
+        source_tier=venue_tier(journal=journal, venue=display_venue, source_name=source.get("type", "")),
         published_at=published,
         authors=authors,
         abstract=abstract,
@@ -441,7 +480,7 @@ def parse_openalex_work(work: dict, *, source_stats_cache: dict[str, dict] | Non
         doi=doi,
         arxiv_id=arxiv_id,
         journal=journal,
-        venue=venue,
+        venue=display_venue,
         impact_factor=impact_factor,
         impact_factor_source=impact_source,
         cited_by_count=cited,
@@ -450,8 +489,7 @@ def parse_openalex_work(work: dict, *, source_stats_cache: dict[str, dict] | Non
         extra={"openalex_id": work.get("id", ""), "source_id": source_id},
     )
     if arxiv_id:
-        # 若同時有正式期刊發表資訊，保留期刊層級與 IF；僅標記存在 arXiv 版本
-        journal_text = f"{journal} {venue}".lower()
+        journal_text = f"{journal} {display_venue}".lower()
         source_type = str(source.get("type") or "").lower()
         is_preprint_source = (
             source_type == "repository"
@@ -461,11 +499,11 @@ def parse_openalex_work(work: dict, *, source_stats_cache: dict[str, dict] | Non
         )
         if is_preprint_source or not journal:
             candidate.source_tier = 3
-            if not candidate.venue:
+            if not candidate.venue or "arxiv" in candidate.venue.lower():
                 candidate.venue = "arXiv preprint"
             if candidate.impact_factor in ("", "N/A"):
                 candidate.impact_factor = "N/A (preprint)"
-        # else: 正式期刊版本，保留已計算的 tier/IF (arxiv_id 仍記錄)
+                candidate.impact_factor_source = "preprint (not peer-reviewed journal/conference)"
     return candidate
 
 
@@ -490,6 +528,7 @@ def parse_semantic_scholar_paper(paper: dict) -> PaperCandidate | None:
     elif isinstance(journal_obj, str):
         journal = journal_obj
     venue = str(paper.get("venue") or journal or "")
+    display_venue = canonical_venue(journal=journal, venue=venue, url=str(paper.get("url") or ""))
     pdf_url = ""
     if isinstance(paper.get("openAccessPdf"), dict):
         pdf_url = str(paper["openAccessPdf"].get("url") or "")
@@ -501,12 +540,18 @@ def parse_semantic_scholar_paper(paper: dict) -> PaperCandidate | None:
     abstract = " ".join(str(paper.get("abstract") or "").split())
     cited = int(paper.get("citationCount") or 0)
     code_url = first_github_url(f"{abstract}\n{url}")
-    impact = "N/A (preprint)" if arxiv_id or "arxiv" in venue.lower() else "N/A"
+    preprint_venue = any(
+        token in f"{journal} {display_venue}".lower()
+        for token in ("arxiv", "biorxiv", "medrxiv", "preprint")
+    )
+    peer_reviewed = bool(display_venue or journal) and not preprint_venue
+    impact = "N/A" if peer_reviewed else "N/A (preprint)"
+    impact_source = "" if peer_reviewed else "preprint (not peer-reviewed journal/conference)"
     return PaperCandidate(
         title=title,
         url=url,
-        source_name="Semantic Scholar" if not journal else journal,
-        source_tier=3 if arxiv_id else venue_tier(journal=journal, venue=venue),
+        source_name=(journal if peer_reviewed and journal else display_venue) or "Semantic Scholar",
+        source_tier=venue_tier(journal=journal, venue=display_venue) if peer_reviewed else 3,
         published_at=published,
         authors=authors,
         abstract=abstract,
@@ -515,14 +560,13 @@ def parse_semantic_scholar_paper(paper: dict) -> PaperCandidate | None:
         doi=doi,
         arxiv_id=arxiv_id,
         journal=journal,
-        venue=venue,
+        venue=display_venue,
         impact_factor=impact,
-        impact_factor_source="",
+        impact_factor_source=impact_source,
         cited_by_count=cited,
         fulltext_url=pdf_url or url,
         parse_level="abstract" if abstract else "metadata",
     )
-
 
 def parse_pubmed_xml(content: bytes) -> list[PaperCandidate]:
     if not content:

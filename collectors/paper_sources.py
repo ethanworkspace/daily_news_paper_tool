@@ -12,15 +12,21 @@ from config import (
     PAPER_HTTP_TIMEOUT,
     PAPER_MAX_AGE_DAYS,
     PAPER_MAX_BYTES,
+    PAPER_OCR_DPI,
+    PAPER_OCR_ENABLED,
+    PAPER_OCR_MAX_PAGES,
+    PAPER_OCR_MAX_SECONDS,
+    PAPER_OCR_MIN_CHARS,
     PAPER_ROBOTS_CHECK,
     SEMANTIC_SCHOLAR_API_KEY,
 )
 from collectors.news_http import SafeHttpFetcher
+from collectors.pdf_text import extract_pdf_document
 from collectors.paper_parse import (
     PaperCandidate,
     extract_github_urls,
+    extract_pdf_urls,
     extract_text_from_html,
-    extract_text_from_pdf,
     format_impact_factor,
     parse_arxiv_atom,
     parse_openalex_work,
@@ -261,31 +267,58 @@ class PaperSources:
         return papers, stats
 
     # ---------- content enrichment (crawl/parse) ----------
-    def enrich_fulltext(self, paper: PaperCandidate, max_chars: int = 40000) -> PaperCandidate:
-        """抓取並解析可公開取得的全文/頁面內容：優先 HTML，必要時解析 PDF（pypdf）。"""
+    def enrich_fulltext(self, paper: PaperCandidate, max_chars: int = 300000) -> PaperCandidate:
+        """抓取並解析可公開取得的論文全文：優先 HTML/PDF 全文（掃描頁自動 OCR），避免只停在摘要。"""
         candidates: list[tuple[str, str]] = []  # (url, kind)
-        # 優先 arXiv HTML
+
+        def add(url: str, kind: str) -> None:
+            if not url:
+                return
+            if any(url == u for u, _ in candidates):
+                return
+            candidates.append((url, kind))
+
+        def parse_pdf(content: bytes) -> tuple[str, dict]:
+            doc = extract_pdf_document(
+                content,
+                max_length=max_chars,
+                ocr=PAPER_OCR_ENABLED,
+                ocr_max_pages=PAPER_OCR_MAX_PAGES,
+                ocr_max_seconds=PAPER_OCR_MAX_SECONDS,
+                ocr_dpi=PAPER_OCR_DPI,
+                ocr_min_chars=PAPER_OCR_MIN_CHARS,
+            )
+            meta = {
+                "kind": doc.kind,
+                "pages": doc.pages,
+                "ocr_pages": doc.ocr_pages,
+                "font_warnings": doc.font_warnings,
+                "fonttools": doc.fonttools,
+                "ocr_engine": doc.ocr_engine,
+                "pdf_note": doc.note,
+            }
+            return doc.text, meta
+
+        # 1) arXiv：HTML > abs > PDF
         if paper.arxiv_id:
-            candidates.append((f"https://arxiv.org/html/{paper.arxiv_id}", "html"))
-            candidates.append((f"https://arxiv.org/abs/{paper.arxiv_id}", "html"))
-        # PMC 頁面可直接抓 HTML
+            add(f"https://arxiv.org/html/{paper.arxiv_id}", "html")
+            add(f"https://arxiv.org/abs/{paper.arxiv_id}", "html")
+            add(f"https://arxiv.org/pdf/{paper.arxiv_id}.pdf", "pdf")
+        # 2) PMC
         pmc_id = str((paper.extra or {}).get("pmc_id") or "")
         if pmc_id:
-            candidates.append((f"https://pmc.ncbi.nlm.nih.gov/articles/{pmc_id}/", "html"))
-        # landing/fulltext 頁面
-        for url in (paper.fulltext_url, paper.url):
-            if not url or url in {c[0] for c in candidates}:
+            add(f"https://pmc.ncbi.nlm.nih.gov/articles/{pmc_id}/", "html")
+        # 3) 來源提供的 fulltext/pdf/landing
+        for url, kind in ((paper.fulltext_url, "auto"), (paper.pdf_url, "pdf"), (paper.url, "auto")):
+            if not url:
                 continue
-            kind = "pdf" if str(url).lower().endswith(".pdf") else "html"
-            candidates.append((url, kind))
-        # PDF 作為補充（若 HTML 失敗或不可用）
-        for url in (paper.pdf_url,):
-            if not url or url in {c[0] for c in candidates}:
-                continue
-            candidates.append((url, "pdf"))
-        if paper.arxiv_id:
-            candidates.append((f"https://arxiv.org/pdf/{paper.arxiv_id}.pdf", "pdf"))
+            k = kind
+            if k == "auto":
+                k = "pdf" if str(url).lower().endswith(".pdf") else "html"
+            add(url, k)
 
+        best_text = ""
+        best_meta: dict = {}
         for url, kind in candidates:
             result = self.fetcher.fetch(url, check_robots=self.robots_check)
             if not result.ok:
@@ -293,24 +326,55 @@ class PaperSources:
             ctype = (result.content_type or "").lower()
             is_pdf = kind == "pdf" or "pdf" in ctype or result.content[:4] == b"%PDF"
             if is_pdf:
-                text = extract_text_from_pdf(result.content, max_length=max_chars)
-                parsed_kind = "pdf"
+                text, meta = parse_pdf(result.content)
             else:
-                text = extract_text_from_html(result.content.decode("utf-8", errors="replace"), max_length=max_chars)
-                parsed_kind = "html"
+                html = result.content.decode("utf-8", errors="replace")
+                text = extract_text_from_html(html, max_length=max_chars)
+                meta = {"kind": "html", "pages": 0, "ocr_pages": 0, "font_warnings": 0}
+                # 若 landing page 文字不足，嘗試頁內 PDF 連結
+                if len(text) < 1200:
+                    for pdf_url in extract_pdf_urls(html, base_url=result.url or url):
+                        if any(pdf_url == u for u, _ in candidates):
+                            continue
+                        pdf_result = self.fetcher.fetch(pdf_url, check_robots=self.robots_check)
+                        if not pdf_result.ok:
+                            continue
+                        pdf_text, pdf_meta = parse_pdf(pdf_result.content)
+                        if len(pdf_text) > len(text):
+                            text = pdf_text
+                            meta = pdf_meta
+                            url = pdf_result.url or pdf_url
+                            break
             if len(text) < 400:
                 continue
-            paper.fulltext_excerpt = text
+            meta = dict(meta)
+            meta["source"] = url
+            if len(text) > len(best_text):
+                best_text = text
+                best_meta = meta
+            # 已取得明確全文（通常遠大於摘要）即可提前結束
+            if meta.get("kind") in {"pdf", "pdf+ocr"} and len(text) >= 3000:
+                break
+            if meta.get("kind") == "html" and len(text) >= 6000:
+                break
+
+        if best_text:
+            paper.fulltext_excerpt = best_text[:max_chars]
             paper.parse_level = "fulltext"
-            paper.extra["fulltext_source"] = url
-            paper.extra["fulltext_kind"] = parsed_kind
+            paper.extra["fulltext_source"] = str(best_meta.get("source", ""))
+            paper.extra["fulltext_kind"] = str(best_meta.get("kind", ""))
+            paper.extra["fulltext_pages"] = int(best_meta.get("pages") or 0)
+            paper.extra["ocr_pages"] = int(best_meta.get("ocr_pages") or 0)
+            paper.extra["font_warnings"] = int(best_meta.get("font_warnings") or 0)
+            paper.extra["ocr_engine"] = str(best_meta.get("ocr_engine") or "")
+            paper.extra["pdf_note"] = str(best_meta.get("pdf_note") or "")
             if not paper.code_url:
-                codes = extract_github_urls(text)
+                codes = extract_github_urls(best_text)
                 if codes:
                     paper.code_url = codes[0]
             return paper
 
-        # fallback: abstract counts as parsed content if present
+    # fallback: abstract counts as parsed content if present
         if paper.abstract:
             paper.fulltext_excerpt = paper.abstract[:max_chars]
             if paper.parse_level == "metadata":

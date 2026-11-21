@@ -4,6 +4,7 @@ from datetime import timezone
 from collectors.paper_parse import (
     PaperCandidate,
     arxiv_id_from_text,
+    canonical_venue,
     extract_github_urls,
     extract_text_from_html,
     extract_text_from_pdf,
@@ -87,26 +88,66 @@ class TestExtractors(unittest.TestCase):
         self.assertEqual(arxiv_id_from_text("https://arxiv.org/abs/2601.01234v3"), "2601.01234")
         self.assertEqual(arxiv_id_from_text("arxiv:2601.01234"), "2601.01234")
 
+    def test_canonical_venue_marks_preprints(self):
+        self.assertEqual(canonical_venue("arXiv", "arXiv preprint", "https://arxiv.org/abs/2601.01234"), "arXiv preprint")
+        self.assertEqual(canonical_venue("", "", "https://www.biorxiv.org/content/10.1101/x"), "bioRxiv preprint")
+        self.assertEqual(
+            canonical_venue("Nature Machine Intelligence", "Nature Machine Intelligence", "https://doi.org/10.1/x"),
+            "Nature Machine Intelligence",
+        )
+
+    def test_semantic_scholar_preprint_vs_journal(self):
+        preprint = parse_semantic_scholar_paper(
+            {
+                "title": "A preprint",
+                "venue": "arXiv",
+                "externalIds": {"ArXiv": "2601.01234"},
+                "year": 2026,
+            }
+        )
+        self.assertIsNotNone(preprint)
+        assert preprint is not None
+        self.assertEqual(preprint.source_tier, 3)
+        self.assertIn("preprint", preprint.impact_factor.lower())
+
+        journal = parse_semantic_scholar_paper(
+            {
+                "title": "A journal paper",
+                "venue": "Nature Machine Intelligence",
+                "journal": {"name": "Nature Machine Intelligence"},
+                "externalIds": {"ArXiv": "2601.01234"},
+                "year": 2026,
+            }
+        )
+        self.assertIsNotNone(journal)
+        assert journal is not None
+        self.assertEqual(journal.source_tier, 1)
+        self.assertEqual(journal.impact_factor, "N/A")
+
     def test_extract_text_from_pdf(self):
         # 以 mock PdfReader 測試萃取邏輯，不依賴 pypdf 內部寫入 API
-        import collectors.paper_parse as pp
+        import collectors.pdf_text as pdf_text
 
         class FakePage:
-            def extract_text(self):
-                return "Hello AI paper PDF extraction test\n\nMethods: deep learning."
+            def __init__(self, text):
+                self._text = text
+
+            def extract_text(self, extraction_mode=None):
+                return self._text
 
         class FakeReader:
             def __init__(self, _buf):
-                self.pages = [FakePage()]
+                self.pages = [FakePage(f"Page {i} content about maritime AI model.") for i in range(1, 46)]
 
-        old = pp.PdfReader
+        old = pdf_text.PdfReader
         try:
-            pp.PdfReader = FakeReader
-            text = extract_text_from_pdf(b"%PDF-1.4 fake")
-            self.assertIn("AI paper PDF extraction", text)
-            self.assertIn("Methods", text)
+            pdf_text.PdfReader = FakeReader
+            text = extract_text_from_pdf(b"%PDF-1.4 fake", ocr=False)
+            self.assertIn("Page 1 content", text)
+            self.assertIn("Page 45 content", text)  # 不限頁數
+            self.assertIn("[Page 45]", text)
         finally:
-            pp.PdfReader = old
+            pdf_text.PdfReader = old
 
     def test_extract_text_from_pdf_empty(self):
         self.assertEqual(extract_text_from_pdf(b""), "")

@@ -54,9 +54,11 @@ class FakeSources:
         c = self.mapping.get(("s2", query), [])
         return c, type("S", (), {"name": "semantic_scholar", "found": len(c), "fetched": 0, "errors": 1, "error": "http_429"})()
 
-    def enrich_fulltext(self, paper):
+    def enrich_fulltext(self, paper, max_chars=300000):
         paper.fulltext_excerpt = (paper.abstract or "") + "\n## Methods\nDetails here." * 30
         paper.parse_level = "fulltext"
+        paper.extra["fulltext_kind"] = "pdf"
+        paper.extra["fulltext_source"] = paper.pdf_url or paper.url
         return paper
 
 
