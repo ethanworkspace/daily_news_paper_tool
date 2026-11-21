@@ -24,6 +24,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--push", action="store_true", help="寫檔後 git push")
     parser.add_argument("--no-ai", action="store_true", help="停用 iAI，使用規則式 fallback")
     parser.add_argument("--force", action="store_true", help="覆寫既有當日輸出")
+    parser.add_argument("--backfill-from", default="", help="回補起始日期 YYYY-MM-DD")
+    parser.add_argument("--backfill-to", default="", help="回補結束日期 YYYY-MM-DD，預設今天")
+    parser.add_argument("--dry-run", action="store_true", help="僅列出將執行/缺檔日期，不實際跑")
     return parser
 
 
@@ -41,8 +44,33 @@ def run_agent(target_date: str | None = None, no_push: bool = True, no_ai: bool 
     )
 
 
+def _daterange(start: str, end: str | None):
+    from datetime import datetime, timedelta
+    s = datetime.strptime(start, "%Y-%m-%d").date()
+    e = datetime.strptime(end, "%Y-%m-%d").date() if end else datetime.now().date()
+    if e < s:
+        s, e = e, s
+    cur = s
+    while cur <= e:
+        yield cur.isoformat()
+        cur += timedelta(days=1)
+
+
 def main() -> int:
     args = build_parser().parse_args()
+    if args.backfill_from:
+        dates = list(_daterange(args.backfill_from, args.backfill_to or None))
+        summary = {"mode": "backfill", "from": args.backfill_from, "to": args.backfill_to or datetime.now().strftime("%Y-%m-%d"), "dates": len(dates), "results": []}
+        for d in dates:
+            if args.dry_run:
+                summary["results"].append({"date": d, "status": "dry_run"})
+                continue
+            r = run_daily_pipeline(target=d, news_count=args.news, paper_count=args.papers, repo_count=args.repos, write=not args.no_write, push=args.push, use_ai=not args.no_ai, force=args.force)
+            summary["results"].append({"date": d, "status": r.get("status"), "files": len(r.get("files", [])), "warnings": r.get("warnings", [])[:3]})
+        print(json.dumps(summary, ensure_ascii=False, indent=2))
+        bad = [r for r in summary["results"] if r.get("status") not in {"ok","skipped_existing","dry_run"}]
+        return 1 if bad else 0
+
     report = run_daily_pipeline(
         target=args.date or None,
         news_count=args.news,
@@ -59,11 +87,14 @@ def main() -> int:
         "files": len(report.get("files", [])),
         "quotas": report.get("quotas", {}),
         "pairing": report.get("pairing", {}),
+        "paired_actual": report.get("paired_actual"),
+        "paired_seed": report.get("paired_seed"),
         "warnings": report.get("warnings", []),
+        "ai": report.get("ai", {}),
         "report_path": report.get("report_path"),
         "manifest": report.get("manifest"),
     }, ensure_ascii=False, indent=2))
-    return 0 if report.get("status") == "ok" else 1
+    return 0 if report.get("status") in {"ok", "skipped_existing"} else 1
 
 
 if __name__ == "__main__":

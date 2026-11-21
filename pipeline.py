@@ -121,6 +121,14 @@ class DailyPipeline:
             manifest.counts["repos_selected"] = len(repo_sel.items)
             manifest.counts["repo_seed_count"] = int(repo_sel.report.get("seed_count", 0))
             manifest.source("repos", found=manifest.counts["repos_raw"], kept=len(repo_sel.items))
+            from config import GITHUB_TOKEN
+            report["github_token_configured"] = bool(GITHUB_TOKEN)
+            if repo_sel.report.get("seed_warning"):
+                report["warnings"].append(str(repo_sel.report["seed_warning"]))
+                manifest.warning(repo_sel.report["seed_warning"])
+            if not GITHUB_TOKEN and repo_sel.report.get("seed_warning"):
+                report["warnings"].append("github_auth_blocked: missing GITHUB_TOKEN; seed repo fetch may be rate-limited")
+                manifest.warning("github_auth_blocked: missing GITHUB_TOKEN")
 
             with manifest.stage("pairing"):
                 pairing = link_papers_to_repos(paper_sel.items, repo_sel.items)
@@ -137,9 +145,7 @@ class DailyPipeline:
                 msg = f"paired_repos_below_target={actual_paired}/3 (seed_paired={seed_paired})"
                 report["warnings"].append(msg)
                 manifest.warning(msg)
-            if repo_sel.report.get("seed_warning"):
-                report["warnings"].append(str(repo_sel.report["seed_warning"]))
-                manifest.warning(repo_sel.report["seed_warning"])
+
 
             writer = self.writer if (use_ai and self.writer.available) else None
             if use_ai and not self.writer.available:
