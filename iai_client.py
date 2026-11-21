@@ -107,7 +107,27 @@ def extract_json(text: str) -> Any:
             depth -= 1
             if depth == 0:
                 candidate = cleaned[start:index + 1]
-                return json.loads(candidate)
+                try:
+                    return json.loads(candidate)
+                except json.JSONDecodeError:
+                    # try loose fixes
+                    fixed = re.sub(r",\s*([}\]])", r"\1", candidate)
+                    return json.loads(fixed)
+    # salvage: take partial object and close brackets
+    tail = cleaned[start:].rstrip()
+    tail = re.sub(r",\s*([}\]])", r"\1", tail)
+    # remove trailing incomplete string/value
+    tail = re.sub(r',?\s*"[^"\\]*(?:\\.[^"\\]*)*"?\s*:?\s*"?[^"\}\]]*$', '', tail, flags=re.DOTALL)
+    # balance
+    opens = tail.count('{') - tail.count('}')
+    openb = tail.count('[') - tail.count(']')
+    if opens > 0 or openb > 0:
+        tail2 = tail + (']' * max(openb,0)) + ('}' * max(opens,0))
+        tail2 = re.sub(r",\s*([}\]])", r"\1", tail2)
+        try:
+            return json.loads(tail2)
+        except Exception:
+            pass
     raise ValueError("JSON 括號不完整")
 
 
@@ -209,6 +229,10 @@ class IAIClient:
             if error:
                 self.stats["errors"] += 1
 
+    def usage(self) -> dict[str, int]:
+        with self._stats_lock:
+            return dict(self.stats)
+
     # ---------- HTTP ----------
     def _request(self, method: str, path: str, payload: dict | None = None, timeout: int | None = None):
         if not self.has_keys:
@@ -273,6 +297,16 @@ class IAIClient:
         self._record(error=True)
         raise IAIClientError(f"請求失敗（已重試 {attempts} 次）：{redact(last_error)}")
 
+    def _resolve_model(self, model: str | None, default: str) -> str:
+        name = (model or default or "").strip()
+        aliases = {
+            "max": self.model_max, "furen-max": self.model_max,
+            "large": self.model_large, "furen-large": self.model_large,
+            "coder": self.model_coder, "furen-coder": self.model_coder,
+            "image": self.model_image, "pic-large": self.model_image,
+        }
+        return aliases.get(name.lower(), name)
+
     # ---------- 文字 ----------
     def chat(
         self,
@@ -286,7 +320,7 @@ class IAIClient:
         response_format: dict | None = None,
         timeout: int | None = None,
     ) -> str:
-        model = model or self.model_large
+        model = self._resolve_model(model, self.model_large)
         if messages is None:
             messages = []
             if system:
@@ -303,15 +337,39 @@ class IAIClient:
         if response_format:
             payload["response_format"] = response_format
 
-        response = self._request("POST", "/chat/completions", payload, timeout=timeout)
+        req_payload = {k: v for k, v in payload.items() if k != "_retried"}
+        response = self._request("POST", "/chat/completions", req_payload, timeout=timeout)
         data = response.json()
         usage = data.get("usage") or {}
         text = ""
         choices = data.get("choices") or []
+        finish_reason = (choices[0].get("finish_reason") if choices else None) or "unknown"
         if choices:
             text = (choices[0].get("message") or {}).get("content", "") or ""
+        if not text or finish_reason == "length":
+            # reasoning/length-truncated output: retry once with larger budget
+            if (payload.get("max_tokens") or 0) < 4096 and not payload.get("_retried"):
+                payload2 = dict(payload)
+                payload2["max_tokens"] = max(int(payload.get("max_tokens") or 0), 4096)
+                payload2["_retried"] = True
+                try:
+                    req_payload2 = {k: v for k, v in payload2.items() if k != "_retried"}
+                    response2 = self._request("POST", "/chat/completions", req_payload2, timeout=timeout)
+                    data2 = response2.json()
+                    usage2 = data2.get("usage") or {}
+                    choices2 = data2.get("choices") or []
+                    text2 = (choices2[0].get("message") or {}).get("content", "") if choices2 else ""
+                    finish2 = (choices2[0].get("finish_reason") if choices2 else None) or "unknown"
+                    if text2:
+                        self._record(
+                            prompt_tokens=int(usage.get("prompt_tokens") or 0) + int(usage2.get("prompt_tokens") or 0),
+                            completion_tokens=int(usage.get("completion_tokens") or 0) + int(usage2.get("completion_tokens") or 0),
+                        )
+                        text = text2
+                        finish_reason = finish2
+                except Exception:
+                    pass
         if not text:
-            finish_reason = (choices[0].get("finish_reason") if choices else None) or "unknown"
             self._record(error=True)
             raise IAIClientError(
                 f"模型回應為空（finish_reason={finish_reason}）；若為推理模型請提高 max_tokens"
@@ -322,35 +380,70 @@ class IAIClient:
         )
         return clean_think_tags(text)
 
+    def chat_max(self, prompt: str, **kwargs) -> str:
+        return self.chat(prompt, model=self.model_max, **kwargs)
+
+    def chat_large(self, prompt: str, **kwargs) -> str:
+        return self.chat(prompt, model=self.model_large, **kwargs)
+
+    def chat_coder(self, prompt: str, **kwargs) -> str:
+        return self.chat(prompt, model=self.model_coder, **kwargs)
+
     def chat_json(
         self,
         prompt: str,
         *,
         model: str | None = None,
         system: str | None = None,
+        schema_hint: str = "",
         max_repair: int = 2,
         **kwargs,
     ) -> Any:
         """要求模型輸出 JSON，失敗時自動要求修復（最多 max_repair 次）。"""
-        model = model or self.model_max
+        model = self._resolve_model(model, self.model_max)
         system = system or "你是嚴謹的資料工程師，只輸出合法 JSON。"
-        user_prompt = f"{prompt}\n\n請只輸出合法 JSON，不要加上任何說明或 markdown 圍籬。"
+        hint = f"\nJSON schema hint: {schema_hint}" if schema_hint else ""
+        user_prompt = f"{prompt}{hint}\n\n請只輸出合法 JSON，不要加上任何說明或 markdown 圍籬。"
 
         messages = [
             {"role": "system", "content": system},
             {"role": "user", "content": user_prompt},
         ]
+        last_exc = None
         for attempt in range(max_repair + 1):
-            text = self.chat(messages=messages, model=model, **kwargs)
+            try:
+                text = self.chat(messages=messages, model=model, **kwargs)
+            except IAIClientError as exc:
+                last_exc = exc
+                if attempt >= max_repair:
+                    raise
+                # on empty/length error, ask for shorter JSON
+                messages = messages + [
+                    {"role": "user", "content": "上一個回應為空或被截斷。請只輸出短而完整的合法 JSON。"},
+                ]
+                kwargs = dict(kwargs)
+                kwargs["max_tokens"] = max(int(kwargs.get("max_tokens") or 0), 4096)
+                continue
             try:
                 return extract_json(text)
             except (ValueError, json.JSONDecodeError) as exc:
-                if attempt >= max_repair:
+                last_exc = exc
+                # salvage partial object before giving up
+                if attempt == max_repair:
+                    try:
+                        salvaged = extract_json(text + "}")
+                    except Exception:
+                        pass
+                    else:
+                        if isinstance(salvaged, dict):
+                            return salvaged
                     raise IAIClientError(f"JSON 解析失敗（已修復 {max_repair} 次）：{exc}") from exc
                 messages = messages + [
                     {"role": "assistant", "content": text[:4000]},
                     {"role": "user", "content": f"上述輸出不是合法 JSON（{exc}）。請修正並只輸出合法 JSON。"},
                 ]
+        if last_exc:
+            raise last_exc
 
     # ---------- 生圖 ----------
     def image(

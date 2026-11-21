@@ -394,14 +394,20 @@ class DailyBundle:
             1 for n in self.news if any(d in CROSS_DOMAIN for d in n.domains)
         )
         maritime = sum(1 for n in self.news if n.is_maritime or "maritime" in n.domains)
-        paired = sum(1 for p in self.papers if p.code_url or p.paired_repo)
-        repo_paired = sum(1 for r in self.repos if r.paper_url or r.paired_paper)
+        paired_seed = sum(1 for p in self.papers if p.code_url or p.paired_repo)
+        paper_urls = {str(p.url).strip() for p in self.papers if str(p.url).strip()}
+        repo_urls = {str(r.paper_url or r.paired_paper).strip() for r in self.repos if str(r.paper_url or r.paired_paper).strip()}
+        paired_actual = sum(1 for p in self.papers if str(p.url).strip() and str(p.url).strip() in repo_urls)
+        repo_paired_actual = sum(1 for r in self.repos if str(r.paper_url or r.paired_paper).strip() in paper_urls)
+        repo_paired_seed = sum(1 for r in self.repos if r.paper_url or r.paired_paper)
         quotas = {
             "news_total": len(self.news),
             "cross_domain": cross_domain,
             "maritime": maritime,
-            "paired_papers": paired,
-            "paired_repos": repo_paired,
+            "paired_papers": paired_actual,
+            "paired_papers_seed": paired_seed,
+            "paired_repos": repo_paired_actual,
+            "paired_repos_seed": repo_paired_seed,
             "cross_domain_ok": cross_domain >= NEWS_DOMAINS_MIN,
             "maritime_ok": maritime >= MARITIME_MIN,
         }

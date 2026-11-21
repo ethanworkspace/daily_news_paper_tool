@@ -14,11 +14,17 @@ echo [%date% %time%] Daily AI News Agent started.
 >> run.log echo [%date% %time%] Daily AI News Agent started.
 
 rem ============ Run generator ============
-if exist "C:\Python314\python.exe" (
-    "C:\Python314\python.exe" main.py >> run.log 2>&1
-) else (
-    python main.py >> run.log 2>&1
-)
+set "PYEXE=python"
+if exist "C:\Python314\python.exe" set "PYEXE=C:\Python314\python.exe"
+
+set "EXTRA_ARGS="
+if /I "%DAILY_PUSH%"=="1" set "EXTRA_ARGS=--push"
+if /I "%DAILY_NO_AI%"=="1" set "EXTRA_ARGS=%EXTRA_ARGS% --no-ai"
+
+"%PYEXE%" main.py %EXTRA_ARGS% >> run.log 2>&1
+set "RC=%ERRORLEVEL%"
+
+if not "%RC%"=="0" goto :failed
 
 if not exist ".system_generated" mkdir ".system_generated"
 echo %TODAY%> "%MARKER%"
@@ -26,6 +32,11 @@ echo %TODAY%> "%MARKER%"
 >> run.log echo [%date% %time%] Daily AI News Agent finished.
 echo [%date% %time%] Daily AI News Agent finished.
 exit /b 0
+
+:failed
+>> run.log echo [%date% %time%] Daily AI News Agent FAILED rc=%RC%.
+echo [%date% %time%] Daily AI News Agent FAILED rc=%RC%.
+exit /b %RC%
 
 :already_ran
 echo [%date% %time%] Already ran today. Skipping.

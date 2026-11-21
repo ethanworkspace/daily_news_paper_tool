@@ -54,7 +54,7 @@ def _mark_ran_today():
 def run_scheduler():
     """常駐 Python 排程器。若已過 08:30 且今日未執行，啟動時立即補跑一次。"""
     print("=" * 60)
-    print("⏰ 每日新聞匯報 Python 排程守護程序已啟動")
+    print("⏰ 每日 AI 匯報 Python 排程守護程序已啟動")
     print(f"🎯 目標執行時間：每天 {SCHEDULE_HOUR:02d}:{SCHEDULE_MINUTE:02d}")
     print("💡 已支援「錯過時間自動補跑」：若開機晚於排程時間，會立即執行今日匯報")
     print("=" * 60)
@@ -69,10 +69,12 @@ def run_scheduler():
             print(f"\n[{now.strftime('%Y-%m-%d %H:%M:%S')}] ⏰ 排程/補跑時間到達，開始執行今日匯報...")
             _log("排程時間到達，開始執行今日匯報")
             try:
-                run_agent()
+                report = run_agent()
+                if isinstance(report, dict) and report.get("status") != "ok":
+                    raise RuntimeError(report.get("errors") or report.get("warnings") or "pipeline failed")
                 _mark_ran_today()
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ✅ 今日匯報完成，進入等待明日排程...")
-                _log("今日匯報完成")
+                _log(f"今日匯報完成 status={report.get('status') if isinstance(report, dict) else 'ok'}")
             except Exception as e:
                 print(f"[錯誤] 今日匯報執行發生例外: {e}")
                 _log(f"今日匯報執行發生例外: {e}")

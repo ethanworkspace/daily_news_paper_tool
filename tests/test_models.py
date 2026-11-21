@@ -201,7 +201,9 @@ class TestDailyBundle(unittest.TestCase):
         self.assertEqual(quotas["cross_domain"], 3)
         self.assertEqual(quotas["maritime"], 1)
         self.assertTrue(quotas["cross_domain_ok"])
-        self.assertEqual(quotas["paired_papers"], 3)
+        self.assertEqual(quotas["paired_papers_seed"], 3)
+        self.assertEqual(quotas["paired_repos_seed"], 2)
+        self.assertEqual(quotas["paired_papers"], 1)
         self.assertEqual(quotas["paired_repos"], 2)
 
     def test_counts_enforced(self):
