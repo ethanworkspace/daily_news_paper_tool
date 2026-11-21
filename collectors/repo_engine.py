@@ -328,7 +328,14 @@ class RepoEngine:
         # 2) paper seeds / explicit seeds（直接抓 repo 詳情，不受搜尋排名影響）
         seed_status: list[dict] = []
         for full_name in seed_order:
-            repo = self.sources.get_repo(full_name)
+            seed_error = ""
+            repo = None
+            try:
+                repo = self.sources.get_repo(full_name)
+                if not repo:
+                    seed_error = getattr(self.sources, "last_error", "") or "fetch_failed_or_not_found"
+            except Exception as exc:  # noqa: BLE001
+                seed_error = f"{type(exc).__name__}"
             entry = source_stats.setdefault("github_seed", {"found": 0, "fetched": 0, "errors": 0})
             status = {"repo": full_name, "paper_url": (seed_meta.get(full_name.lower()) or {}).get("paper_url", "")}
             if repo:
@@ -339,7 +346,7 @@ class RepoEngine:
             else:
                 entry["errors"] += 1
                 status["fetched"] = False
-                status["error"] = "fetch_failed_or_not_found"
+                status["error"] = seed_error or "fetch_failed_or_not_found"
             seed_status.append(status)
 
         # 3) 把論文 seed 資訊貼到所有候選（含搜尋結果），確保配對優先

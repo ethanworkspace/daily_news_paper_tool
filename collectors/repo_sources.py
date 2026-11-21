@@ -42,6 +42,7 @@ class RepoSources:
         self.fetcher = fetcher or SafeHttpFetcher(timeout=REPO_HTTP_TIMEOUT, max_bytes=REPO_MAX_BYTES)
         self.token = token if token is not None else GITHUB_TOKEN
         self.robots_check = robots_check
+        self.last_error = ""
 
     def _headers(self, accept: str = "application/vnd.github+json") -> dict[str, str]:
         headers = {
@@ -72,6 +73,7 @@ class RepoSources:
         if not result.ok:
             stats.errors += 1
             stats.error = result.error or f"http_{result.status}"
+            self.last_error = stats.error
             return None
         stats.fetched += 1
         try:
