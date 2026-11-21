@@ -160,7 +160,7 @@ limitations(限制與展望,100-220字)。
             "results": _clip(data.get("results", ""), 1500),
             "limitations": _clip(data.get("limitations", ""), 1200),
         }
-        placeholders = {"（模型未產出，待補充）", "（待補充）"}
+        placeholders = {"資訊不足，待人工補充。", "（待補充）"}
         for key, ask, mt in [
             ("background", f"用繁體中文寫論文背景與目的，120-220字。JSON {{\"background\":\"...\"}}。標題:{title}\n摘要:{_clip(abstract,2000)}", 900),
             ("method", f"用繁體中文寫論文方法，150-260字。JSON {{\"method\":\"...\"}}。標題:{title}\n摘要:{_clip(abstract,1500)}\n全文摘錄:{_clip(fulltext,2500)}", 1000),
@@ -179,8 +179,13 @@ limitations(限制與展望,100-220字)。
             out["results"] = "摘要/摘錄未提供足夠可驗證的完整實驗數字，需查閱原文結果章節。"
             out["limitations"] = "需確認資料集、基線、泛化範圍與實際部署限制。"
         for k, v in out.items():
-            if not v or v in placeholders:
-                out[k] = "資訊不足，待人工補充。"
+            if not v or v in placeholders or "模型未產出" in str(v):
+                if k == "what":
+                    out[k] = desc or f"{name} 是一個與 AI 相關的開源專案。"
+                elif k == "tech":
+                    out[k] = f"主要語言：{lang or '未知'}；Topics：{topics or '未標註'}。"
+                else:
+                    out[k] = "README/模型資訊不足，待人工補充架構細節。"
         return out
 
     # ---------- Repo ----------
@@ -217,7 +222,7 @@ README 摘錄：
             out["architecture"] = "README 未提供完整架構章節，需進一步檢視原始碼目錄與模組邊界。"
         for k, v in out.items():
             if not v:
-                out[k] = "（模型未產出，待補充）"
+                out[k] = "資訊不足，待人工補充。"
         return out
 
     # ---------- 架構深拆 ----------

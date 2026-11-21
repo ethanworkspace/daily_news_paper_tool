@@ -398,6 +398,8 @@ class RepoEngine:
                 f"論文種子 repo 未完整抓取：{len(missing_seed_repos)}/{len(seed_status)}；"
                 "可能是 GitHub rate limit、repo 不存在或名稱變更"
             )
+        if source_stats.get("github_seed", {}).get("error") == "auth_fallback:200":
+            selection.report["github_auth_fallback"] = True
 
         selection.report["sources"] = source_stats
         selection.report["raw_count"] = len(raw)
