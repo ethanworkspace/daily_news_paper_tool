@@ -123,6 +123,13 @@ class DailyPipeline:
             manifest.source("repos", found=manifest.counts["repos_raw"], kept=len(repo_sel.items))
             from config import GITHUB_TOKEN
             report["github_token_configured"] = bool(GITHUB_TOKEN)
+            report["repo_selection"] = {
+                "seed_count": repo_sel.report.get("seed_count"),
+                "seed_status": repo_sel.report.get("seed_status", []),
+                "seed_warning": repo_sel.report.get("seed_warning"),
+                "collections_excluded": repo_sel.report.get("collections_excluded"),
+                "rejected_counts": repo_sel.report.get("rejected_counts", {}),
+            }
             if repo_sel.report.get("seed_warning"):
                 report["warnings"].append(str(repo_sel.report["seed_warning"]))
                 manifest.warning(repo_sel.report["seed_warning"])
@@ -224,6 +231,15 @@ class DailyPipeline:
                 for f in out["files"]:
                     manifest.add_file(f)
 
+            # P8: optional architecture diagram via Pic-large (best-effort)
+            if write and use_ai and self.writer.available:
+                with manifest.stage("generate_image"):
+                    img_path = self._generate_arch_image(bundle, day)
+                    if img_path:
+                        report["files"].append(img_path)
+                        manifest.add_file(img_path)
+                        report.setdefault("images", []).append(img_path)
+
             if push and report["files"]:
                 with manifest.stage("git_push"):
                     from git_pusher import push_to_github
@@ -259,6 +275,27 @@ class DailyPipeline:
                 pass
 
         return report
+
+    def _generate_arch_image(self, bundle: DailyBundle, day: date) -> str | None:
+        try:
+            from core.paths import assets_dir, safe_join
+            prompt = (
+                f"Technical architecture diagram, clean vector infographic, white background, "
+                f"topic: {bundle.tech.name if bundle.tech else 'AI architecture'}. "
+                "Show modules: input/perception, model/reasoning, tools/agents, memory, output, safety guardrails. "
+                "Minimal labels, professional blue-gray style."
+            )
+            result = self.writer.client.image(prompt, size="1024x1024")
+            data = (result.get("data") or [{}])[0]
+            assets = assets_dir(self.root, day)
+            assets.mkdir(parents=True, exist_ok=True)
+            out = safe_join(assets, "04_architecture.png")
+            self.writer.client.save_image(data, out)
+            return str(out)
+        except Exception as exc:
+            msg = redact_secrets(exc)
+            logger.warning("arch image generation failed: %s", msg)
+            return None
 
     @staticmethod
     def _fallback_tech(news: list[Any], papers: list[Any]) -> dict[str, Any]:

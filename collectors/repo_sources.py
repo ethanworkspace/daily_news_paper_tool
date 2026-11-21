@@ -61,17 +61,14 @@ class RepoSources:
             anon_headers = dict(headers)
             anon_headers.pop("Authorization", None)
             retry = self.fetcher.fetch(url, check_robots=check_robots, headers=anon_headers)
-            retry_meta = dict(retry.meta or {})
-            if retry.status in {403, 429} or "rate limit" in str(retry.error or "").lower():
-                retry_meta["github_rate_limited"] = True
             if retry.ok:
-                retry.meta = retry_meta
                 result = retry
                 stats.error = f"auth_fallback:{result.status or 200}"
             else:
-                result.meta = {**(result.meta or {}), **retry_meta, "primary_status": result.status}
+                if retry.status in {403, 429} or "rate limit" in str(retry.error or "").lower():
+                    stats.error = (stats.error or "") + "|github_rate_limited"
         if (not result.ok) and (result.status in {403, 429} or "rate limit" in str(result.error or "").lower()):
-            result.meta = {**(result.meta or {}), "github_rate_limited": True}
+            stats.error = (stats.error or "") + "|github_rate_limited"
         if not result.ok:
             stats.errors += 1
             stats.error = result.error or f"http_{result.status}"
