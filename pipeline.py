@@ -293,11 +293,13 @@ class DailyPipeline:
                 "Minimal labels, professional blue-gray style."
             )
             result = self.writer.client.image(prompt, size="1024x1024")
-            data = (result.get("data") or [{}])[0]
+            item = result[0] if isinstance(result, list) else (result.get("data") or [{}])[0]
+            if not isinstance(item, dict):
+                raise ValueError(f"unexpected image item type: {type(item).__name__}")
             assets = assets_dir(self.root, day)
             assets.mkdir(parents=True, exist_ok=True)
             out = safe_join(assets, "04_architecture.png")
-            self.writer.client.save_image(data, out)
+            self.writer.client.save_image(item, out)
             return str(out)
         except Exception as exc:
             msg = redact_secrets(exc)
