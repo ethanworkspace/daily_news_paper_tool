@@ -1,4 +1,4 @@
-# GitHub 專案 01：whitecircle/halo
+# GitHub 專案 04：whitecircle/halo
 
 - 日期：2026-09-12
 - URL：https://github.com/whitecircle/halo
