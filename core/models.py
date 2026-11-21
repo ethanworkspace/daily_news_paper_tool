@@ -336,6 +336,7 @@ class DailyBundle:
         require_sections: bool = False,
         require_quotas: bool = True,
         min_section_chars: int = 0,
+        allow_stale: bool = False,
     ) -> dict[str, Any]:
         parsed_date = parse_datetime(self.date)
         if parsed_date is None:
@@ -366,11 +367,22 @@ class DailyBundle:
         if require_counts:
             from config import DAILY_NEWS_COUNT, DAILY_PAPER_COUNT, DAILY_REPO_COUNT
 
-            _expect_count("news", len(self.news), DAILY_NEWS_COUNT)
-            _expect_count("papers", len(self.papers), DAILY_PAPER_COUNT)
-            _expect_count("repos", len(self.repos), DAILY_REPO_COUNT)
-            if self.tech is None:
-                _fail("tech", "每日必須有 1 篇 AI 技術架構")
+            if allow_stale:
+                # backfill 模式：允許部分不足，但必須明確記錄
+                if len(self.news) < DAILY_NEWS_COUNT:
+                    self.warnings.append(f"quota_shortfall:news:{len(self.news)}/{DAILY_NEWS_COUNT}")
+                if len(self.papers) < DAILY_PAPER_COUNT:
+                    self.warnings.append(f"quota_shortfall:papers:{len(self.papers)}/{DAILY_PAPER_COUNT}")
+                if len(self.repos) < DAILY_REPO_COUNT:
+                    self.warnings.append(f"quota_shortfall:repos:{len(self.repos)}/{DAILY_REPO_COUNT}")
+                if self.tech is None:
+                    self.warnings.append("quota_shortfall:tech:0/1")
+            else:
+                _expect_count("news", len(self.news), DAILY_NEWS_COUNT)
+                _expect_count("papers", len(self.papers), DAILY_PAPER_COUNT)
+                _expect_count("repos", len(self.repos), DAILY_REPO_COUNT)
+                if self.tech is None:
+                    _fail("tech", "每日必須有 1 篇 AI 技術架構")
 
         freshness = {
             "news_stale": [
@@ -386,9 +398,10 @@ class DailyBundle:
                 if not is_within_window(r.updated_at, REPO_MAX_AGE_DAYS, now=reference)
             ],
         }
-        for key, values in freshness.items():
-            if values:
-                _fail("bundle.freshness", f"{key} 超過時效窗：{values[:3]}")
+        if not allow_stale:
+            for key, values in freshness.items():
+                if values:
+                    _fail("bundle.freshness", f"{key} 超過時效窗：{values[:3]}")
 
         cross_domain = sum(
             1 for n in self.news if any(d in CROSS_DOMAIN for d in n.domains)
@@ -410,6 +423,7 @@ class DailyBundle:
             "paired_repos_seed": repo_paired_seed,
             "cross_domain_ok": cross_domain >= NEWS_DOMAINS_MIN,
             "maritime_ok": maritime >= MARITIME_MIN,
+            "stale_backfill": bool(allow_stale),
         }
         if require_quotas:
             if not quotas["cross_domain_ok"]:

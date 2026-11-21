@@ -182,6 +182,8 @@ def render_digest_markdown(bundle: DailyBundle, report: dict[str, Any]) -> str:
     lines.append(f"- 海事新聞：{q.get('maritime', 0)}（需 >=1）")
     lines.append(f"- 實際配對論文：{q.get('paired_papers', 0)}（目標 >=3）；seed/code_url配對：{q.get('paired_papers_seed', 0)}")
     lines.append(f"- 實際配對repo：{q.get('paired_repos', 0)}；seed配對：{q.get('paired_repos_seed', 0)}")
+    if q.get("stale_backfill") or report.get("allow_stale"):
+        lines.append("- stale_backfill：true（回補模式，已放寬時效窗；需人工/後續補驗證）")
     if report.get("warnings"):
         lines.append(f"- warnings：{len(report['warnings'])}")
     return "\n".join(lines).strip() + "\n"

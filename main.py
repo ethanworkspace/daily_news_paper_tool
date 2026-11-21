@@ -27,10 +27,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--backfill-from", default="", help="回補起始日期 YYYY-MM-DD")
     parser.add_argument("--backfill-to", default="", help="回補結束日期 YYYY-MM-DD，預設今天")
     parser.add_argument("--dry-run", action="store_true", help="僅列出將執行/缺檔日期，不實際跑")
+    parser.add_argument("--allow-stale", action="store_true", help="回補模式：放寬新聞/論文/repo 時效窗，manifest 會標註 stale_backfill")
     return parser
 
 
-def run_agent(target_date: str | None = None, no_push: bool = True, no_ai: bool = False, force: bool = False) -> dict:
+def run_agent(target_date: str | None = None, no_push: bool = True, no_ai: bool = False, force: bool = False, allow_stale: bool = False) -> dict:
     """相容舊介面：供 scheduler/run_daily 呼叫。"""
     return run_daily_pipeline(
         target=target_date,
@@ -41,6 +42,7 @@ def run_agent(target_date: str | None = None, no_push: bool = True, no_ai: bool 
         push=not no_push,
         use_ai=not no_ai,
         force=force,
+        allow_stale=allow_stale,
     )
 
 
@@ -65,8 +67,8 @@ def main() -> int:
             if args.dry_run:
                 summary["results"].append({"date": d, "status": "dry_run"})
                 continue
-            r = run_daily_pipeline(target=d, news_count=args.news, paper_count=args.papers, repo_count=args.repos, write=not args.no_write, push=args.push, use_ai=not args.no_ai, force=args.force)
-            summary["results"].append({"date": d, "status": r.get("status"), "files": len(r.get("files", [])), "warnings": r.get("warnings", [])[:3]})
+            r = run_daily_pipeline(target=d, news_count=args.news, paper_count=args.papers, repo_count=args.repos, write=not args.no_write, push=args.push, use_ai=not args.no_ai, force=args.force, allow_stale=args.allow_stale)
+            summary["results"].append({"date": d, "status": r.get("status"), "files": len(r.get("files", [])), "warnings": r.get("warnings", [])[:3], "stale_backfill": r.get("allow_stale", False)})
         print(json.dumps(summary, ensure_ascii=False, indent=2))
         bad = [r for r in summary["results"] if r.get("status") not in {"ok","skipped_existing","dry_run"}]
         return 1 if bad else 0
@@ -80,6 +82,7 @@ def main() -> int:
         push=args.push,
         use_ai=not args.no_ai,
         force=args.force,
+        allow_stale=args.allow_stale,
     )
     print(json.dumps({
         "status": report.get("status"),

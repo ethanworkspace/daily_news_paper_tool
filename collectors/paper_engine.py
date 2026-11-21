@@ -158,6 +158,7 @@ class PaperEngine:
         enrich_fulltext: bool = True,
         enrich_limit: int = 8,
         fulltext_max_chars: int = PAPER_FULLTEXT_MAX_CHARS,
+        allow_stale: bool = False,
     ) -> None:
         self.sources = sources or PaperSources()
         self.queries = PAPER_QUERIES if queries is None else queries
@@ -167,6 +168,7 @@ class PaperEngine:
         self.enrich_fulltext = enrich_fulltext
         self.enrich_limit = enrich_limit
         self.fulltext_max_chars = fulltext_max_chars
+        self.allow_stale = allow_stale
 
     def collect(self, count: int = 5, *, now: datetime | None = None) -> PaperSelection:
         reference = now or now_utc()
@@ -294,7 +296,7 @@ class PaperEngine:
                 rejected.append({"title": cand.title[:160], "reason": "no_date", "source": cand.source_name})
                 continue
             published = to_utc(published)
-            if not is_within_window(published, self.max_age_days, now=reference):
+            if not self.allow_stale and not is_within_window(published, self.max_age_days, now=reference):
                 rejected.append({"title": cand.title[:160], "reason": "stale", "source": cand.source_name})
                 continue
 

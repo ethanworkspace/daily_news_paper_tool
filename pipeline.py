@@ -54,12 +54,14 @@ class DailyPipeline:
         news_engine: NewsEngine | None = None,
         paper_engine: PaperEngine | None = None,
         repo_engine: RepoEngine | None = None,
+        allow_stale: bool = False,
     ):
         self.root = Path(root)
+        self.allow_stale = allow_stale
         self.writer = writer or DailyWriter()
-        self.news_engine = news_engine or NewsEngine()
-        self.paper_engine = paper_engine or PaperEngine()
-        self.repo_engine = repo_engine or RepoEngine()
+        self.news_engine = news_engine or NewsEngine(allow_stale=allow_stale)
+        self.paper_engine = paper_engine or PaperEngine(allow_stale=allow_stale)
+        self.repo_engine = repo_engine or RepoEngine(allow_stale=allow_stale)
 
     def run(
         self,
@@ -83,7 +85,11 @@ class DailyPipeline:
             "errors": [],
             "quotas": {},
             "files": [],
+            "allow_stale": bool(self.allow_stale),
         }
+        if self.allow_stale:
+            report["warnings"].append("stale_backfill=true: freshness windows relaxed for backfill")
+            manifest.warning("stale_backfill=true")
 
         try:
             day_dir = self.root / str((day.isoweekday() % 7) + 0)  # placeholder
@@ -226,7 +232,7 @@ class DailyPipeline:
             )
 
             with manifest.stage("validate"):
-                quotas = bundle.validate(now=reference, require_counts=True, require_sections=False, require_quotas=True)
+                quotas = bundle.validate(now=reference, require_counts=True, require_sections=False, require_quotas=True, allow_stale=self.allow_stale)
             report["quotas"] = quotas
             manifest.quotas = quotas
 
@@ -326,4 +332,6 @@ class DailyPipeline:
 
 
 def run_daily_pipeline(**kwargs: Any) -> dict[str, Any]:
-    return DailyPipeline().run(**kwargs)
+    allow_stale = bool(kwargs.pop("allow_stale", False))
+    root = kwargs.pop("root", BASE_DIR)
+    return DailyPipeline(root=root, allow_stale=allow_stale).run(**kwargs)

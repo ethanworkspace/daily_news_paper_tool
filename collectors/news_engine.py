@@ -265,6 +265,7 @@ class NewsEngine:
         bing_enabled: bool = NEWS_BING_ENABLED,
         min_cross: int = 3,
         min_maritime: int = 1,
+        allow_stale: bool = False,
     ):
         self.fetcher = fetcher or SafeHttpFetcher()
         self.queries = NEWS_QUERIES if queries is None else queries
@@ -276,6 +277,7 @@ class NewsEngine:
         self.bing_enabled = bing_enabled
         self.min_cross = min_cross
         self.min_maritime = min_maritime
+        self.allow_stale = allow_stale
 
     # ---------- 對外 ----------
     def collect(self, count: int = 10, *, now: datetime | None = None) -> NewsSelection:
@@ -352,7 +354,7 @@ class NewsEngine:
                 rejected.append({"title": raw.title[:160], "reason": "no_date", "source": raw.source})
                 continue
             published = to_utc(published)
-            if not is_within_window(published, self.max_age_days, now=reference):
+            if not self.allow_stale and not is_within_window(published, self.max_age_days, now=reference):
                 rejected.append({"title": raw.title[:160], "reason": "stale", "source": raw.source})
                 continue
 

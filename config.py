@@ -86,6 +86,9 @@ IAI_MAX_RETRIES = int(get_secure_env("IAI_MAX_RETRIES", "3"))
 NEWS_MAX_AGE_DAYS = int(get_secure_env("NEWS_MAX_AGE_DAYS", "14"))
 PAPER_MAX_AGE_DAYS = int(get_secure_env("PAPER_MAX_AGE_DAYS", "30"))
 REPO_MAX_AGE_DAYS = int(get_secure_env("REPO_MAX_AGE_DAYS", "30"))
+# Backfill 模式：允許放寬時效窗（僅用於明確 backfill，manifest 會標註 stale_backfill）
+ALLOW_STALE_BACKFILL = get_secure_env("ALLOW_STALE_BACKFILL", "false").lower() in {"1", "true", "yes"}
+BACKFILL_MAX_AGE_DAYS = int(get_secure_env("BACKFILL_MAX_AGE_DAYS", "3650"))
 
 # 每日產出量
 DAILY_NEWS_COUNT = 10

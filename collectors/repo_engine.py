@@ -92,6 +92,7 @@ def select_repos(
     max_per_source: int = REPO_MAX_PER_SOURCE,
     min_paired: int = 0,
     seed_names: set[str] | None = None,
+    allow_stale: bool = False,
 ) -> RepoSelection:
     seed_set = {str(s).lower() for s in (seed_names or set())}
     ordered = sorted(
@@ -156,7 +157,9 @@ def select_repos(
         "quality_scores": {item.full_name: int(item.quality_score or 0) for item in selected},
     }
     if len(selected) < count:
-        raise RepoQuotaError(f"GitHub 專案數量不足：{len(selected)}/{count}", report)
+        report["quota_shortfall"] = f"repos:{len(selected)}/{count}"
+        if not allow_stale:
+            raise RepoQuotaError(f"GitHub 專案數量不足：{len(selected)}/{count}", report)
     return RepoSelection(items=selected, report=report)
 
 
@@ -269,6 +272,7 @@ class RepoEngine:
         max_per_source: int = REPO_MAX_PER_SOURCE,
         max_age_days: int = REPO_MAX_AGE_DAYS,
         min_paired: int = REPO_MIN_PAIRED,
+        allow_stale: bool = False,
         min_quality_score: int = REPO_MIN_QUALITY_SCORE,
         exclude_collections: bool = REPO_EXCLUDE_COLLECTIONS,
         enrich_limit: int = REPO_ENRICH_LIMIT,
@@ -278,6 +282,7 @@ class RepoEngine:
         self.max_per_source = max_per_source
         self.max_age_days = max_age_days
         self.min_paired = min_paired
+        self.allow_stale = allow_stale
         self.min_quality_score = min_quality_score
         self.exclude_collections = exclude_collections
         self.enrich_limit = enrich_limit
@@ -380,7 +385,7 @@ class RepoEngine:
 
         try:
             selection = select_repos(
-                qualified, count, max_per_source=self.max_per_source, min_paired=self.min_paired, seed_names=seed_names
+                qualified, count, max_per_source=self.max_per_source, min_paired=self.min_paired, seed_names=seed_names, allow_stale=self.allow_stale
             )
         except RepoQuotaError as exc:
             exc.report.setdefault("sources", source_stats)
@@ -561,12 +566,14 @@ class RepoEngine:
             updated = to_utc(updated)
             cand.updated_at = updated
             is_seed = bool((cand.extra or {}).get("is_paper_seed"))
-            if not is_within_window(updated, self.max_age_days, now=reference):
+            if not self.allow_stale and not is_within_window(updated, self.max_age_days, now=reference):
                 if is_seed:
                     cand.extra["stale_seed"] = True
                 else:
                     rejected.append({"title": cand.full_name, "reason": "stale", "source": "github"})
                     continue
+            elif self.allow_stale and not is_within_window(updated, self.max_age_days, now=reference):
+                cand.extra["stale_backfill"] = True
 
             text = f"{cand.full_name} {cand.description} {' '.join(cand.topics)} {cand.readme_excerpt[:500]}"
             seed = (cand.extra or {}).get("seed_paper") or {}
