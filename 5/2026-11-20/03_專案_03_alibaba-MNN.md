@@ -1,23 +1,23 @@
-# GitHub 專案 04：alibaba/MNN
+# GitHub 專案 03：alibaba/MNN
 
 - 日期：2026-11-20
 - URL：https://github.com/alibaba/MNN
 - 描述：MNN: A blazing-fast, lightweight inference engine battle-tested by Alibaba, powering high-performance on-device LLMs and Edge AI.
-- Stars：16591  |  Forks：2545  |  Language：C++
+- Stars：16593  |  Forks：2545  |  Language：C++
 - License：Apache-2.0
 - Topics：arm, convolution, deep-learning, embedded-devices, llm, machine-learning, ml, mnn, transformer, vulkan, winograd-algorithm
-- 更新時間：2026-11-22T10:50:56+00:00
+- 更新時間：2026-11-22T13:58:13+00:00
 - 配對論文：https://arxiv.org/abs/2611.12311
 - 品質分數：10/10 [paper_paired, implementation_signals, stale_seed]
 
 ## 在做什麼
-MNN 是由阿里巴巴開發的輕量級、高效能的深度學習推理引擎，專注於在行動裝置、嵌入式設備及邊緣節端上運行各種神經網路模型，特別是大型語言模型（LLM）與擴散模型。它提供模型轉換、量化、壓縮及多後端（CPU、GPU、NPU）支援，目標使用者為行動應用開發者、邊緣 AI 工程師以及需要在設備端低延遲、低資源併發執行 AI 模型的研究與產品團隊，解決模型在資源受限環境下難以即時推送的問題。
+MNN 是阿里巴巴開發的輕量級、高效能的深度學習推理引擎，專為行動裝置與嵌入式平台設計。它支援多種主流模型格式（TensorFlow、Caffe、ONNX、Torchscript），並提供 LLM、擴散模型等應用的本地運行解決方案，目標使用者為需要在智慧手機、平板、IoT 設備上實現低延遲、低功耗 AI 推論的開發者與產品團隊，核心問題是解決資源受限環境下模型推論的速度與記憶體佔用。
 
 ## 技術
-MNN 以 C++ 實作，支援 TensorFlow、Caffe、ONNX、TorchScript 等模型格式的轉換與優化。其核心引擎提供 CPU 後端（ARMv7/ARMv8/ARMv9、x86/x64 含 SSE4.1、AVX2、AVX512 指令優化、Winograd 卷積）、GPU 後端（Metal、OpenCL、Vulkan、CUDA）以及 NPU/Hexagon 等專用加速器。引擎內建 FP16、INT8、INT4 量化路徑，可透過 MNN‑Compress 進行模型壓縮與加速。此外，MNN 提供 MNN‑Converter、MNN‑Express（支援控制流）、MNN‑CV（輕量級圖像處理）與 MNN‑Train 等工具鏈，以及專門的 LLM 與擴散模型運行時（MNN‑LLM、MNN‑Diffusion）。
+MNN 的核心以 C++ 實作，提供跨平台後端包括 CPU（ARM/x86，利用 Winograd、SSE/AVX、NEON 等優化指令）、GPU（Metal、OpenCL、Vulkan、CUDA）以及 Hexagon DSP、NPU 等專用加速器。它能直接匯入 TensorFlow、Caffe、ONNX、Torchscript 模型，經過圖優化與量化（FP16、INT8、INT4）後執行。此外，MNN 還附帶 Python API、模型轉換工具（MNN‑Converter）、壓縮工具（MNN‑Compress）、支援控制流的 MNN‑Express、輕量級電腦視覺庫 MNN‑CV 以及訓練框架 MNN‑Train。
 
 ## 架構
-MNN 的架構分為前端模型轉換與優化層、運行時執行層與後端硬體抽象層三大部分。模型首先經由 MNN‑Converter 轉換為 MNN 內部的靜態圖，並透過圖優化（如算子融合、常數折疊、Winograd 替換）得到經過優化的模型檔案。運行時則載入該模型，根據目標裝置偵測到的可用後端（CPU、GPU、NPU）選擇對應的執行器，將圖分解為基本算子並調用各後端的優化核心（例如 ARM 彙編、Metal/Vulkan 着色器、CUDA Tensor Core）。資料流由輸入 Tensor 經過各算子的計算產出中間特徵圖，最終產出預測結果。若需控制流（如迴圈、條件分支），MNN‑Express 提供圖層的程式化描述。整體設計強調低依賴、易於嵌入，核心函式庫在 Android 約 800KB、iOS 約 12MB，可透過 MNN_BUILD_MINI 進一步縮小。
+MNN 的架構由核心推理引擎與多種後端組成。使用者先透過 MNN‑Converter 將外部模型轉換為 MNN 內部格式，隨後經過 MNN‑Compress 進行量化或剪枝以減少模型大小。運行時，MNN 會根據裝置偵測結果選擇適當的後端（CPU、GPU、Hexagon DSP 或 NPU），將計算圖分解為基本算子，並呼叫對應的優化內核（如 ARM 彙編、Winograd 卷積、Metal/Vulkan 着色器）進行執行。中間結果以 Tensor 形式在記憶體中流動，最終輸出預測值。若要支援控制流或自定義運算，可使用 MNN‑Express；若需影像前處理，可調用 MNN‑CV。訓練則透過 MNN‑Train 完成。由於 README 未詳細說明後備切換的具體決策邊界與記憶體管理細節，此部分需要進一步原始碼檢視才能確定。
 
 ## README 摘錄（節選）
 ```text

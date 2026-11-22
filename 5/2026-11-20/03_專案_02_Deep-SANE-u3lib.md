@@ -1,4 +1,4 @@
-# GitHub 專案 03：Deep-SANE/u3lib
+# GitHub 專案 02：Deep-SANE/u3lib
 
 - 日期：2026-11-20
 - URL：https://github.com/Deep-SANE/u3lib
@@ -11,13 +11,13 @@
 - 品質分數：9/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-u3lib 提供 U(3)/SU(3) 對稱性代數的完整計算框架，包含不可約表示、不變量、正則與物理基底、生成元矩陣元、基底變換、克羅內克積分解以及 Wigner 耦合與 Racah 重耦合係數，透過 C++ API、Python 綁定與 AI 代理技能層，服務於需要對稱性適配核結構計算的理論物理研究者與自動化工作流。
+u3lib 是一個專門為核物理與對稱性研究設計的 C++ 計算框架，提供 U(3)/SU(3) 群論的完整表示論工具，包括不可約表示、不變量、正則與物理基底、生成元矩陣元、基底變換、克羅內克積分解以及 Wigner 耦合與 Racah 重耦合係數。透過 C++ API、Python 綁定以及代理驅動的技能層，使得核殼模型計算、對稱適配結構分析以及 AI 代理自動化工作流程能夠直接調用這些代數運算。目標使用者為理論核物理研究者、計算物理學家以及需要進行對稱性代數運算的 AI 開發者，核心問題在於傳統實作繁瑣且缺乏統一、可擴充且 AI 友好的介面。
 
 ## 技術
-u3lib 以現代 C++20 為核心，使用 OpenMP 進行多執行緒加速，依賴 Eigen3 進行線性代數、Boost 與 fmt 進行工具函式與格式化，利用 libwignernj 處理 Wigner 3j 符號，並透過 KraNS 零空間求解器進行依賴建置；Python 綁定透過 pybind11 建置，提供 make config 與 make 編譯流程，支援 Linux 與 macOS，並透過 agents/ 目錄提供 AI 代理技能腳本。
+u3lib 使用現代 C++20 標準並依賴 OpenMP 進行多執行緒加速，核心數學運算依賴 Eigen3 進行線性代數、Boost 提供通用容器與演算法、fmt 用於格式化輸出、libwignernj 提供 Wigner 3j 符號計算，並透過子儲存庫 KraNS 進行零空間求解。Python 綁定透過 pybind11 建置，提供 python/u3lib.so 模組，並附帶 Jupyter 教學 notebook。建置流程透過 Makefile 的 config、make、make test 與 make python 完成，依賴項可自動偵測、指定路徑或透過 git、cmake、curl/wget 下載編譯。此外，agents/ 目錄提供 AI 代理技能檔案，使得代理能透過自然語言驅動安裝、編譯與測試。
 
 ## 架構
-u3lib 的原始碼分為 include/（標頭檔，提供 U(3) 表示、基底、生成元、耦合與重耦合介面）、src/（範例驅動程式，編譯後放入 bin/）、python/（pybind11 綁定與教學 Notebook）、test/（回歸測試與參考表）、doc/（LaTeX 手冊來源，自動產出 PDF）與 agents/（AI 代理技能說明與安裝腳本）。使用者透過 C++ 呼叫或 Python 介面存取不可約表示與不變量，進而取得 Gelfand–Tsetlin 或 SO(3) 降底基底、生成元矩陣元，進行基底變換、克羅內克積分解與 Wigner/Racah 係數計算；AI 代理則依循 agents/AGENTS.md 的技能腳本自動執行 make config、make、make test 等步驟，完成環境建置與驗證。
+u3lib 的原始碼分為數個主要目錄：include/ 放置標頭檔案，提供 u3lib.h 傘型標頭以及 irreps、bases、generators、coupling、recoupling 等子模組的宣告；src/ 包含示範驅動程式，經編譯後產生執行檔放於 bin/；python/ 存放 pybind11 綁定原始碼與建置腳本，產生 python/u3lib.so 供 Python 呼叫；test/ 放置回歸測試與參考資料；doc/ 保存 LaTeX 手冊來源，會自動編譯為 PDF 發布於 GitHub Pages；agents/ 則收錄 AI 代理技能說明與安裝腳本。使用者透過 C++ API 或 Python 綁定呼叫庫函式，內部依序進行不可約表示標籤計算、基底建構（正則 Gelfand–Tsetlin 與物理 SO(3) 減少基底）、生成元矩陣元求值、基底變換、克羅內克積分解以及 Wigner 與 Racah 係數的計算，最後將結果回傳給呼叫端。由於 README 未詳細說明內部執行緒調度或記憶體管理的具體實作，此部份僅根據可見的模組結構進行推斷。
 
 ## README 摘錄（節選）
 ```text

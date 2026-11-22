@@ -136,17 +136,17 @@ URL：{url}
     # ---------- 論文 ----------
     def summarize_paper(self, item: Any) -> dict[str, str]:
         title = _clip(getattr(item, "title", ""), 500)
-        abstract = _clip(getattr(item, "abstract", ""), 3500)
-        fulltext = _clip(getattr(item, "fulltext_excerpt", ""), 14000)
+        abstract = _clip(getattr(item, "abstract", ""), 4500)
+        fulltext = _clip(getattr(item, "fulltext_excerpt", ""), 18000)
         venue = _clip(getattr(item, "venue", "") or getattr(item, "journal", ""), 300)
         impact = _clip(getattr(item, "impact_factor", ""), 120)
         code_url = _clip(getattr(item, "code_url", ""), 500)
-        prompt = f"""你是 AI 論文分析師。請使用繁體中文，僅根據提供的論文摘要/全文摘錄分析，不可編造實驗數字、資料集規模或比較結果。
+        prompt = f"""你是 AI 論文深度分析師。請使用繁體中文，僅根據提供的論文摘要/全文摘錄分析，不可編造未出現的實驗數字、資料集規模、基線名稱或比較結果；若資料不足，必須明確標示「依目前可取得資料，無法確認」。
 輸出 JSON，鍵：
-background(背景與目的,150-280字),
-method(方法,180-350字，說明輸入、核心機制、訓練/推論流程),
-results(結果,150-300字；若摘錄無明確數字請明確說明「摘錄未提供可驗證數字」並描述可見結論),
-limitations(限制與展望,120-240字)。
+background(背景與目的，220-420字)：說明研究問題、現有方法缺口、為何重要、本文目標與貢獻定位。
+method(方法，500-900字，這是最重要欄位)：必須深度解說方法。請盡量涵蓋：問題設定/輸入輸出；模型或系統整體架構；核心模組或演算法機制；資料前處理/特徵/表示方式；訓練目標、損失函數或最佳化策略（若摘錄有）；推論或執行流程；與既有方法的關鍵差異（僅限摘錄可支持）。用清楚的技術語言分層說明，不要只寫一句泛泛描述。
+results(結果，220-420字)：說明作者報告的主要實驗結果、比較結論、消融或案例發現；若摘錄無明確數字，必須明確寫「摘錄未提供可驗證數字」，並描述可觀察到的定性結論。
+limitations(限制與展望，180-320字)：說明資料/方法/評估/部署限制、潛在風險與後續研究方向；不確定處要保守表述。
 論文：{title}
 期刊/會議：{venue}
 影響指標：{impact}
@@ -156,35 +156,72 @@ limitations(限制與展望,120-240字)。
 全文摘錄：
 {fulltext}
 """
-        data = self._json(prompt, model="max", schema_hint='{"background":"","method":"","results":"","limitations":""}', max_tokens=2600)
+        data = self._json(prompt, model="max", schema_hint='{"background":"","method":"","results":"","limitations":""}', max_tokens=3600)
         out = {
-            "background": _clip(data.get("background", ""), 1800),
-            "method": _clip(data.get("method", ""), 2200),
-            "results": _clip(data.get("results", ""), 1800),
-            "limitations": _clip(data.get("limitations", ""), 1500),
+            "background": _clip(data.get("background", ""), 3200),
+            "method": _clip(data.get("method", ""), 5200),
+            "results": _clip(data.get("results", ""), 3200),
+            "limitations": _clip(data.get("limitations", ""), 2600),
         }
-        placeholders = {"資訊不足，待人工補充。", "（待補充）", "（待補充：需模型或人工分析）"}
-        for key, ask, mt in [
-            ("background", f"用繁體中文寫論文背景與目的，150-240字。JSON {{\"background\":\"...\"}}。標題:{title}\n摘要:{_clip(abstract,2200)}", 900),
-            ("method", f"用繁體中文寫論文方法，180-300字，包含輸入、核心機制、流程。JSON {{\"method\":\"...\"}}。標題:{title}\n摘要:{_clip(abstract,1500)}\n全文摘錄:{_clip(fulltext,3000)}", 1100),
-            ("results", f"用繁體中文寫論文結果；若無明確數字請說明「摘錄未提供可驗證數字」。150-260字。JSON {{\"results\":\"...\"}}。標題:{title}\n摘要:{_clip(abstract,1500)}\n全文摘錄:{_clip(fulltext,3000)}", 1100),
-            ("limitations", f"用繁體中文寫限制與展望，120-220字。JSON {{\"limitations\":\"...\"}}。標題:{title}\n摘要:{_clip(abstract,1500)}", 900),
+        placeholders = {
+            "資訊不足，待人工補充。", "（待補充）", "（待補充：需模型或人工分析）",
+            "依目前可取得資料不足，需人工查閱原文補充。"
+        }
+        for key, ask, mt, min_len in [
+            (
+                "background",
+                f"用繁體中文詳細撰寫論文背景與目的，220-420字。需包含：研究問題、既有缺口、本文目標與貢獻。不可編造。JSON {{\"background\":\"...\"}}。標題:{title}\n摘要:{_clip(abstract,2600)}\n全文摘錄:{_clip(fulltext,2500)}",
+                1200,
+                120,
+            ),
+            (
+                "method",
+                f"用繁體中文深度解說論文方法，500-900字，這是最重要欄位。必須盡量涵蓋：問題設定與輸入輸出；整體架構；核心模組/演算法機制；資料處理或表示；訓練目標/損失/最佳化（若可確認）；推論流程；關鍵設計理由。僅根據提供內容，不可編造。JSON {{\"method\":\"...\"}}。標題:{title}\n摘要:{_clip(abstract,2200)}\n全文摘錄:{_clip(fulltext,9000)}",
+                2200,
+                260,
+            ),
+            (
+                "results",
+                f"用繁體中文詳細撰寫論文結果，220-420字。若無明確數字必須寫「摘錄未提供可驗證數字」，並描述可見的定性結論、比較或消融觀察。不可編造數字。JSON {{\"results\":\"...\"}}。標題:{title}\n摘要:{_clip(abstract,2200)}\n全文摘錄:{_clip(fulltext,7000)}",
+                1400,
+                120,
+            ),
+            (
+                "limitations",
+                f"用繁體中文撰寫論文限制與展望，180-320字。需包含方法/資料/評估/部署面向的限制與後續方向，不確定處保守表述。JSON {{\"limitations\":\"...\"}}。標題:{title}\n摘要:{_clip(abstract,2200)}\n全文摘錄:{_clip(fulltext,3500)}",
+                1100,
+                100,
+            ),
         ]:
-            if (not _clip(out.get(key, ""), 10)) or out.get(key) in placeholders:
+            cur = _clip(out.get(key, ""), 5200)
+            if (not cur) or cur in placeholders or len(cur) < min_len or "模型未產出" in cur:
                 s = self._json(ask, model="max", schema_hint='{"'+key+'":""}', max_tokens=mt)
-                val = _clip(s.get(key, ""), 2200)
-                if val:
+                val = _clip(s.get(key, ""), 5200)
+                if val and len(val) >= max(60, min_len // 2):
                     out[key] = val
         if not any(v and v not in placeholders for v in out.values()):
-            fallback = _clip(abstract or fulltext, 900)
-            out["background"] = f"本研究主題為「{title}」。{fallback[:320]}"
-            out["method"] = "依目前可取得的摘要/摘錄，尚不足以完整還原方法細節；需查閱原文的方法章節確認模型設計、訓練流程與評估設定。"
-            out["results"] = "摘錄未提供可驗證的完整實驗數字；目前僅能確認研究方向與可能貢獻，具體效果需查閱原文結果表格與附錄。"
-            out["limitations"] = "需確認資料集代表性、基線比較公平性、泛化範圍、運算成本與實際部署限制。"
+            fallback = _clip(abstract or fulltext, 1600)
+            out["background"] = f"本研究主題為「{title}」。{fallback[:520]} 依目前可取得資料，本文的具體問題設定與貢獻細節仍需查閱原文引言與方法章節進一步確認。"
+            out["method"] = (
+                "依目前可取得的摘要/全文摘錄，尚不足以完整還原方法細節。從可見資訊可初步判斷此研究與 "
+                f"{title} 相關，但模型架構、輸入輸出定義、核心模組機制、訓練目標與損失函數、最佳化流程、推論步驟及關鍵超參數等關鍵技術內容，"
+                "仍需查閱原文方法章節、架構圖與實驗設定後才能可靠補齊；目前不宜臆測具體實作細節。"
+            )
+            out["results"] = "摘錄未提供可驗證數字。依目前可取得資料，只能確認作者提出了相關方法方向與初步結論，但缺乏可核對的實驗指標、資料集規模、基線比較與消融結果，因此無法可靠總結量化成效。"
+            out["limitations"] = "依目前可取得資料，無法完整評估此研究的外部效度與部署成本。潛在限制可能包括資料代表性、基線比較公平性、計算資源需求、泛化能力與實際應用風險；後續需查閱原文實驗、附錄與限制說明確認。"
         for k in ("background","method","results","limitations"):
-            v = out.get(k, "")
+            v = _clip(out.get(k, ""), 5200)
             if not v or v in placeholders or "模型未產出" in str(v):
-                out[k] = "依目前可取得資料不足，需人工查閱原文補充。"
+                if k == "background":
+                    out[k] = f"本研究主題為「{title}」。依目前可取得資料，僅能確認其研究方向與問題意識，詳細背景與貢獻需查閱原文補充。"
+                elif k == "method":
+                    out[k] = "依目前可取得資料，無法可靠還原完整方法。需查閱原文確認問題設定、模型架構、核心模組、訓練目標與推論流程等技術細節，目前不宜臆測。"
+                elif k == "results":
+                    out[k] = "摘錄未提供可驗證數字。依目前可取得資料，無法確認具體實驗成效，需查閱原文結果表格與消融分析。"
+                else:
+                    out[k] = "依目前可取得資料，無法完整確認限制與展望；需查閱原文討論資料代表性、泛化能力、計算成本與部署風險。"
+            else:
+                out[k] = v
         return out
 
     # ---------- Repo ----------

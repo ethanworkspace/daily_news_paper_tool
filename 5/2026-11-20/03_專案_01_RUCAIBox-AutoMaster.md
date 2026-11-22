@@ -1,23 +1,23 @@
-# GitHub 專案 02：RUCAIBox/AutoMaster
+# GitHub 專案 01：RUCAIBox/AutoMaster
 
 - 日期：2026-11-20
 - URL：https://github.com/RUCAIBox/AutoMaster
 - 描述：
-- Stars：25  |  Forks：2  |  Language：Python
+- Stars：26  |  Forks：2  |  Language：Python
 - License：MIT
 - Topics：
-- 更新時間：2026-11-22T11:19:18+00:00
+- 更新時間：2026-11-22T12:31:46+00:00
 - 配對論文：http://arxiv.org/abs/2611.26510v1
 - 品質分數：9/10 [paper_paired, implementation_signals, stale_seed]
 
 ## 在做什麼
-AutoMaster 是一種自主後訓練框架，透過讓同一個模型同時擔任教師與學生，自行設計技能（Skill）並篩選示範軌跡，以提升教師的示範品質，進而強化學生的表現。其目標使用者為研究 LLM 教學與微調的學者與工作者，核心問題在於僅看任務成功率無法判斷示範是否真的傳遞有用行為，AutoMaster 透過行為塑造與示範選擇解決此問題。
+AutoMaster 是一個自主後訓練框架，透過讓同一個模型同時扮演 Teacher 與 Student 的角色，自行設計技能（Skill）並選擇示範軌跡，以提升模型在終端任務、網頁搜尋與文件到倉庫三個領域的教學品質。目標使用者為希望在不增大模型規模的情況下改善模型教學能力的研究者與開發者，核心問題在於僅看任務成功率無法判斷示範的教學價值，導致訓練時可能強化不良習慣。
 
 ## 技術
-專案主要使用 Python 3.11+，依賴 AweAgent 實現代理行為，基礎模型採用 Qwen3.5，透過 SGLang 服務檢查點（支援張量平行）。核心技能（Skill）以獨立資料夾組織，每個含 SKILL.md 入口，並搭配 Skill‑FT 進行教師導向的推演與學生微調。內部流程包含內部迴圈（行為分析、技能設計與示範選擇）與外部迴圈（學生訓練、評估與回饋），所有程式碼採用 MIT 授權，AweAgent 為 Apache-2.0。
+AutoMaster 以 Python 3.11+ 為主要實作語言，基礎模型採用 Qwen3.5，透過 SGLang 提供 OpenAI‑相容的推論端點。框架整合 AweAgent 實現 agentic rollout，技能以獨立資料夾的 SKILL.md 形式存在，內容包括行為規則與適用條件。內部流程包含 Inner Loop（軌跡分析、技能設計與測試、示範選擇）與 Outer Loop（利用技能導引的 Teacher rollout 生成示範資料，對 Student 進行監督微調（SFT），根據 Student 分數與執行追蹤回饋以迭代優化技能）。資料流經過 trajectory → skill design/demo selection → demonstration dataset → SFT → student evaluation → skill refinement。
 
 ## 架構
-AutoMaster 的架構分為兩個主要迴圈：內部迴圈負責分析教師軌跡、設計並測試技能、選擇有價值的示範；外部迴圈則以這些示範微調學生模型，評估學生表現後將其分數與執行痕跡回饋給內部迴圈以改進後續技能設計與資料選擇。具體流程為：教師模型產生軌跡 → 行為分析模塊產生技能候選 → 技能測試與示範選擇 → 以技能引導教師產生新示範 → 使用 Skill‑FT 對學生進行監督微調 → 在基準（Terminal‑Bench 2.1、BrowseComp、Doc2Repo）上評估學生 → 依評估結果更新技能與示範選擇策略，週期性重複。此設計依賴 AweAgent 實現代理的探索與決策，若 README 未明確說明某些細節，則僅根據上述描述進行推斷。
+系統主要由四個模組組成：1) Skill Library（存放所有技能的 SKILL.md 與說明文件）；2) Inner Loop（負責分析 Teacher 的執行軌跡、設計/測試新技能、根據當前技能選擇最具訓練價值的示範）；3) Outer Loop（使用 Inner Loop 產出的技能導引 Teacher 產生示範資料，對 Student 進行監督微調，評估 Student 表現並將分數與追蹤資料回饋給 Inner Loop 以進行下一輪技能優化）；4) 推論與評估環境（SGLang 伺服器載入 Qwen3.5 權重，提供評估腳本 recipes/inference 來跑 terminal.yaml、browsecomp.yaml、doc2repo.yaml 三個基準）。資料流程為：Teacher rollout 產生 trajectory → Inner Loop 產出技能與篩選的示範 → Skill‑FT 生成監督微調資料集 → Outer Loop 對 Student 進行 SFT → 評估 Student 得分與追蹤 → 回饋至 Inner Loop 進行下一輪技能設計。README 未提供更細緻的類別圖或同步機制細節，以上架構說明僅基於可見的模組與流程描述。
 
 ## README 摘錄（節選）
 ```text

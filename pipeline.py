@@ -194,11 +194,24 @@ class DailyPipeline:
                     if writer:
                         item.sections = writer.summarize_paper(item)
                     if not any((item.sections or {}).values()):
+                        fallback = (item.abstract or item.title or "").strip()
                         item.sections = {
-                            "background": (item.abstract or item.title)[:500] or "（待補充）",
-                            "method": "（待補充：需模型或人工分析）",
-                            "results": "（待補充：需模型或人工分析）",
-                            "limitations": "（待補充：需模型或人工分析）",
+                            "background": (
+                                f"本研究主題為「{item.title}」。{fallback[:700]} "
+                                "依目前可取得資料，仍需查閱原文以完整確認研究問題、既有缺口與具體貢獻。"
+                            ).strip(),
+                            "method": (
+                                "依目前可取得資料，無法可靠還原完整方法細節。需查閱原文確認問題設定與輸入輸出、整體架構、核心模組機制、"
+                                "資料處理或特徵表示、訓練目標與最佳化流程，以及推論或部署流程；目前不宜臆測未經證實的技術細節。"
+                            ),
+                            "results": (
+                                "摘錄未提供可驗證數字。依目前可取得資料，無法確認具體實驗指標、資料集規模、基線比較或消融結果；"
+                                "如需結論，應以原文結果章節與附錄為準。"
+                            ),
+                            "limitations": (
+                                "依目前可取得資料，無法完整確認限制與展望。後續應查閱原文說明資料代表性、泛化能力、計算成本、"
+                                "評估公平性與實際部署風險，並以保守方式評估其適用範圍。"
+                            ),
                         }
 
                 for item in repo_sel.items:

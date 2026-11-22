@@ -182,8 +182,9 @@ def render_digest_markdown(bundle: DailyBundle, report: dict[str, Any]) -> str:
         venue = p.journal or p.venue or p.source_name
         lines.append(f"### {i}. {p.title}")
         lines.append(f"- 來源/發表：{venue}｜{_dt(p.published_at)}｜IF/Impact: {p.impact_factor}")
-        lines.append(f"- 摘要：{_short(s.get('background') or p.abstract, 180)}")
-        lines.append(f"- 方法/結果：{_short(s.get('method'), 90)} / {_short(s.get('results'), 90)}")
+        lines.append(f"- 摘要：{_short(s.get('background') or p.abstract, 220)}")
+        lines.append(f"- 方法重點：{_short(s.get('method'), 180)}")
+        lines.append(f"- 結果重點：{_short(s.get('results'), 140)}")
         lines.append(f"- 連結：{_link(p.url)}")
         if p.code_url:
             lines.append(f"- 程式碼：{_link(p.code_url)}")
