@@ -347,28 +347,34 @@ class IAIClient:
         if choices:
             text = (choices[0].get("message") or {}).get("content", "") or ""
         if not text or finish_reason == "length":
-            # reasoning/length-truncated output: retry once with larger budget
-            if (payload.get("max_tokens") or 0) < 4096 and not payload.get("_retried"):
+            # reasoning/length-truncated output: retry with larger budgets
+            for budget in (4096, 6144, 8192):
+                if text and finish_reason != "length":
+                    break
+                cur = int(payload.get("max_tokens") or 0)
+                if cur >= budget:
+                    continue
                 payload2 = dict(payload)
-                payload2["max_tokens"] = max(int(payload.get("max_tokens") or 0), 4096)
-                payload2["_retried"] = True
+                payload2["max_tokens"] = budget
                 try:
-                    req_payload2 = {k: v for k, v in payload2.items() if k != "_retried"}
+                    req_payload2 = {k: v for k, v in payload2.items() if not str(k).startswith("_retried")}
                     response2 = self._request("POST", "/chat/completions", req_payload2, timeout=timeout)
                     data2 = response2.json()
                     usage2 = data2.get("usage") or {}
                     choices2 = data2.get("choices") or []
                     text2 = (choices2[0].get("message") or {}).get("content", "") if choices2 else ""
                     finish2 = (choices2[0].get("finish_reason") if choices2 else None) or "unknown"
+                    usage = {
+                        "prompt_tokens": int(usage.get("prompt_tokens") or 0) + int(usage2.get("prompt_tokens") or 0),
+                        "completion_tokens": int(usage.get("completion_tokens") or 0) + int(usage2.get("completion_tokens") or 0),
+                    }
                     if text2:
-                        self._record(
-                            prompt_tokens=int(usage.get("prompt_tokens") or 0) + int(usage2.get("prompt_tokens") or 0),
-                            completion_tokens=int(usage.get("completion_tokens") or 0) + int(usage2.get("completion_tokens") or 0),
-                        )
                         text = text2
                         finish_reason = finish2
+                        if finish_reason != "length":
+                            break
                 except Exception:
-                    pass
+                    continue
         if not text:
             self._record(error=True)
             raise IAIClientError(
