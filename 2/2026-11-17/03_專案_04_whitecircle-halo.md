@@ -11,35 +11,13 @@
 - 品質分數：10/10 [paper_paired, implementation_signals, stale_seed]
 
 ## 在做什麼
-Halo is an open-source framework built by White Circle for training large language and multimodal models
-Halo is an open-source framework built by White Circle (https://whitecircle.com) for training large language and multimodal models. It supports pre-training, SFT, preference optimization, fully asynchronous multi-turn RL, and much more.
-The same codebase runs on one GPU or across multiple nodes, with EP, CP, TP, ETP, PP, FSDP2, fused kernels, BF16 training, and distributed rollouts.
-Halo trains Hugging Face models directly. Checkpoints still load with `from_pretrained`, and the EP layer a MoE family adds is under 90 lines for every family but GPT-OSS, at 168 (Model Integration Cost (human-docs/model-integration-cost.md)).
-On 8× B300, Halo 1.2.0 trains Qwen3.6-35B-A3B on packed 64k and 128k rows at 1.10–1.12× Megatron Bridge, 1.47× TRL 1.17.1 and 1.9–2.0× NeMo AutoModel 0.7.0, and Qwen3.5-122B-A10B at 1.50× TRL and 1.7–1.9× NeMo; it trails a tuned Megatron by 11.5% on dense Qwen3.5-9B at
-
-主要語言：Python；Topics：agent, async-rl, distributed-training, fine-tuning, grpo, large-language-models, llm, lora；Stars：869；License：NOASSERTION
+Halo 是由 White Circle 開源的訓練框架，專門用於大型語言與多模態模型的預訓練、指令微調（SFT）、偏好優化以及完全非同步多輪強化學習。它能直接訓練 Hugging Face 模型，支援從單顆 GPU 到多節點的分散式訓練，並提供專家平行（EP）、上下文平行（CP）、張量平行（TP）、專家‑上下文平行（ETP）與管線平行（PP）等多種平行策略，目標使用者為需要靈活、統一基礎設施來進行 LLM 研究與開發的研究者與工程師，核心在於減少各種訓練方法的重複實作，提供一致的檢查點與模型載入流程。
 
 ## 技術
-Halo ships as separate Docker images for Blackwell and Hopper, with PyTorch, Flash Attention, and
-DeepEP V2 built in. Pull them anonymously, with no account:
-[code block omitted]
-Versioned tags (`:blackwell-1.3.0rc1`, `:hopper-1.3.0rc1`) pin the release. There is no `latest` tag, since
-the images are architecture-specific. The RL inference images are published alongside them
-(`:vllm-0.32.0`, `:sglang-0.5.22`), pinned as `:vllm-0.32.0-1.3.0rc1` and `:sglang-0.5.22-1.3.0rc1`.
-To build locally instead:
-[code block omitted]
-No host Python environment is required. See Installation (human-docs/installation.md) for image details and build options.
+Halo 以 Python 為主要語言，基於 PyTorch、Hugging Face Transformers 與 TRL 構建，並整合 vLLM 或 SGLang 作為 RL 推論後端。框架內建 DeepEP V2、FlashAttention‑4、Liger、Grouped GEMM、AdamW BF16 優化器，以及針對 Blackwell 與 Hopper 架構的 Docker 镜像。支援專家平行（EP）、上下文平行（CP）、張量平行（TP）、專家‑上下文平行（ETP）與管線平行（PP），並透過 FSDP2、DTensor 與 DeviceMesh 實現分散式狀態與通訊。此外，提供 LoRA/QLoRA、融合核心與樹狀打包等效能優化，並可直接使用 Hugging Face 的 from_pretrained 載入檢查點。
 
 ## 架構
-- **Training methods share the same infrastructure.** Pre-training, SFT, preference optimization, distillation, and RL use the same parallelism and checkpointing code, so a new method doesn't need its own distributed implementation.
-Halo also gains pipeline parallelism and three more model families (benchmarks (human-docs/performance.md)).
-- **Pipeline parallelism** for SFT, preference, offline GRPO, reward, and classification training, with EP
-or ETP inside each stage (docs (agent-docs/parallelism/pipeline-parallelism.md)).
-the images are architecture-specific. The RL inference images are published alongside them
-covering model integrations, parallelism, optimization internals, infrastructure, and troubleshooting.
-Multi-node runs support shared (NFS/Lustre) and node-local filesystems.
-
-相關論文/文件：https://arxiv.org/abs/2606.04036
+Halo 的程式碼分為數個主要目錄：halo/ 包含訓練器、平行性封裝（EP/CP/TP/ETP/PP）、優化器、核心函式、資料整理器與回調；scripts/ 提供訓練入口、推論、資料前處理與檢查點工具；examples/ 存放依訓練方法與模型分組的可直接運行的 YAML 配置；launcher‑configs/ 則有 Accelerate、SkyPilot 與 Nomad 的啟動設定；human‑docs/ 與 agent‑docs/ 分別提供使用者導向與完整技術參照；skills/ 內含代理人技能，用於作業啟動、平行性選擇、除錯、模型加入、檢查點管理、資料準備、吞吐優化、RL 設定、測試撰寫與文件維護。典型執行流程為：先選擇 examples/ 中的 YAML 配置，執行 halo launch（或直接呼叫 scripts/training/.py），halo 會依參數選擇 python、torchrun 或 accelerate launch 啟動訓練；訓練過程中，模型會被相應的平行性包裝（例如 EP 包裝 MoE 區塊，CP 包裝注意力），梯度同步透過 FSDP2、DTensor 與 NCCL 進行；在強化學習情境下，多輪環境互斥以 Ray Actor 形式運行，對應的 vLLM 或 SGLang 推論伺服器負責產生 token，訓練端透過原生 NCCL 同步權重更新。檢查點以標準 SafeTensors 形式儲存，可直接由 Hugging Face 的 from_pretrained 載入。若 README 未說明某些內部細節，則僅根據上述目錄結構與描述進行推斷。
 
 ## README 摘錄（節選）
 ```text

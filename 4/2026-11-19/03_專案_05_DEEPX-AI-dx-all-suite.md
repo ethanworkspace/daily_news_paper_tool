@@ -11,18 +11,13 @@
 - 品質分數：8/10 [implementation_signals]
 
 ## 在做什麼
-DEEPX NPU SDK (DXNN) for edge AI: compile, quantize and deploy ONNX models on DEEPX NPUs
-DEEPX NPU SDK (DXNN) for edge AI: compile, quantize and deploy ONNX models on DEEPX NPUs
-
-主要語言：Python；Topics：ai-accelerator, computer-vision, deep-learning, deepx, dx-m1, dxnn, edge-ai, gstreamer；Stars：80；License：NOASSERTION
+DEEPX DX-AllSuite (DXNN) 是一套端到端的邊緣 AI 平台，負責將訓練好的 ONNX 模型編譯、量化並產出 DEEPX NPU 專用的 .dxnn 執行檔，同時提供運行時環境、GStreamer 外掛、Python/C++ API 與 ModelZoo，讓開發者能在支援 DEEPX NPU 的設備上進行即時視覺推論與實體 AI 應用。目標使用者為嵌入式系統工程師、邊緣 AI 開發者與研究人員，核心問題在於簡化模型從訓練到 NPU 部署的全流程，降低開發複雜度與效能損失。
 
 ## 技術
-實作語言以 Python 為主。
-從 topics 可見技術方向：ai-accelerator, computer-vision, deep-learning, deepx, dx-m1, dxnn, edge-ai, gstreamer。
-專案描述：DEEPX NPU SDK (DXNN) for edge AI: compile, quantize and deploy ONNX models on DEEPX NPUs
+技術重點包括：以 Python 3.8~3.14 與 C++ 為主要開發語言，使用 DEEPX 自研的 DX-COM 編譯器將 ONNX 模型進行 INT8 智慧量化，產出 .dxnn 二進位檔；透過 DX-STREAM（基於 GStreamer 的自訂外掛）實現前處理、推論與後處理的一條視訊管線；提供完整的 Python/C++ API 與 300+ 個 ModelZoo 預訓練模型；支援 Docker 镜像（GHCR）與 Helm chart（dx-npu）進行 Kubernetes 部署；此外尚有 Agent‑Driven Development（Beta）、DX AI Studio、DX‑Benchmark 與 DX‑Edge 等輔助工具。
 
 ## 架構
-README 未明確提供架構章節；依描述推斷此專案聚焦於：DEEPX NPU SDK (DXNN) for edge AI: compile, quantize and deploy ONNX models on DEEPX NPUs
+架構分為兩大環境：編譯環境（Host PC）負責模型轉換、量化與 .dxnn 生成，使用 DX-Compiler（dx-com）工具鏈；運行環境（Target Device）載入 NPU 驅動與 DX-Runtime，透過 dx_engine 執行 .dxnn 模型，搭配 DX-STREAM GStreamer 外掛進行即時資料流處理；核心元件包括 DX-COM 編譯器、DX-RT 執行階段、NPU 驅動、韌體更新模組、ModelZoo、容器映像與 Kubernetes 設備插件（dx-m1），資料流從影像擷取 → 前處理 → NPU 推論 → 後處理 → 輸出/顯示。若需更細部的模組互連圖，請參考官方文件的架構概覽。
 
 ## README 摘錄（節選）
 ```text

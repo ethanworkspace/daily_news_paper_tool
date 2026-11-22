@@ -11,18 +11,13 @@
 - 品質分數：8/10 [implementation_signals]
 
 ## 在做什麼
-FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
-FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
-
-主要語言：Python；Topics：cli, deployment, edge-ai, edge-cloud, fastcrest, groot, inference, jetson；Stars：86；License：NOASSERTION
+FastCrest Tether 是一個開源的邊緣‑到‑雲端 AI 部署命令列工具，專門用於視覺‑語言‑動作 VLA 機器人政策的安全驗證與跨平台部署。它支援 Jetson、RTX、Apple Silicon 與 AMD 硬體，提供單體 ONNX 匯出與參考 PyTorch 政策的逐位元 parity 檢查，並透過混合邊緣‑雲端推論與憑證機制，讓開發者能確認政策在真實硬體上是否可安全執行。
 
 ## 技術
-實作語言以 Python 為主。
-從 topics 可見技術方向：cli, deployment, edge-ai, edge-cloud, fastcrest, groot, inference, jetson。
-專案描述：FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
+Tether 以 Python 3.10+ 為基礎，透過 CLI 安裝腳本自動偵測平台並選擇對應的安裝 extra（serve、gpu、onnx、fast‑kernels、zmq 等）。核心依賴包括 ONNX Runtime、TensorRT 執行提供者、Triton 快核、safetensors 直接載入、msgpack 與 pyzmq（ZMQ 傳輸），以及 FastCrest 自行實作的 BaseVLA spine 架構，將各 VLA 家族抽象為約 100 行的組合類別。模型匯出階段採用單體 ONNX 匯出，支援超過 2GB 的外部權重資料（.onnx + .onnx_data），並提供選擇性混合 FP16 轉換與 TensorRT 引擎建置。推論階段可選擇 CUDAExecutionProvider、TensorrtExecutionProvider 或 Triton 後端，並透過 HTTP 或 ZMQ 進行低延遲機器人通訊。
 
 ## 架構
-README 未明確提供架構章節；依描述推斷此專案聚焦於：FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
+Tether 的架構圍繞三個主要模組：安裝與平台偵測（installer）、模型匯出與驗證（exporter / parity checker）以及推論服務（serve）。安裝腳本會先執行硬體與 Python 檢查，依據偵測到的作業系統與晶片（Jetson Orin、NVIDIA GPU、Apple Silicon、AMD）自動選擇對應的依賴套件。匯出模組將參考 PyTorch VLA 政策轉換為單體 ONNX，在過程中執行逐位元 parity 比對（cos = +1.000000）並產生 measured_numbers.md 證明。服務模組載入產生的 ONNX（可含外部權重），透過 ONNX Runtime 選擇 TensorRT、CUDA 或 Triton 執行提供者，並依據使用者選擇啟用 HTTP 或 ZMQ 傳輸層；ZMQ 路徑使用 msgpack 序列化 JPEG 圖像以實現低延遲機器人圖傳。CLI 提供 tether go（一鍵啟動服務與客戶端對話）、tether connect（查詢服務狀態）以及 chat（透過 subprocess 包裝真實 CLI 進行互動）等指令，所有資料流均經由標準輸出/錯誤流分離，以便 JSON 消費者與管線處理。若 README 未明確說明某些內部細節，則以上描述僅基於可見的安裝、匯出與服務說明進行合理推斷。
 
 ## README 摘錄（節選）
 ```text

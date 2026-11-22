@@ -11,18 +11,13 @@
 - 品質分數：8/10 [implementation_signals]
 
 ## 在做什麼
-In-browser AI model providers for the Vercel AI SDK, built to make client-side AI integration simpler and more consistent across vendors.
-In-browser AI model providers for the Vercel AI SDK, built to make client-side AI integration simpler and more consistent across vendors.
-
-主要語言：TypeScript；Topics：ai, ai-sdk, browser, browser-ai, built-in-ai, chrome-ai, edge, inference；Stars：208；License：NOASSERTION
+此專案提供適用於 Vercel AI SDK 的瀏覽器內 AI 模型提供者，讓開發者能在 Chrome/Edge、WebLLM、Transformers.js 或 wllama 等環境中直接執行大型語言模型，並自動在不支援時回退至伺服器端模型。目標使用者為希望簡化客戶端 AI 整合、減少自訂 Hook、UI 元件與狀態管理複雜度的前端與全棧開發者，核心問題在於瀏覽器推論的碎片化與備援機制的實作成本。
 
 ## 技術
-實作語言以 TypeScript 為主。
-從 topics 可見技術方向：ai, ai-sdk, browser, browser-ai, built-in-ai, chrome-ai, edge, inference。
-專案描述：In-browser AI model providers for the Vercel AI SDK, built to make client-side AI integration simpler and more consistent across vendors.
+專案以 TypeScript 編寫，透過四個 NPM 套件（@browser-ai/core、@browser-ai/web-llm、@browser-ai/transformers-js、@browser-ai/wllama）分別封裝 Chrome/Edge Prompt API、WebLLM、Transformers.js 與 wllama（llama.cpp）推論引擎。核心套件定義與 Vercel AI SDK 相容的提供者介面及自動備援邏輯，各引擎套件負載模型載入、WebGPU/WebAssembly 執行與結果回傳。全部為 ES 模組，可在現代瀏覽器中直接使用，無需額外伺服器。
 
 ## 架構
-README 未明確提供架構章節；依描述推斷此專案聚焦於：In-browser AI model providers for the Vercel AI SDK, built to make client-side AI integration simpler and more consistent across vendors.
+架構上，@browser-ai/core 作為統一入口，提供 createBrowserAIProvider 函式，依傳入的 provider 名稱（chrome、webllm、transformersjs、wllama）載入對應的實作套件。當應用透過 Vercel AI SDK 呼叫 generateText、streamText 等 API 時，SDK 會委派給 browser-ai 提供者，該提供者在主線程或 Web Worker 中初始化模型（若尚未載入），透過各自引擎進行推論，並將結果回傳給 SDK。若提供者因瀏覽器不支援或模型載入失敗，核心套件會自動切換至 AI SDK 的伺服器端模型作為備援。資料流程為：使用者輸入 → SDK → browser-ai 提供者 → 模型推論（在瀏覽器） → 輸出 → SDK 回傳給應用。由於 README 未詳細說明內部執行緒與快取機制，以上說明僅基於可見的套件結構與使用範例推斷。
 
 ## README 摘錄（節選）
 ```text

@@ -3,34 +3,21 @@
 - 日期：2026-11-18
 - URL：https://github.com/RUCAIBox/AutoMaster
 - 描述：
-- Stars：24  |  Forks：2  |  Language：Python
+- Stars：26  |  Forks：2  |  Language：Python
 - License：MIT
 - Topics：
-- 更新時間：2026-11-22T08:04:09+00:00
+- 更新時間：2026-11-22T12:31:46+00:00
 - 配對論文：http://arxiv.org/abs/2611.26510v1
 - 品質分數：9/10 [paper_paired, implementation_signals, stale_seed]
 
 ## 在做什麼
-▶ Watch the overview
-
-主要語言：Python；Stars：24；License：MIT
+AutoMaster 是一種自主後訓練框架，透過讓同一個模型同時扮演教師與學生的角色，自行分析教師的執行軌跡、設計行為技能（Skill）並挑選具有教學價值的示範，再以這些示範對學生進行監督微調，使學生在不依賴產生的技能情況下獲得更佳的任務表現。目標使用者為研究大型語言模型後訓練、強化學習與教師－學生範式的學者與工程師，核心問題在於僅看任務成功率無法保證示範的教學品質，AutoMaster 透過塑造教師行為來改進示範內容，從而提升學生的實際能力。
 
 ## 技術
-* Beyond task success: **autonomously shaping teacher behavior to improve what students learn**.*
-Video (#how-automaster-works) · Inside AutoMaster (#inside-automaster) · Results (#results-across-three-domains) · Insights (#key-insights) · Skills (skills/README.md) · Quick start (#quick-start) · Models & data (https://huggingface.co/collections/RUC-AIBOX/automaster) · Citation (#citation)
-(https://arxiv.org/pdf/2611.26510)
-(https://aweai-team.github.io/AutoMaster/)
-(https://huggingface.co/collections/RUC-AIBOX/automaster)
-(skills/README.md)
-(LICENSE)
-* If you find AutoMaster useful, give us a star ⭐ to support the project.*
-** AutoMaster** autonomously studies trajectories, designs skills, and selects demonstrations to make the same model a better teacher. **Skill-FT** guides Teacher rollouts with these skills and fine-tunes the Student on the resulting demonstrations. The Student is evaluated without generated skills.
-This release includes nine selected skills (skills/README.md) and inference recipes (recipes/inference/README.md) for three domains, powered by AweAgent (https://github.com/AweAI-Team/AweAgent).
+AutoMaster 以 Python 3.11+ 為主要實作語言，整合 AweAgent 框架負責代理與環境互動，使用 Qwen3.5 作為基礎語言模型，並透過 SGLang（支援 Tensor Parallelism）提供模型推論服務。技能以獨立的 SKILL.md 檔案描述，內部迴圈負責行為分析、技能設計與示範選取；外迴圈則以 Skill‑FT 進行監督微調，並在 Terminal‑Bench 2.1、BrowseComp、Doc2Repo 三個基準上評估學生表現。專案透過 Git submodule 管理第三方程式碼，採用 MIT 授權。
 
 ## 架構
-[code block omitted]
-
-相關論文/文件：https://arxiv.org/abs/2611.26510
+AutoMaster 的架構分為內迴圈與外迴圈兩層。內迴圈負責分析教師的執行軌跡、根據觀察結果設計與測試技能（Skill），並從技能引導的教師 rollout 中挑選具教學價值的示範資料。外迴圈則將這些示範送入 Skill‑FT 進行監督微調，得到更新的學生模型，並在基準測試上評估其表現；評估分數與執行追蹤作為回饋，供內迴圈在下一輪中調整技能設計與資料選取。資料流程為：軌跡 → 行為分析 → 技能生成 → 技能導向教師 rollout → 示範選取 → Skill‑FT 微調 → 學生評估 → 回饋 → 新一輪技能設計。模組包括 Teacher 模型、Skill 設計與選取模組、Skill‑FT 訓練模組、Student 模型以及評估基準。若僅憑 README，外迴圈的具體訓練超參數與資料流細節未完整揭露，屬於推斷範圍。
 
 ## README 摘錄（節選）
 ```text

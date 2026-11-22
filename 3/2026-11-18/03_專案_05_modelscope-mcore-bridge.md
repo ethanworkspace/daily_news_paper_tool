@@ -1,4 +1,4 @@
-# GitHub 專案 02：modelscope/mcore-bridge
+# GitHub 專案 05：modelscope/mcore-bridge
 
 - 日期：2026-11-18
 - URL：https://github.com/modelscope/mcore-bridge
@@ -11,18 +11,13 @@
 - 品質分數：9/10 [implementation_signals]
 
 ## 在做什麼
-MCore-Bridge: Providing Megatron-Core model definitions for state-of-the-art large models and making Megatron training as simple as Transformers — with support for 300+ large language models (Qwen3-Next, GLM-5.3, Deepseek-V4, MiniMax-2.7, ...) and 200+ multimodal large models (Qwen3.8, Qwen3-Omni, Gemma4, ...).
-MCore-Bridge: Providing Megatron-Core model definitions for state-of-the-art large models and making Megatron training as simple as Transformers — with support for 300+ large language models (Qwen3-Next, GLM-5.3, Deepseek-V4, MiniMax-2.7, ...) and 200+ multimodal large models (Qwen3.8, Qwen3-Omni, Gemma4, ...).
-
-主要語言：Python；Topics：deepseek-r1, deepseek-v4, gemma4, glm-5, gpt-oss, llama4, llm, lora；Stars：107；License：Apache-2.0
+MCore‑Bridge 是 ModelScope 社群基於 Megatron‑Core 構建的大語言模型與多模態大模型定義庫，旨在為 300+ 純文字及 200+ 多模態最先進模型提供 Megatron‑Core 相容的模型定義，使得訓練流程能像使用 Transformers 一樣簡單。適用於需要大規模預訓練或微調的研究者與工程師，解決 Megatron‑Core 使用門檻高、模型適配繁雜的問題。
 
 ## 技術
-實作語言以 Python 為主。
-從 topics 可見技術方向：deepseek-r1, deepseek-v4, gemma4, glm-5, gpt-oss, llama4, llm, lora。
-專案描述：MCore-Bridge: Providing Megatron-Core model definitions for state-of-the-art large models and making Megatron training as simple as Transformers — with support for 300+ large language models (Qwen3-Next, GLM-5.3, Deepseek-V4, MiniMax-2.7, ...) and 200+ multimodal large models (Qwen3.8, Qwen3-Omni, Gemma4, ...).
+該專案以 Python 實作，基於 Megatron‑Core 提供模型定義，並整合 Transformers、PEFT（LoRA）與 ms‑swift 生態，支援完整參數訓練與 LoRA 微調。利用 Megatron‑Core 的張量、管線、序列、上下文、專家及虛擬管線並行策略，並加入 FP8 訓練、MTP、序列免填充與打包等多模態能力。可在 A10/A100/H100/B200、RTX 系列及國產 Ascend NPU 上運行，並能直接載入/儲存 safetensors 權重，相容於 vLLM、SGLang 等推理框架。
 
 ## 架構
-README 未明確提供架構章節；依描述推斷此專案聚焦於：MCore-Bridge: Providing Megatron-Core model definitions for state-of-the-art large models and making Megatron training as simple as Transformers — with support for 300+ large language models (Qwen3-Next, GLM-5.3, Deepseek-V4, MiniMax-2.7, ...) and 200+ multimodal large models (Qwen3.8, Qwen3-Omni, Gemma4, ...).
+MCore‑Bridge 的核心是一組 Megatron‑Core 相容的模型定義檔案（model.py），使用者透過腳本（如 test.py）載入對應模型類別，結合 ms‑swift 的訓練配置或自行編寫訓練迴圈，經 torchrun 啟動多卡並行訓練。訓練過程中，資料經過 Tokenizer 後送入模型，模型依據張量/管線/序列等並行策略分配計算，搭配 Optimizer（如 AdamW）與可選的 PEFT LoRA 更新。訓練完成後，可直接儲存完整或 LoRA 權重為 safetensors，亦可匯出至 Transformers 格式以供 vLLM、SGLang 等推理框架使用。整個流程依賴 Megatron‑Core 的運行時環境（Transformer Engine、APEX 等）與 ModelScope 的模型權重下載。
 
 ## README 摘錄（節選）
 ```text
