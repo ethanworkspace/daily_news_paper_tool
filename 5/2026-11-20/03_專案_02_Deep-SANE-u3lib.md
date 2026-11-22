@@ -11,29 +11,13 @@
 - 品質分數：9/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-An AI-ready library for U(3) symmetry algebra, Wigner coupling & Racah recoupling coefficients
-# u3lib
-** u3lib** is an **AI-ready computational framework for U(3)/SU(3) algebra**:
-irreps and their invariants, canonical and physical bases, generators and their
-matrix elements, basis transformations, tensor-product decompositions, and the
-** Wigner coupling** and **Racah recoupling** coefficients — exposed through a
-C++ API, Python bindings, and an agent-driven skill layer over all of it.
-- **Paper:** Eur. Phys. J. Plus **139**, 704 (2024) (https://doi.org/10.1140/epjp/s13360-024-05501-8)
-- **Manual:** Manual (PDF) (https://deep-sane.github.io/u3lib/Manual.pdf), built automatically from the LaTeX source in `doc/Manual.tex`.
-> **Note for AI Agents:** Do not parse this human documentatio
-
-主要語言：C++；Topics：clebsch-gordan, elliott-symmetry, gelfand-tsetlin-patterns, lie-algebra, nuclear-physics, nuclear-shell-model, nuclear-structure, racah-coefficients；License：MIT
+u3lib 是一個專門為核物理與對稱性理論研究設計的 AI 就緒計算框架，提供完整的 U(3)/SU(3) 表示論工具，包括不可約表示及其不變量（如 Casimir 量）、正則與物理基底（Gelfand–Tsetlin 與 SO(3) 約簡基底）、生成算子的矩陣元、基底變換、克羅內克積分解以及 Wigner 耦合與 Racah 重耦合係數。透過 C++ API、Pybind11 Python 繫結以及內建的 AI agent 技能層，使核殼模型、對稱性適配計算以及自動化科研工作流能夠直接取得精確的代數與數值結果。
 
 ## 技術
-C++ API, Python bindings, and an agent-driven skill layer over all of it.
-> **Note for AI Agents:** Do not parse this human documentation. Refer directly to agents/AGENTS.md (agents/AGENTS.md) for repository guidance, first-time build/installation, runtime lifecycle, and task-specific skills.
-- **Python Extension (`make python`):** Builds `python/u3lib.so`. The interpreter is auto-detected — one that has `pybind11` and, for the tutorial, `ipykernel` — and can be overridden with `make python PYTHON=/path/to/python`. See `python/tutorial.ipynb` for interactive usage.
+u3lib 以現代 C++20 為核心語言，啟用 OpenMP 進行多執行緒運算，依賴 Eigen3 進行線性代數、Boost 提供通用演算法與容器、fmt 用於格式化輸出、libwignernj 處理 Wigner 3j 符號，並透過同儲存庫的 KraNS 零空間求解器進行基底變換。Python 繫結採用 pybind11 建置，提供 python/u3lib.so 模組，並附帶 Jupyter 教學筆記本。建置流程透過 make config 自動偵測或下載編譯相依項目，支援 Linux 與 macOS，並提供 regression test 與 AI agent 技能層（agents/）以自然語言驅動計算。
 
 ## 架構
-The framework covers the complete U(3) representation theory needed for symmetry-adapted structure calculations:
-- **Dependencies:** a C++20 compiler and OpenMP are required on the system; the library dependencies — Eigen3, Boost, fmt, libwignernj, and KraNS — are each either **detected**, **taken from a path** you give, or **fetched and built by `make config`**. Fetching needs `git`, `cmake`, and `curl` or `wget`. Linux and macOS are both supported. Full configuration options are in the Manual (PDF) (https://deep-sane.github.io/u3lib/Manual.pdf).
-
-相關論文/文件：https://doi.org/10.1140/epjp/s13360-024-05501-8
+u3lib 的原始碼結構分為六個主要目錄：include/ 提供單一頭檔 u3lib.h，封裝不可約表示、Gelfand–Tsetlin 與物理基底、生成算子矩陣元、基底變換、克羅內克積分解以及 Wigner 與 Racah 係數的 C++ 介面；src/ 包含示範驅動程式，編譯後放入 bin/；python/ 存放 pybind11 繫結原始碼、建置腳本與 Jupyter 教學筆記本，產出 python/u3lib.so；test/ 放置回歸測試與參考值；doc/ 保存 LaTeX 手冊來源，自動生成 PDF 並發布於 GitHub Pages；agents/ 則收錄 AI agent 技能檔案（AGENTS.md、install/SKILL.md 等），讓代理透過自然語言指令呼叫庫函式。執行時，使用者或 agent 呼叫 API，庫內部依序處理表示標籤、基底轉換、算子矩陣元、積分分解與耦合/重耦合計算，最後將結果回傳給呼叫端。
 
 ## README 摘錄（節選）
 ```text
