@@ -22,13 +22,13 @@
 Task success alone does not specify which behaviors post-training should reinforce. Even successful teacher trajectories can contain unsupported assumptions, unproductive repetition, or superficial verification. We propose Skill-FT (Skill-Guided Fine-Tuning), which uses natural-language skills to suppress undesirable habits and elicit underrepresented effective behaviors during teacher rollouts, then fine-tunes a target model on the resulting trajectories. We introduce AutoMaster, an autonomous post-training system in which an LLM agent develops these interventions through trajectory analysis, skill design, data selection, and feedback from rollouts and target-model evaluation. Across Terminal, Search, and software engineering tasks with 4B and 9B target models, AutoMaster improves mean performance over Vanilla SFT on successful unguided teacher trajectories by 1.42-8.99 percentage points, with the teacher, task pool, training set size, and SFT recipe held fixed. Together with the ablations and trajectory analyses, these results suggest that behavioral shaping can make a fixed model a more effective teacher. We further find that retaining skill instructions during SFT yields higher mean performance than removing them across all six settings, despite their absence at evaluation and identical supervised outputs. These findings suggest that preserving skill context as part of a training demonstration can support better behavioral internalization.
 
 ## 背景與目的
-論文指出任務成功並不代表教師軌跡中的行為都值得強化，成功軌跡可能包含無根據假設、無效重複或表面驗證。因此提出 Skill-FT 利用自然語言技能引導教師行為，並構建 AutoMaster 自主後訓練系統，透過技能設計、軌跡分析與學生模型評估回饋，使固定教師模型成為更有效的教師。
+論文指出僅靠任務成功無法指定後訓練應強化的行為，成功教師軌跡仍可能包含未經支持的假設、無效重複或表面驗證。因此提出 Skill-FT 與 AutoMaster，透過自然語言技能引導教師行為，並自主設計、選擇軌跡進行微調，以提升固定模型作為教師的效能。
 
 ## 方法
-AutoMaster 採雙層迴圈：內層由 LLM 代理分析任務與初始軌跡，設計自然語言技能附加於系統提示，進行試驗性教師推演並篩選優質軌跡；外層以固定教師、任務池、訓練集大小與 SFT 配方，在保留技能指令的情況下對學生模型（Qwen3.5-4B/9B）進行監督微調，評估時不提供技能。代理根據學生評分與軌跡決定下一輪技能修訂與資料選擇。
+Skill-FT 將自然語言技能附加至系統提示，引導教師在推演時抑制不良習慣、誘發未充分展現的有效行為。AutoMaster 由 LLM 代理執行雙層迴圈：內層設計技能、進行小規模試推演並修正，篩選具價值軌跡；外層以保留技能指令的軌跡對學生模型進行 SFT，評估時不提供技能，並依學生表現決定下一輪干預。輸入為固定教師、任務池與初始學生檢查點。
 
 ## 結果
-在 Terminal、Search、軟體工程三領域、兩種模型尺寸共六組實驗中，AutoMaster 相較 Vanilla SFT 平均提升 1.42–8.99 個百分點（±1 SD，三次評估）。消融實驗顯示保留技能指令訓練優於移除，且教師與學生模型固定時，行為塑形能釋放額外後訓練空間。摘錄未提供可驗證的具體數據集規模或訓練步數。
+在 Terminal、Search、軟體工程三類任務上，使用 Qwen3.5-4B/9B 作為學生模型，AutoMaster 相較 Vanilla SFT 平均提升 1.42–8.99 個百分點（教師、任務池、訓練集大小、SFT 配方固定）。保留技能指令進行 SFT 在所有六種設定下均優於移除指令，顯示技能上下文有助行為內化。
 
 ## 限制與展望
-為 arXiv 預印本，未經同行審查；實驗僅涵蓋三類任務與兩種模型，教師模型未揭露；自主代理的技能設計泛化能力未驗證；評估僅三次運行，統計功效有限；未討論計算成本、擴展性及與其他自主後訓練方法的比較。
+實驗僅涵蓋三個基準與兩種模型規模，教師模型固定未探討不同教師效果；自主代理的技能設計泛化性、計算成本與更廣泛任務的表現仍待驗證。

@@ -22,13 +22,13 @@
 u3lib is a C++ library for U(3)/SU(3) representation-theory calculations in nuclear structure and related applications. It evaluates Wigner coupling and Racah recoupling coefficients using the procedure proposed in 2024 by Dang et al., which avoids the binomial coefficients and alternating sums used in earlier formulations. The library also provides irreducible representations (irreps), dimensions, Casimir invariants, conjugation, and tensor-product decompositions with outer multiplicities. It supports the canonical Gelfand-Tsetlin basis and the physical SU(3) $\supset$ SO(3) basis, including inner multiplicities and the transformation between the two bases. Generator routines return matrix elements in the canonical basis and reduced matrix elements in the physical basis. Python bindings mirror the C++ API. Domain skills supplied with the repository allow an AI assistant with code-execution access to call these routines from natural-language requests.
 
 ## 背景與目的
-u3lib 是一個 C++ 函式庫，針對核結構等應用中的 U(3)/SU(3) 表示理論計算，提供 Wigner 耦合與 Racah 重耦合係數的快速、準確、可重現評估。採用 Dang 等人 2024 年提出的數值零空間方法，避免傳統超幾何函數的數值不穩定。同時支援標準 Gelfand-Tsetlin 基底與物理 SU(3)⊃SO(3) 基底、不可約表示、Casimir 不變量、張量積分解、生成元矩陣元與基底轉換，並提供 Python 綁定與 AI 代理技能目錄，支援自然語言呼叫。
+u3lib 是一個針對核結構及相關應用中 U(3)/SU(3) 表現理論計算的 C++ 函式庫。它採用 Dang 等人 2024 年提出的方法，避免早期公式中的二項式係數與交替求和，計算 Wigner 耦合係數與 Racah 重耦合係數。庫提供不可約表現、維度、Casimir 不變量、共軛、張量積分解與外部重複度，支援標準 Gelfand-Tsetlin 基底與物理 SU(3)⊃SO(3) 基底，含內部重複度與基底轉換，並提供產生器矩陣元、Python 綁定及 AI 可呼叫的領域技能。
 
 ## 方法
-核心機制：從最高權重 U(3)⊃U(2)⊃U(1) 完整耦合係數出發，將其作為標準升算子的正交零空間求得，再由對應降算子傳播得到 U(3)⊃U(2) 約化耦合與重耦合係數；物理 SU(3)⊃SO(3) 係數則經由物理到標準基底轉換獲得，該轉換同樣為物理升算子 L+ 的正交零空間。大型稀疏矩陣採用專用迭代零空間求解器 KraNS，小型或塊狀情況回退至稠密 QR 分解。程式庫為純標頭 C++20，依賴 Eigen3、Boost、OpenMP、fmt、libwignernj、KraNS；Python 綁定透過 pybind11 一對一映射 C++ API。提供不可約表示類別、Gelfand 態、基底枚舉、外部/內部重複度、耦合/重耦合係數查表、生成元約化矩陣元、基底轉換等功能，並具備初始化/終結生命週期管理與執行緒安全機制。
+核心機制利用數值零空間求解器 (KraNS) 從群的升算子作用建構係數，避免超幾何函數與大階乘的數值不穩定。U(3)⊃U(2) 歸約耦合與重耦合係數由最高權 U(3)⊃U(2)⊃U(1) 完整耦合係數經正交零空間獲得，再由降算子傳播；物理 SU(3)⊃SO(3) 係數則經由物理到標準基底轉換 (L+ 零空間) 得到。庫為純標頭 C++20，依賴 Eigen3、Boost、OpenMP、fmt、libwignernj、KraNS，並以 pybind11 提供 Python 介面，支援多執行緒與生命週期管理。
 
 ## 結果
-摘錄未提供可驗證數字。論文展示了 u3lib 的完整架構與介面：涵蓋不可約表示、Casimir 不變量、Gelfand 基底與物理基底枚舉、張量積分解（外部重複度）、U(3)⊃U(2) 與 SU(3)⊃SO(3) 約化耦合係數、6-U(3) 與 9-U(3) 重耦合係數、物理到標準基底轉換、生成元 L、Q 的約化矩陣元。Python 綁定完整鏡射 C++ API，並提供 AI 代理技能目錄，使具備程式執行權限的大型語言模型能從自然語言請求呼叫例程。文中並未給出效能基準、數值精度比較或具體計算規模的實驗數據。
+摘錄未提供可驗證數字。可見結論為：u3lib 整合了 U(3)/SU(3) 代數所需的完整計算組件，包含不可約表現、耦合/重耦合係數、基底枚舉、產生器矩陣元與基底轉換，並提供一對一映射的 Python 綁定。其 AI 就緒介面透過領域技能目錄讓大型語言模型能從自然語言呼叫例程，屬於 DeepSANE 生態系統一部分，旨在降低整合複雜度並提升任務完成率。
 
 ## 限制與展望
-作為預印本，尚未經同行評審。文中未詳細討論數值穩定性極限、極大表示下的記憶體/時間複雜度、與現有 Fortran 程式庫的量化比較。依賴多個外部庫（Eigen3、Boost、libwignernj、KraNS）可能增加部署複雜度；多執行緒生命週期管理需謹慎避免共享後端衝突。未來展望包括效能基準測試、擴展至其他對稱群、更完整的驗證套件與文件範例。
+作為預印本尚未經同行評審，效能基準與數值精度驗證細節未在摘錄中呈現。庫專注於 U(3)/SU(3) 對稱，擴展至其他群論需另行開發。AI 代理技能目錄的實際易用性與泛化能力仍待更大規模驗證。外部依賴 (Eigen3、KraNS 等) 可能增加部署複雜度，且共享後端生命週期管理需謹慎處理以免運行時錯誤。
