@@ -3,10 +3,10 @@
 - 日期：2026-10-18
 - URL：https://github.com/alibaba/MNN
 - 描述：MNN: A blazing-fast, lightweight inference engine battle-tested by Alibaba, powering high-performance on-device LLMs and Edge AI.
-- Stars：16590  |  Forks：2545  |  Language：C++
+- Stars：16592  |  Forks：2545  |  Language：C++
 - License：Apache-2.0
 - Topics：arm, convolution, deep-learning, embedded-devices, llm, machine-learning, ml, mnn, transformer, vulkan, winograd-algorithm
-- 更新時間：2026-11-22T04:45:09+00:00
+- 更新時間：2026-11-22T07:56:04+00:00
 - 配對論文：https://arxiv.org/abs/2611.12311
 - 品質分數：10/10 [paper_paired, implementation_signals, stale_seed]
 
@@ -16,7 +16,7 @@ MNN: A blazing-fast, lightweight inference engine battle-tested by Alibaba, powe
 - Android platform: core so size is about 800KB (armv7a - c++_shared).
 - Using MNN_BUILD_MINI can reduce package size by about 25%, with a limit of fixed model input size
 
-主要語言：C++；Topics：arm, convolution, deep-learning, embedded-devices, llm, machine-learning, ml, mnn；Stars：16590；License：Apache-2.0
+主要語言：C++；Topics：arm, convolution, deep-learning, embedded-devices, llm, machine-learning, ml, mnn；Stars：16592；License：Apache-2.0
 
 ## 技術
 - [2026/11/04] We released **MNN-Pocket-0.3B**, a **300M-parameter mobile-app-native language model** for Chinese/English instruction following. The MNN team co-designed its architecture, training methods, and inference engine around smartphone apps' task requirements and resource budgets. It supports **32K context**; the INT4 (W4A16) QAT MNN build occupies only **173 MB** and achieves **350 tok/s** decode throughput in tests on iPhone 18 Pro. Released under **Apache 2.0**.

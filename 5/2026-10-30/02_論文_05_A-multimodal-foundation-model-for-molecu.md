@@ -12,9 +12,9 @@
 - 影響指標：N/A
 - 影響指標來源：
 - 引用數：0
-- 解析程度：abstract / abstract
-- 全文來源：
-- 全文字數：1265（pages=0, ocr_pages=0）
+- 解析程度：fulltext / html
+- 全文來源：https://pubmed.ncbi.nlm.nih.gov/43064800/
+- 全文字數：2379（pages=0, ocr_pages=0）
 - GitHub/Code：
 - 配對 Repo：
 
