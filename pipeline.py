@@ -146,9 +146,16 @@ class DailyPipeline:
                 msg = f"seed_repo_fetch_failed={len(seed_fetch_errors)}/{len(seed_status)}"
                 report["warnings"].append(msg)
                 manifest.warning(msg)
+            auth_blocked = bool(repo_sel.report.get("github_auth_blocked"))
+            report["github_auth_blocked"] = auth_blocked
+            if auth_blocked:
+                msg = f"github_auth_blocked=true seed_401_403={repo_sel.report.get('github_auth_blocked_count', 0)}"
+                report["warnings"].append(msg)
+                manifest.warning(msg)
             if not GITHUB_TOKEN and seed_fetch_errors:
                 report["warnings"].append("github_auth_blocked: missing GITHUB_TOKEN; seed repo fetch may be rate-limited")
                 manifest.warning("github_auth_blocked: missing GITHUB_TOKEN")
+                report["github_auth_blocked"] = True
 
             with manifest.stage("pairing"):
                 pairing = link_papers_to_repos(paper_sel.items, repo_sel.items)

@@ -341,7 +341,7 @@ class RepoEngine:
                     seed_error = getattr(self.sources, "last_error", "") or "fetch_failed_or_not_found"
             except Exception as exc:  # noqa: BLE001
                 seed_error = f"{type(exc).__name__}"
-            entry = source_stats.setdefault("github_seed", {"found": 0, "fetched": 0, "errors": 0})
+            entry = source_stats.setdefault("github_seed", {"found": 0, "fetched": 0, "errors": 0, "status_codes": []})
             status = {"repo": full_name, "paper_url": (seed_meta.get(full_name.lower()) or {}).get("paper_url", "")}
             if repo:
                 raw.append(repo)
@@ -352,6 +352,12 @@ class RepoEngine:
                 entry["errors"] += 1
                 status["fetched"] = False
                 status["error"] = seed_error or "fetch_failed_or_not_found"
+                st = getattr(self.sources, "last_status", None)
+                if st is not None:
+                    status["status"] = st
+                    codes = entry.setdefault("status_codes", [])
+                    if st not in codes:
+                        codes.append(st)
             seed_status.append(status)
 
         # 3) 把論文 seed 資訊貼到所有候選（含搜尋結果），確保配對優先
@@ -411,11 +417,17 @@ class RepoEngine:
         }
         selection.rejected = rejected
         missing_seed_repos = [s for s in seed_status if not s.get("fetched")]
+        auth_blocked = [s for s in missing_seed_repos if s.get("status") in {401, 403} or "http_401" in str(s.get("error","")) or "http_403" in str(s.get("error",""))]
         if missing_seed_repos and selection.report.get("paired", 0) < self.min_paired:
+            reason = "GitHub auth/rate limit、repo 不存在或名稱變更"
+            if auth_blocked and len(auth_blocked) == len(missing_seed_repos):
+                reason = "GitHub token 無效/SSO 未授權或 rate limit（已嘗試匿名 fallback）"
             selection.report["seed_warning"] = (
-                f"論文種子 repo 未完整抓取：{len(missing_seed_repos)}/{len(seed_status)}；"
-                "可能是 GitHub rate limit、repo 不存在或名稱變更"
+                f"論文種子 repo 未完整抓取：{len(missing_seed_repos)}/{len(seed_status)}；{reason}"
             )
+        if auth_blocked:
+            selection.report["github_auth_blocked"] = True
+            selection.report["github_auth_blocked_count"] = len(auth_blocked)
         if source_stats.get("github_seed", {}).get("error") == "auth_fallback:200":
             selection.report["github_auth_fallback"] = True
 

@@ -43,6 +43,7 @@ class RepoSources:
         self.token = token if token is not None else GITHUB_TOKEN
         self.robots_check = robots_check
         self.last_error = ""
+        self.last_status: int | None = None
 
     def _headers(self, accept: str = "application/vnd.github+json") -> dict[str, str]:
         headers = {
@@ -57,7 +58,7 @@ class RepoSources:
     def _get_json(self, url: str, stats: SourceStats, *, check_robots: bool = False) -> dict | list | None:
         headers = self._headers()
         result = self.fetcher.fetch(url, check_robots=check_robots, headers=headers)
-        # Fallback: env token may be expired/invalid; retry once without auth for public data.
+        # Fallback: env token may be expired/invalid/SSO-blocked; retry once without auth for public data.
         if not result.ok and self.token and result.status in {401, 403}:
             anon_headers = dict(headers)
             anon_headers.pop("Authorization", None)
@@ -66,21 +67,33 @@ class RepoSources:
                 result = retry
                 stats.error = f"auth_fallback:{result.status or 200}"
             else:
+                # keep original 401/403 as primary cause; add secondary context
                 if retry.status in {403, 429} or "rate limit" in str(retry.error or "").lower():
-                    stats.error = (stats.error or "") + "|github_rate_limited"
+                    stats.error = f"http_{result.status}|anon_rate_limited"
+                else:
+                    stats.error = f"http_{result.status}|anon_{retry.status or 'error'}"
+                self.last_status = result.status
+                self.last_error = stats.error
+                stats.errors += 1
+                return None
         if (not result.ok) and (result.status in {403, 429} or "rate limit" in str(result.error or "").lower()):
-            stats.error = (stats.error or "") + "|github_rate_limited"
+            stats.error = (stats.error or "") + ("|" if stats.error else "") + "github_rate_limited"
         if not result.ok:
             stats.errors += 1
-            stats.error = result.error or f"http_{result.status}"
-            self.last_error = stats.error
+            err = stats.error or result.error or f"http_{result.status}"
+            stats.error = err
+            self.last_error = err
+            self.last_status = result.status
             return None
         stats.fetched += 1
+        self.last_status = result.status
+        self.last_error = ""
         try:
             return json.loads(result.content.decode("utf-8", errors="replace"))
         except Exception:  # noqa: BLE001
             stats.errors += 1
             stats.error = "json_decode_error"
+            self.last_error = stats.error
             return None
 
     def search_repos(
