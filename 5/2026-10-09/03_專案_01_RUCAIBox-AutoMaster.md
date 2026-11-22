@@ -3,17 +3,17 @@
 - 日期：2026-10-09
 - URL：https://github.com/RUCAIBox/AutoMaster
 - 描述：
-- Stars：23  |  Forks：2  |  Language：Python
+- Stars：24  |  Forks：2  |  Language：Python
 - License：MIT
 - Topics：
-- 更新時間：2026-11-21T18:34:28+00:00
+- 更新時間：2026-11-22T08:04:09+00:00
 - 配對論文：http://arxiv.org/abs/2611.26510v1
 - 品質分數：9/10 [paper_paired, implementation_signals, stale_seed]
 
 ## 在做什麼
 ▶ Watch the overview
 
-主要語言：Python；Stars：23；License：MIT
+主要語言：Python；Stars：24；License：MIT
 
 ## 技術
 * Beyond task success: **autonomously shaping teacher behavior to improve what students learn**.*
