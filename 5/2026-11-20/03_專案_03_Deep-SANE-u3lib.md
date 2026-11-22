@@ -1,4 +1,4 @@
-# GitHub 專案 02：Deep-SANE/u3lib
+# GitHub 專案 03：Deep-SANE/u3lib
 
 - 日期：2026-11-20
 - URL：https://github.com/Deep-SANE/u3lib
@@ -11,13 +11,13 @@
 - 品質分數：9/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-u3lib 是一個專門為核物理與對稱性理論研究設計的 AI 就緒計算框架，提供完整的 U(3)/SU(3) 表示論工具，包括不可約表示及其不變量（如 Casimir 量）、正則與物理基底（Gelfand–Tsetlin 與 SO(3) 約簡基底）、生成算子的矩陣元、基底變換、克羅內克積分解以及 Wigner 耦合與 Racah 重耦合係數。透過 C++ API、Pybind11 Python 繫結以及內建的 AI agent 技能層，使核殼模型、對稱性適配計算以及自動化科研工作流能夠直接取得精確的代數與數值結果。
+u3lib 提供 U(3)/SU(3) 對稱性代數的完整計算框架，包含不可約表示、不變量、正則與物理基底、生成元矩陣元、基底變換、克羅內克積分解以及 Wigner 耦合與 Racah 重耦合係數，透過 C++ API、Python 綁定與 AI 代理技能層，服務於需要對稱性適配核結構計算的理論物理研究者與自動化工作流。
 
 ## 技術
-u3lib 以現代 C++20 為核心語言，啟用 OpenMP 進行多執行緒運算，依賴 Eigen3 進行線性代數、Boost 提供通用演算法與容器、fmt 用於格式化輸出、libwignernj 處理 Wigner 3j 符號，並透過同儲存庫的 KraNS 零空間求解器進行基底變換。Python 繫結採用 pybind11 建置，提供 python/u3lib.so 模組，並附帶 Jupyter 教學筆記本。建置流程透過 make config 自動偵測或下載編譯相依項目，支援 Linux 與 macOS，並提供 regression test 與 AI agent 技能層（agents/）以自然語言驅動計算。
+u3lib 以現代 C++20 為核心，使用 OpenMP 進行多執行緒加速，依賴 Eigen3 進行線性代數、Boost 與 fmt 進行工具函式與格式化，利用 libwignernj 處理 Wigner 3j 符號，並透過 KraNS 零空間求解器進行依賴建置；Python 綁定透過 pybind11 建置，提供 make config 與 make 編譯流程，支援 Linux 與 macOS，並透過 agents/ 目錄提供 AI 代理技能腳本。
 
 ## 架構
-u3lib 的原始碼結構分為六個主要目錄：include/ 提供單一頭檔 u3lib.h，封裝不可約表示、Gelfand–Tsetlin 與物理基底、生成算子矩陣元、基底變換、克羅內克積分解以及 Wigner 與 Racah 係數的 C++ 介面；src/ 包含示範驅動程式，編譯後放入 bin/；python/ 存放 pybind11 繫結原始碼、建置腳本與 Jupyter 教學筆記本，產出 python/u3lib.so；test/ 放置回歸測試與參考值；doc/ 保存 LaTeX 手冊來源，自動生成 PDF 並發布於 GitHub Pages；agents/ 則收錄 AI agent 技能檔案（AGENTS.md、install/SKILL.md 等），讓代理透過自然語言指令呼叫庫函式。執行時，使用者或 agent 呼叫 API，庫內部依序處理表示標籤、基底轉換、算子矩陣元、積分分解與耦合/重耦合計算，最後將結果回傳給呼叫端。
+u3lib 的原始碼分為 include/（標頭檔，提供 U(3) 表示、基底、生成元、耦合與重耦合介面）、src/（範例驅動程式，編譯後放入 bin/）、python/（pybind11 綁定與教學 Notebook）、test/（回歸測試與參考表）、doc/（LaTeX 手冊來源，自動產出 PDF）與 agents/（AI 代理技能說明與安裝腳本）。使用者透過 C++ 呼叫或 Python 介面存取不可約表示與不變量，進而取得 Gelfand–Tsetlin 或 SO(3) 降底基底、生成元矩陣元，進行基底變換、克羅內克積分解與 Wigner/Racah 係數計算；AI 代理則依循 agents/AGENTS.md 的技能腳本自動執行 make config、make、make test 等步驟，完成環境建置與驗證。
 
 ## README 摘錄（節選）
 ```text

@@ -1,23 +1,23 @@
-# GitHub 專案 01：RUCAIBox/AutoMaster
+# GitHub 專案 02：RUCAIBox/AutoMaster
 
 - 日期：2026-11-20
 - URL：https://github.com/RUCAIBox/AutoMaster
 - 描述：
-- Stars：24  |  Forks：2  |  Language：Python
+- Stars：25  |  Forks：2  |  Language：Python
 - License：MIT
 - Topics：
-- 更新時間：2026-11-22T08:04:09+00:00
+- 更新時間：2026-11-22T11:19:18+00:00
 - 配對論文：http://arxiv.org/abs/2611.26510v1
 - 品質分數：9/10 [paper_paired, implementation_signals, stale_seed]
 
 ## 在做什麼
-AutoMaster 是一種自主後訓練框架，讓同一個大型語言模型同時扮演 Teacher 與 Student 的角色，透過設計與選擇技能（Skill）來改進 Teacher 的示範行為，從而產出更具教學價值的訓練資料，提升 Student 在終端任務、網頁搜尋與文件到倉庫三個領域的表現。目標使用者為希望在不增加模型規模或外部資料的前提下，提升已有模型教學能力的研究者與工程師；核心問題在於僅靠任務成功率無法保證示範品質，導致訓練時可能強化不良探索或假設。
+AutoMaster 是一種自主後訓練框架，透過讓同一個模型同時擔任教師與學生，自行設計技能（Skill）並篩選示範軌跡，以提升教師的示範品質，進而強化學生的表現。其目標使用者為研究 LLM 教學與微調的學者與工作者，核心問題在於僅看任務成功率無法判斷示範是否真的傳遞有用行為，AutoMaster 透過行為塑造與示範選擇解決此問題。
 
 ## 技術
-AutoMaster 以 Python 3.11+ 為主要實作語言，依賴 AweAgent 作為智能體框架，並以 Qwen3.5 為基礎模型（可透過 SGLang 或 OpenAI‑compatible 端點進行推論）。其工作流程包括：技能設計（Skill‑FT）產出 Teacher 行為規則、使用這些規則產生示範軌跡、選擇高價值示範作為訓練資料、對 Student 進行監督微調（SFT），最後根據 Student 的分數與執行追蹤回饋來迭代優化技能。資料流經過技能庫（skills/）、推論配方（recipes/inference/）與評估腳本（recipes/inference/README.md）等模組。
+專案主要使用 Python 3.11+，依賴 AweAgent 實現代理行為，基礎模型採用 Qwen3.5，透過 SGLang 服務檢查點（支援張量平行）。核心技能（Skill）以獨立資料夾組織，每個含 SKILL.md 入口，並搭配 Skill‑FT 進行教師導向的推演與學生微調。內部流程包含內部迴圈（行為分析、技能設計與示範選擇）與外部迴圈（學生訓練、評估與回饋），所有程式碼採用 MIT 授權，AweAgent 為 Apache-2.0。
 
 ## 架構
-AutoMaster 的架構分為內圈與外圈兩個迴圈。內圈負責『塑造示範』：讀取當前技能集合，分析 Teacher 的執行軌跡、設計或測試新技能、選擇適合當前任務子集的示範資料。外圈負責『從 Student 學習』：使用內圈產出的示範對 Student 進行 SFT，評估其在三個基準（Terminal‑Bench 2.1、BrowseComp、Doc2Repo）上的分數與執行追蹤，將這些回饋作為下一輪技能設計的依據。每個技能為獨立資料夾，包含 SKILL.md 入口與相關實作腳本；推論環境透過 SGLang 啟動模型檢查點，評估腳本讀取任務配置（terminal.yaml、browsecomp.yaml、doc2repo.yaml）並執行指定數量的 rollout。由於 README 未提供詳細的類別圖或元件接口說明，以下架構描述僅基於文本中所述的迴圈與模組結構進行推斷。
+AutoMaster 的架構分為兩個主要迴圈：內部迴圈負責分析教師軌跡、設計並測試技能、選擇有價值的示範；外部迴圈則以這些示範微調學生模型，評估學生表現後將其分數與執行痕跡回饋給內部迴圈以改進後續技能設計與資料選擇。具體流程為：教師模型產生軌跡 → 行為分析模塊產生技能候選 → 技能測試與示範選擇 → 以技能引導教師產生新示範 → 使用 Skill‑FT 對學生進行監督微調 → 在基準（Terminal‑Bench 2.1、BrowseComp、Doc2Repo）上評估學生 → 依評估結果更新技能與示範選擇策略，週期性重複。此設計依賴 AweAgent 實現代理的探索與決策，若 README 未明確說明某些細節，則僅根據上述描述進行推斷。
 
 ## README 摘錄（節選）
 ```text

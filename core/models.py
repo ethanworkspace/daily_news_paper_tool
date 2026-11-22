@@ -266,23 +266,23 @@ class TechArchItem:
 
     def validate(self, *, min_application_chars: int = 0) -> "TechArchItem":
         self.name = _text("tech.name", self.name, max_len=200)
-        self.principle = _text("tech.principle", self.principle, min_len=min_application_chars)
+        self.principle = _text("tech.principle", self.principle, min_len=min_application_chars, max_len=6000)
         self.applications_maritime = _text(
-            "tech.applications_maritime", self.applications_maritime, min_len=min_application_chars
+            "tech.applications_maritime", self.applications_maritime, min_len=min_application_chars, max_len=6000
         )
         self.applications_medical = _text(
-            "tech.applications_medical", self.applications_medical, min_len=min_application_chars
+            "tech.applications_medical", self.applications_medical, min_len=min_application_chars, max_len=6000
         )
         if not isinstance(self.reference_urls, list) or not self.reference_urls:
             _fail("tech.reference_urls", "至少需要一個參考連結")
         self.reference_urls = [
             _url(f"tech.reference_urls[{i}]", u) for i, u in enumerate(self.reference_urls)
         ]
-        self.rationale = _text("tech.rationale", self.rationale, required=False, max_len=1000)
+        self.rationale = _text("tech.rationale", self.rationale, required=False, max_len=1200)
         self.applications_general = _text(
-            "tech.applications_general", self.applications_general, required=False, max_len=4000
+            "tech.applications_general", self.applications_general, required=False, max_len=6000
         )
-        self.limitations = _text("tech.limitations", self.limitations, required=False, max_len=4000)
+        self.limitations = _text("tech.limitations", self.limitations, required=False, max_len=6000)
         for name in ("related_news", "related_papers", "related_repos"):
             values = getattr(self, name)
             if not isinstance(values, list):

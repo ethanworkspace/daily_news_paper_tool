@@ -1,4 +1,4 @@
-# GitHub 專案 03：alibaba/MNN
+# GitHub 專案 04：alibaba/MNN
 
 - 日期：2026-11-20
 - URL：https://github.com/alibaba/MNN
@@ -11,13 +11,13 @@
 - 品質分數：10/10 [paper_paired, implementation_signals, stale_seed]
 
 ## 在做什麼
-MNN 是由阿里巴巴開發的輕量級、高效能深度學習推理引擎，專注於在行動電話、個人電腦與嵌入式裝置上本地運行大型語言模型（LLM）與擴散模型等 AI 工作負載。它支援多種模型格式（TensorFlow、Caffe、ONNX、TorchScript），並提供跨平台的 CPU、GPU 與 NPU 後端，使開發者能在資源受限的設備上實現低延遲、高吞吐的模型推理，同時也提供訓練、模型壓縮與轉換工具，目標使用者為需要在終端設備部署 AI 模型的移動應用開發者、嵌入式系統工程師以及阿里巴巴內部各業務線。
+MNN 是由阿里巴巴開發的輕量級、高效能的深度學習推理引擎，專注於在行動裝置、嵌入式設備及邊緣節端上運行各種神經網路模型，特別是大型語言模型（LLM）與擴散模型。它提供模型轉換、量化、壓縮及多後端（CPU、GPU、NPU）支援，目標使用者為行動應用開發者、邊緣 AI 工程師以及需要在設備端低延遲、低資源併發執行 AI 模型的研究與產品團隊，解決模型在資源受限環境下難以即時推送的問題。
 
 ## 技術
-MNN 以 C++ 實作核心運算引擎，支援 TensorFlow、Caffe、ONNX、TorchScript 模型格式的轉換與執行。在 CPU 端利用 ARM/x86 SIMD、Winograd 卷積及手寫組合語言核心進行 FP16、INT8、INT4 量化運算；GPU 端透過 Metal、OpenCL、Vulkan 與 CUDA 提供硬體加速；NPU 端則對應 CoreML、Hexagon、NeuroPilot 等平台。此外提供 MNN-Converter、MNN-Compress、MNN-Express（支援控制流與通用運算）、MNN-CV（輕量級影像處理）與 MNN-Train 訓練工具，並附有 Python API 讓開發者免除直接撰寫 C++。
+MNN 以 C++ 實作，支援 TensorFlow、Caffe、ONNX、TorchScript 等模型格式的轉換與優化。其核心引擎提供 CPU 後端（ARMv7/ARMv8/ARMv9、x86/x64 含 SSE4.1、AVX2、AVX512 指令優化、Winograd 卷積）、GPU 後端（Metal、OpenCL、Vulkan、CUDA）以及 NPU/Hexagon 等專用加速器。引擎內建 FP16、INT8、INT4 量化路徑，可透過 MNN‑Compress 進行模型壓縮與加速。此外，MNN 提供 MNN‑Converter、MNN‑Express（支援控制流）、MNN‑CV（輕量級圖像處理）與 MNN‑Train 等工具鏈，以及專門的 LLM 與擴散模型運行時（MNN‑LLM、MNN‑Diffusion）。
 
 ## 架構
-MNN 的架構分為前端模型轉換層、核心執行階段與後端硬體加速層。使用者先透過 MNN-Converter 將外部模型轉為 MNN 內部格式；運行時，MNN 根據裝置偵測結果選擇適當的後端（CPU、GPU 或 NPU），並載入對應的核心函式庫（如 ARM 組合語言卷積、Metal/Vulkan 着色器或 Hexagon DSP 內核）。計算流程中，張量資料經過圖形優化後依序經過各算子的內核，支援動態形狀、多輸入/輸出以及控制流；針對 LLM，MNN-LLM 進一步管理 KV 快取與 token 生成 loop；針對擴散模型，則透過 MNN-Diffusion 進行去噪步驟的迭代執行。整體設計強調模組化與零依賴，以便在行動與嵌入式平台上快速部署。
+MNN 的架構分為前端模型轉換與優化層、運行時執行層與後端硬體抽象層三大部分。模型首先經由 MNN‑Converter 轉換為 MNN 內部的靜態圖，並透過圖優化（如算子融合、常數折疊、Winograd 替換）得到經過優化的模型檔案。運行時則載入該模型，根據目標裝置偵測到的可用後端（CPU、GPU、NPU）選擇對應的執行器，將圖分解為基本算子並調用各後端的優化核心（例如 ARM 彙編、Metal/Vulkan 着色器、CUDA Tensor Core）。資料流由輸入 Tensor 經過各算子的計算產出中間特徵圖，最終產出預測結果。若需控制流（如迴圈、條件分支），MNN‑Express 提供圖層的程式化描述。整體設計強調低依賴、易於嵌入，核心函式庫在 Android 約 800KB、iOS 約 12MB，可透過 MNN_BUILD_MINI 進一步縮小。
 
 ## README 摘錄（節選）
 ```text

@@ -1,4 +1,4 @@
-# GitHub 專案 04：whitecircle/halo
+# GitHub 專案 05：whitecircle/halo
 
 - 日期：2026-11-20
 - URL：https://github.com/whitecircle/halo
@@ -11,13 +11,13 @@
 - 品質分數：10/10 [paper_paired, implementation_signals, stale_seed]
 
 ## 在做什麼
-Halo 是一個由 White Circle 開發的開源框架，專門用於訓練大型語言與多模態模型。它支援預訓練、監督微調（SFT）、偏好優化、完全非同步多輪強化學習等多種訓練方式，並可在單顆 GPU 或多節點分散式環境中運行，提供統一的程式碼基礎來處理不同的平行ism與優化技術。
+Halo 是由 White Circle 開源的訓練框架，專門用於大型語言與多模態模型的預訓練、指令微調（SFT）、偏好優化以及完全非同步多輪強化學習。它能直接訓練 Hugging Face 模型，支援從單顆 GPU 到多節點的分散式訓練，並提供專家平行（EP）、上下文平行（CP）、張量平行（TP）、專家‑上下文平行（ETP）與管線平行（PP）等多種平行策略，目標使用者為需要靈活、統一基礎設施來進行 LLM 研究與開發的研究者與工程師，核心在於減少各種訓練方法的重複實作，提供一致的檢查點與模型載入流程。
 
 ## 技術
-Halo 以 Python 為主要語言，建基於 PyTorch、Hugging Face Transformers 與 TRL，並整合 FlashAttention‑4、Liger、Grouped GEMM、DeepEP V2、AdamW BF16 等核心優化。它支援 Expert Parallelism（EP）、Context Parallelism（TP/ETP）、Tensor Parallelism（TP）、Pipeline Parallelism（PP）以及 FSDP2，並透過 DeviceMesh 與 DTensor 實現資料與模型切分。在強化學習部分，採用 Ray 作為分散式執行環境，與 vLLM 或 SGLang 伺服器進行非同步 rollout，權重同步則經由 NCCL。此外，提供 Docker 镜像（Blackwell/Hopper）與 LoRA/QLoRA、MoE 等模型擴充支援。
+Halo 以 Python 為主要語言，基於 PyTorch、Hugging Face Transformers 與 TRL 構建，並整合 vLLM 或 SGLang 作為 RL 推論後端。框架內建 DeepEP V2、FlashAttention‑4、Liger、Grouped GEMM、AdamW BF16 優化器，以及針對 Blackwell 與 Hopper 架構的 Docker 镜像。支援專家平行（EP）、上下文平行（CP）、張量平行（TP）、專家‑上下文平行（ETP）與管線平行（PP），並透過 FSDP2、DTensor 與 DeviceMesh 實現分散式狀態與通訊。此外，提供 LoRA/QLoRA、融合核心與樹狀打包等效能優化，並可直接使用 Hugging Face 的 from_pretrained 載入檢查點。
 
 ## 架構
-Halo 是 White Circle 開源的大型語言與多模態模型訓練框架，支援預訓練、SFT、偏好優化、全非同步多輪 RL，單 GPU 到多節點皆可運行。採用 EP、CP、TP、ETP、PP、FSDP2 等並行策略，基於 PyTorch FSDP2、DTensor、DeviceMesh 並整合 DeepEP 進行專家並行通訊。直接訓練 Hugging Face 模型，檢查點保持 SafeTensors 格式，from_pretrained 可直接載入。各並行軸獨立配置，EP 包裹 MoE、CP 包裹注意力、TP/ETP 就地分片權重。預訓練、SFT、RL 共用同一分佈式基礎設施。整合 DeepEP V2、FlashAttention 4、Liger、Grouped GEMM、無填充/樹狀打包、AdamWBF16 等核心優化。RL 採非同步架構，Ray Actor 對接 vLLM/SGLang，訓練端維持純 Transformers，透過 NCCL 推送權重。
+Halo 的程式碼分為數個主要目錄：halo/ 包含訓練器、平行性封裝（EP/CP/TP/ETP/PP）、優化器、核心函式、資料整理器與回調；scripts/ 提供訓練入口、推論、資料前處理與檢查點工具；examples/ 存放依訓練方法與模型分組的可直接運行的 YAML 配置；launcher‑configs/ 則有 Accelerate、SkyPilot 與 Nomad 的啟動設定；human‑docs/ 與 agent‑docs/ 分別提供使用者導向與完整技術參照；skills/ 內含代理人技能，用於作業啟動、平行性選擇、除錯、模型加入、檢查點管理、資料準備、吞吐優化、RL 設定、測試撰寫與文件維護。典型執行流程為：先選擇 examples/ 中的 YAML 配置，執行 halo launch（或直接呼叫 scripts/training/.py），halo 會依參數選擇 python、torchrun 或 accelerate launch 啟動訓練；訓練過程中，模型會被相應的平行性包裝（例如 EP 包裝 MoE 區塊，CP 包裝注意力），梯度同步透過 FSDP2、DTensor 與 NCCL 進行；在強化學習情境下，多輪環境互斥以 Ray Actor 形式運行，對應的 vLLM 或 SGLang 推論伺服器負責產生 token，訓練端透過原生 NCCL 同步權重更新。檢查點以標準 SafeTensors 形式儲存，可直接由 Hugging Face 的 from_pretrained 載入。若 README 未說明某些內部細節，則僅根據上述目錄結構與描述進行推斷。
 
 ## README 摘錄（節選）
 ```text

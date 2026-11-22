@@ -283,7 +283,7 @@ reference_urls(陣列,1-6個https URL,優先使用今日素材中的真實URL)�
 
         for key, ask, mt in [
             ("rationale", f"用繁體中文說明為何今日選擇{name}，120-200字。JSON {{\"rationale\":\"...\"}}。新聞:{_clip(news_ctx,1200)}\n論文:{_clip(paper_ctx,900)}", 700),
-            ("principle", f"用繁體中文深度說明{name}的原理與架構，450-800字。必須包含：輸入/感知層、核心模型/推理層、工具或代理協作層、記憶與資料層、輸出與監控治理層。JSON {{\"principle\":\"...\"}}", 1600),
+            ("principle", f"用繁體中文深度說明{name}的原理與架構，350-500字。必須包含：輸入/感知層、核心模型/推理層、工具或代理協作層、記憶與資料層、輸出與監控治理層。避免冗長。JSON {{\"principle\":\"...\"}}", 1400),
             ("applications_maritime", f"用繁體中文說明{name}在海事領域的2個具體應用例子，每個例子包含情境、輸入資料、系統流程、效益與風險，合計260-420字。JSON {{\"applications_maritime\":\"...\"}}", 1200),
             ("applications_medical", f"用繁體中文說明{name}在醫療領域的2個具體應用例子，每個例子包含情境、輸入資料、系統流程、效益與合規風險，合計260-420字。JSON {{\"applications_medical\":\"...\"}}", 1200),
             ("applications_general", f"用繁體中文說明{name}在其他產業的2個具體應用例子，合計180-300字。JSON {{\"applications_general\":\"...\"}}", 900),
