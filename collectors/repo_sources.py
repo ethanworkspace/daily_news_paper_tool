@@ -103,6 +103,8 @@ class RepoSources:
         per_page: int = 20,
         pushed_after: str = "",
         min_stars: int = 0,
+        sort: str = "updated",
+        order: str = "desc",
     ) -> tuple[list[RepoCandidate], SourceStats]:
         stats = SourceStats("github_search")
         q = query.strip()
@@ -110,7 +112,10 @@ class RepoSources:
             q = f"{q} pushed:>{pushed_after}"
         if min_stars > 0:
             q = f"{q} stars:>={min_stars}"
-        url = f"{GITHUB_API}/search/repositories?q={quote_plus(q)}&sort=updated&order=desc&per_page={max(1, min(per_page, 50))}"
+        url = (
+            f"{GITHUB_API}/search/repositories?q={quote_plus(q)}"
+            f"&sort={quote(sort)}&order={quote(order)}&per_page={max(1, min(per_page, 50))}"
+        )
         data = self._get_json(url, stats, check_robots=False)
         if not isinstance(data, dict):
             return [], stats

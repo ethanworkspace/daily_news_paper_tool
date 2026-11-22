@@ -9,7 +9,7 @@ from typing import Any
 
 from collectors.news_engine import NewsEngine
 from collectors.paper_engine import PaperEngine
-from collectors.repo_engine import RepoEngine, link_papers_to_repos, paper_seed_map
+from collectors.repo_engine import RepoEngine, link_papers_to_repos, paper_seed_entries
 from config import BASE_DIR, DAILY_NEWS_COUNT, DAILY_PAPER_COUNT, DAILY_REPO_COUNT
 from core.logging_utils import setup_logger
 from core.manifest import RunManifest
@@ -121,7 +121,7 @@ class DailyPipeline:
             manifest.source("papers", found=manifest.counts["papers_raw"], kept=len(paper_sel.items))
 
             with manifest.stage("collect_repos"):
-                seeds = list(paper_seed_map(paper_sel.items).values())
+                seeds = paper_seed_entries(paper_sel.items)
                 repo_sel = self.repo_engine.collect(repo_count, now=reference, paper_seeds=seeds)
             manifest.counts["repos_raw"] = int(repo_sel.report.get("raw_count", 0))
             manifest.counts["repos_selected"] = len(repo_sel.items)

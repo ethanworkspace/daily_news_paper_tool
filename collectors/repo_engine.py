@@ -178,20 +178,29 @@ def _set_value(obj: Any, name: str, value: str) -> None:
         setattr(obj, name, value)
 
 
-def paper_seed_map(papers: Iterable[Any]) -> dict[str, dict]:
-    """從已選論文取出 GitHub repo，作為 P4 的優先 seed。"""
-    seeds: dict[str, dict] = {}
+def paper_seed_entries(papers: Iterable[Any]) -> list[dict]:
+    """Build seed entries for papers. Includes papers without code_url so repo search can try to pair them."""
+    entries: list[dict] = []
     for paper in papers:
         repo = github_repo_full_name(_value(paper, "code_url"))
-        if not repo:
-            continue
-        meta = {
+        entries.append({
             "repo": repo,
             "paper_url": _value(paper, "url"),
             "paper_title": _value(paper, "title"),
             "doi": _value(paper, "doi"),
             "arxiv_id": _value(paper, "arxiv_id"),
-        }
+            "source": _value(paper, "source"),
+        })
+    return entries
+
+
+def paper_seed_map(papers: Iterable[Any]) -> dict[str, dict]:
+    """Backward-compatible: only papers with explicit GitHub code_url."""
+    seeds: dict[str, dict] = {}
+    for meta in paper_seed_entries(papers):
+        repo = str(meta.get("repo", "")).strip()
+        if not repo:
+            continue
         seeds.setdefault(repo.lower(), meta)
     return seeds
 
@@ -332,7 +341,13 @@ class RepoEngine:
 
         # 2) paper seeds / explicit seeds（直接抓 repo 詳情，不受搜尋排名影響）
         seed_status: list[dict] = []
+        for meta in paper_seed_entries(paper_seeds or []):
+            # resolve actual seed status for explicit repo, or attempt discovery for papers without code_url
+            pass
+        # rebuild seed handling with explicit and discovered seeds
+        seed_status_by_repo: dict[str, dict] = {}
         for full_name in seed_order:
+            meta = seed_meta.get(full_name.lower()) or {}
             seed_error = ""
             repo = None
             try:
@@ -342,12 +357,13 @@ class RepoEngine:
             except Exception as exc:  # noqa: BLE001
                 seed_error = f"{type(exc).__name__}"
             entry = source_stats.setdefault("github_seed", {"found": 0, "fetched": 0, "errors": 0, "status_codes": []})
-            status = {"repo": full_name, "paper_url": (seed_meta.get(full_name.lower()) or {}).get("paper_url", "")}
+            status = {"repo": full_name, "paper_url": meta.get("paper_url", ""), "paper_title": meta.get("paper_title", ""), "seed_type": "explicit"}
             if repo:
                 raw.append(repo)
                 entry["found"] += 1
                 entry["fetched"] += 1
                 status["fetched"] = True
+                seed_status_by_repo[full_name.lower()] = status
             else:
                 entry["errors"] += 1
                 status["fetched"] = False
@@ -358,7 +374,43 @@ class RepoEngine:
                     codes = entry.setdefault("status_codes", [])
                     if st not in codes:
                         codes.append(st)
-            seed_status.append(status)
+                seed_status_by_repo[full_name.lower()] = status
+
+        # 2b) discover repos for papers that have no explicit code_url
+        for meta in paper_seed_entries(paper_seeds or []):
+            if str(meta.get("repo", "")).strip():
+                continue
+            found_repo = self._discover_repo_for_paper(meta, reference=reference)
+            purl = str(meta.get("paper_url", "") or "")
+            if found_repo:
+                raw.append(found_repo)
+                status = {
+                    "repo": found_repo.full_name,
+                    "paper_url": purl,
+                    "paper_title": meta.get("paper_title", ""),
+                    "seed_type": "discovered",
+                    "fetched": True,
+                }
+                # register in seed_meta/order so pairing/scoring recognizes it
+                name_l = found_repo.full_name.lower()
+                seed_meta[name_l] = {**meta, "repo": found_repo.full_name}
+                if name_l not in {n.lower() for n in seed_order}:
+                    seed_order.append(found_repo.full_name)
+                seed_status_by_repo[name_l] = status
+                entry = source_stats.setdefault("github_seed_discovered", {"found": 0, "fetched": 0, "errors": 0})
+                entry["found"] += 1
+                entry["fetched"] += 1
+            else:
+                entry = source_stats.setdefault("github_seed_discovered", {"found": 0, "fetched": 0, "errors": 0})
+                entry["errors"] += 1
+                seed_status_by_repo[f"paper:{purl}"] = {
+                    "paper_url": purl,
+                    "paper_title": meta.get("paper_title", ""),
+                    "seed_type": "discovered",
+                    "fetched": False,
+                    "error": "no_matching_repo_found",
+                }
+        seed_status = list(seed_status_by_repo.values())
 
         # 3) 把論文 seed 資訊貼到所有候選（含搜尋結果），確保配對優先
         for cand in raw:
@@ -443,6 +495,78 @@ class RepoEngine:
         )
         selection.report["rejected_counts"] = dict(Counter(r["reason"] for r in rejected))
         return selection
+
+    def _discover_repo_for_paper(self, meta: dict, *, reference: datetime) -> RepoCandidate | None:
+        """Best-effort repo discovery for papers without code_url. Only returns repos with traceable paper link."""
+        arxiv_id = str(meta.get("arxiv_id", "") or "").strip()
+        doi = str(meta.get("doi", "") or "").strip()
+        title = str(meta.get("paper_title", "") or "").strip()
+        paper_url = str(meta.get("paper_url", "") or "").strip()
+        queries: list[str] = []
+        if arxiv_id:
+            queries.append(arxiv_id)
+        if doi:
+            queries.append(doi)
+        if title:
+            # use a compact title query; keep it simple to avoid GitHub query syntax issues
+            words = [w for w in re.findall(r"[A-Za-z0-9][A-Za-z0-9\-]{2,}", title)[:8]]
+            if words:
+                queries.append(" ".join(words))
+        seen: set[str] = set()
+        for q in queries:
+            try:
+                repos, _st = self.sources.search_repos(q, per_page=5, pushed_after="", min_stars=0, sort="stars", order="desc")
+            except Exception:
+                continue
+            for repo in repos:
+                key = repo.full_name.lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                try:
+                    enriched = self.sources.enrich_repo(repo)
+                except Exception:
+                    continue
+                item = candidate_to_item(enriched)
+                text = f"{item.paper_url} {item.paired_paper} {item.readme_text} {item.readme_excerpt}".lower()
+                matched = False
+                if arxiv_id and arxiv_id.lower() in text:
+                    matched = True
+                if doi and doi.lower() in text:
+                    matched = True
+                if paper_url and paper_url.lower() in text:
+                    matched = True
+                if not matched:
+                    continue
+                # attach seed metadata
+                item.paper_url = item.paper_url or paper_url
+                item.paired_paper = item.paired_paper or paper_url
+                item.extra["seed_paper"] = meta
+                item.extra["is_paper_seed"] = True
+                item.extra["discovered_by_paper"] = True
+                # return as candidate-like object for downstream flow
+                return RepoCandidate(
+                    full_name=item.full_name,
+                    html_url=item.html_url,
+                    description=item.description,
+                    stars=item.stars,
+                    forks=item.forks,
+                    language=item.language,
+                    license_name=item.license_name,
+                    topics=list(item.topics),
+                    updated_at=item.updated_at.isoformat() if item.updated_at else "",
+                    created_at=item.created_at.isoformat() if item.created_at else "",
+                    readme_text=item.readme_text,
+                    readme_excerpt=item.readme_excerpt,
+                    paper_url=item.paper_url,
+                    paper_urls=[item.paper_url] if item.paper_url else [],
+                    paired_paper=item.paired_paper,
+                    quality_score=item.quality_score,
+                    quality_flags=list(item.quality_flags),
+                    sections=dict(item.sections),
+                    extra=dict(item.extra),
+                )
+        return None
 
     def _enrich_item(self, item: RepoItem, rejected: list[dict]) -> bool:
         try:
