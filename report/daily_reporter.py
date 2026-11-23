@@ -1,6 +1,7 @@
 """P5：新格式每日報告輸出（1-7/<date>/ + 每日匯報/）。"""
 from __future__ import annotations
 
+import os
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
@@ -269,3 +270,25 @@ def write_bundle(bundle: DailyBundle, *, root: Path | str, report: dict[str, Any
         "day_dir": str(p_news.parent),
         "digest": str(p_digest),
     }
+
+
+def embed_tech_image(root: Path | str, date_value: str, image_path: str | Path) -> bool:
+    """把 Pic-large 產生的架構圖嵌入深度拆解 md（使用相對於 md 的路徑）。"""
+    if not image_path:
+        return False
+    day = datetime.strptime(date_value, "%Y-%m-%d").date()
+    target = tech_path(root, day)
+    if not target.exists():
+        return False
+    text = target.read_text(encoding="utf-8")
+    if "![" in text or "<img" in text:
+        return False
+    rel = os.path.relpath(Path(image_path), target.parent).replace("\\", "/")
+    block = f"![AI 技術架構示意圖]({rel})\n\n"
+    marker = "## 一、架構原理與核心機制"
+    if marker in text:
+        text = text.replace(marker, block + marker, 1)
+    else:
+        text = text.rstrip() + "\n\n" + block.rstrip() + "\n"
+    atomic_write_text(target, text)
+    return True

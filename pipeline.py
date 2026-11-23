@@ -17,7 +17,7 @@ from core.models import DailyBundle, SchemaError, TechArchItem
 from core.paths import ensure_day_tree
 from core.security import redact_secrets
 from core.timewin import end_of_day_utc, parse_datetime
-from report.daily_reporter import write_bundle
+from report.daily_reporter import embed_tech_image, write_bundle
 from summarizer.daily_writer import DailyWriter
 
 
@@ -281,6 +281,7 @@ class DailyPipeline:
                         report["files"].append(img_path)
                         manifest.add_file(img_path)
                         report.setdefault("images", []).append(img_path)
+                        embed_tech_image(self.root, day.isoformat(), img_path)
 
             if push and report["files"]:
                 with manifest.stage("git_push"):
