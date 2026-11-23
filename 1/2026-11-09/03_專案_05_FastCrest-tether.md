@@ -1,4 +1,4 @@
-# GitHub 專案 02：FastCrest/tether
+# GitHub 專案 05：FastCrest/tether
 
 - 日期：2026-11-09
 - URL：https://github.com/FastCrest/tether
@@ -11,18 +11,13 @@
 - 品質分數：8/10 [implementation_signals]
 
 ## 在做什麼
-FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
-FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
-
-主要語言：Python；Topics：cli, deployment, edge-ai, edge-cloud, fastcrest, groot, inference, jetson；Stars：86；License：NOASSERTION
+FastCrest Tether 是一個開源的邊緣到雲端 AI 部署 CLI，專注於驗證與最佳化視覺‑語言‑動作（VLA）機器人政策，提供跨 Jetson、RTX、Apple Silicon、AMD 平台的一致性檢查與混合邊緣‑雲端推理，確保政策在實際執行前能安全前進。
 
 ## 技術
-實作語言以 Python 為主。
-從 topics 可見技術方向：cli, deployment, edge-ai, edge-cloud, fastcrest, groot, inference, jetson。
-專案描述：FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
+該專案以 Python 實作 CLI，核心功能包括將 VLA Policy 匯出為單一 ONNX 模型、使用 ONNX Runtime（可選 TensorRT、CUDA 或 Triton 執行提供者）進行推理、支援 safetensors 直接載入權重、提供 ZMQ 低延遲傳輸、以及透過 BaseVLA 脊柱將不同 VLA 家族組合為約 100 行的組合類別。
 
 ## 架構
-README 未明確提供架構章節；依描述推斷此專案聚焦於：FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
+Tether 的主要模組包括：CLI 入口（tether connect、tether serve、tether go、tether bench）、模型匯出器（exporters）負責 PyTorch → ONNX 的單一模型與外部資料處理、VLA 模型庫（models/vlas）實作 BaseVLA 脊柱的組合類別、推理服務（serve）載入 ONNX 並根據選擇的執行提供者執行前向傳播、基準測試（bench）測量延遲與精度、以及傳輸層（ZMQ）用於機器人即時通訊。資料流程為：使用者透過 CLI 指令觸發模型匯出或服務啟動 → 載入 ONNX 權重（可外部 .onnx_data） → 建立 ONNX Runtime Session（選擇 EP） → 接收輸入（影像、文字等） → 執行推理 → 輸出動作向量，若使用 ZMQ 則透過 msgpack 序列化傳輸。由於 README 未詳細說明內部模組間的依賴圖與錯誤處理，以上架構描述僅基於可見的 CLI 指令與說明。
 
 ## README 摘錄（節選）
 ```text
