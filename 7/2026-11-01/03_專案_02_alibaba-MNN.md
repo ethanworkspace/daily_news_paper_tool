@@ -1,35 +1,23 @@
-# GitHub 專案 03：alibaba/MNN
+# GitHub 專案 02：alibaba/MNN
 
 - 日期：2026-11-01
 - URL：https://github.com/alibaba/MNN
 - 描述：MNN: A blazing-fast, lightweight inference engine battle-tested by Alibaba, powering high-performance on-device LLMs and Edge AI.
-- Stars：16592  |  Forks：2545  |  Language：C++
+- Stars：16605  |  Forks：2547  |  Language：C++
 - License：Apache-2.0
 - Topics：arm, convolution, deep-learning, embedded-devices, llm, machine-learning, ml, mnn, transformer, vulkan, winograd-algorithm
-- 更新時間：2026-11-22T07:56:04+00:00
+- 更新時間：2026-11-23T15:39:48+00:00
 - 配對論文：https://arxiv.org/abs/2611.12311
 - 品質分數：10/10 [paper_paired, implementation_signals, stale_seed]
 
 ## 在做什麼
-MNN: A blazing-fast, lightweight inference engine battle-tested by Alibaba, powering high-performance on-device LLMs and Edge AI.
-- iOS platform: static library size will full option for armv7+arm64 platforms is about 12MB, size increase of linked executables is about 2M.
-- Android platform: core so size is about 800KB (armv7a - c++_shared).
-- Using MNN_BUILD_MINI can reduce package size by about 25%, with a limit of fixed model input size
-
-主要語言：C++；Topics：arm, convolution, deep-learning, embedded-devices, llm, machine-learning, ml, mnn；Stars：16592；License：Apache-2.0
+MNN 是由阿里巴巴開發的輕量級、高效能的深度學習推理引擎，專為行動裝置與嵌入式平台設計。它支援多種模型格式的轉換與本地執行，特別針對大型語言模型（LLM）與擴散模型提供運行時解決方案，幫助開發者在智慧手機、PC、IoT 設備上實現低延遲、低記憶體占用的 AI 推理，目標使用者為行動應用開發者、AI 工程師以及需要端側運算的產品團隊。核心在於解決資源受限環境下模型推理速度慢、體積大的問題。
 
 ## 技術
-- [2026/11/04] We released **MNN-Pocket-0.3B**, a **300M-parameter mobile-app-native language model** for Chinese/English instruction following. The MNN team co-designed its architecture, training methods, and inference engine around smartphone apps' task requirements and resource budgets. It supports **32K context**; the INT4 (W4A16) QAT MNN build occupies only **173 MB** and achieves **350 tok/s** decode throughput in tests on iPhone 18 Pro. Released under **Apache 2.0**.
-ModelScope (https://modelscope.cn/collections/MNN/MNN-Pocket-03B) | Hugging Face (https://huggingface.co/collections/taobao-mnn/mnn-pocket-03b) | Technical report (https://arxiv.org/pdf/2611.12311)
-- [2026/07/22] MNN 3.6.1 is released with a new 🚀 Hexagon backend, enabling accelerated model inference on Qualcomm Hexagon DSPs. Learn more (./source/backend/hexagon/README.md).
-- [2025/06/11] New App MNN TaoAvatar released, you can talk with 3DAvatar offline with LLM, ASR, TTS, A2BS and NNR models all run local on your device!! MNN TaoAvatar (./apps/Android/Mnn3dAvatar/README.md)
-MNN is a highly efficient and lightweight deep learning framework. It supports inference and training of deep learning models and has indu
+MNN 以 C++ 實作，提供跨平台後端：CPU（ARMv7/ARMv8/ARMv9、x86/x64 SIMD、RISC‑V）、GPU（Metal、OpenCL、Vulkan、CUDA）、Hexagon DSP 以及其他 NPU。支援模型格式包括 TensorFlow、Caffe、ONNX、TorchScript，並內建 Winograd 卷積、半精度（FP16/BF16）與量化（INT8/INT4）優化。工具鏈含 MNN‑Converter、MNN‑Compress、MNN‑Express、MNN‑CV 與 MNN‑Train，以及基於 MNN 的 LLM 與擴散模型運行時。
 
 ## 架構
-- [2026/11/04] We released **MNN-Pocket-0.3B**, a **300M-parameter mobile-app-native language model** for Chinese/English instruction following. The MNN team co-designed its architecture, training methods, and inference engine around smartphone apps' task requirements and resource budgets. It supports **32K context**; the INT4 (W4A16) QAT MNN build occupies only **173 MB** and achieves **350 tok/s** decode throughput in tests on iPhone 18 Pro. Released under **Apache 2.0**.
-Inside Alibaba, MNN (https://mp.weixin.qq.com/s/5I1ISpx8lQqvCS8tGd6EJw) works as the basic module of the compute container in the Walle (https://mp.weixin.qq.com/s/qpeCETty0BqqNJV9CMJafA) System, the first end-to-end, general-purpose, and large-scale production system for device-cloud collaborative machine learning, which has been published in the top system conference OSDI’22. The key design principles of MNN and the extensive benchmark testing results (vs. TensorFlow, TensorFlow Lite, PyTorch, PyTorch Mobile, TVM) can be found in the OSDI paper. The scripts and instructions for benchmark testing are put in the path “/benchmark”. If MNN or the design of Walle helps your research or production use, please cite o
-
-相關論文/文件：https://arxiv.org/abs/2611.12311
+MNN 的架構分為前端模型轉換與後端執行兩層。前端使用 MNN‑Converter 將外部模型轉為 MNN 的靜態圖，進行圖優化與算子融合；接著根據目標硬體選擇對應後端（CPU、GPU、Hexagon 等）執行計算流程。資料流為：輸入張量 → 後端核心運算（利用 SIMD、向量指令或 GPU kernel） → 輸出張量。上層提供 MNN‑LLM、MNN‑Diffusion、MNN‑Express 等模組，分別負責語言模型、圖像生成與通用計算。由於 README 未詳細說明內部調度與線程模型，此部分需要進一步原始碼檢視才能確定。
 
 ## README 摘錄（節選）
 ```text
