@@ -1,4 +1,4 @@
-# GitHub 專案 04：whitecircle/halo
+# GitHub 專案 03：whitecircle/halo
 
 - 日期：2026-11-07
 - URL：https://github.com/whitecircle/halo
@@ -11,35 +11,13 @@
 - 品質分數：10/10 [paper_paired, implementation_signals, stale_seed]
 
 ## 在做什麼
-Halo is an open-source framework built by White Circle for training large language and multimodal models
-Halo is an open-source framework built by White Circle (https://whitecircle.com) for training large language and multimodal models. It supports pre-training, SFT, preference optimization, fully asynchronous multi-turn RL, and much more.
-The same codebase runs on one GPU or across multiple nodes, with EP, CP, TP, ETP, PP, FSDP2, fused kernels, BF16 training, and distributed rollouts.
-Halo trains Hugging Face models directly. Checkpoints still load with `from_pretrained`, and the EP layer a MoE family adds is under 90 lines for every family but GPT-OSS, at 168 (Model Integration Cost (human-docs/model-integration-cost.md)).
-On 8× B300, Halo 1.2.0 trains Qwen3.6-35B-A3B on packed 64k and 128k rows at 1.10–1.12× Megatron Bridge, 1.47× TRL 1.17.1 and 1.9–2.0× NeMo AutoModel 0.7.0, and Qwen3.5-122B-A10B at 1.50× TRL and 1.7–1.9× NeMo; it trails a tuned Megatron by 11.5% on dense Qwen3.5-9B at
-
-主要語言：Python；Topics：agent, async-rl, distributed-training, fine-tuning, grpo, large-language-models, llm, lora；Stars：869；License：NOASSERTION
+Halo 是由 White Circle 開源的訓練框架，專門用於大型語言與多模態模型的預訓練、微調、偏好優化以及完全異步多輪強化學習。它直接操作 Hugging Face 模型，支援從單顆 GPU 到多節點的專家平行（EP）、內容平行（CP）、張量平行（TP）、專家‑張量平行（ETP）與管線平行（PP），並整合 FlashAttention‑4、Liger、Grouped GEMM、DeepEP V2 等效能優化。目標使用者為需要高效、可擴展訓練基礎設施的研究員與 ML 工程師，核心問題在於統一不同訓練方法的分散式實作，避免為每種方法重新建立平行化程式碼。
 
 ## 技術
-Halo ships as separate Docker images for Blackwell and Hopper, with PyTorch, Flash Attention, and
-DeepEP V2 built in. Pull them anonymously, with no account:
-[code block omitted]
-Versioned tags (`:blackwell-1.3.0rc1`, `:hopper-1.3.0rc1`) pin the release. There is no `latest` tag, since
-the images are architecture-specific. The RL inference images are published alongside them
-(`:vllm-0.32.0`, `:sglang-0.5.22`), pinned as `:vllm-0.32.0-1.3.0rc1` and `:sglang-0.5.22-1.3.0rc1`.
-To build locally instead:
-[code block omitted]
-No host Python environment is required. See Installation (human-docs/installation.md) for image details and build options.
+Halo 以 Python 為主要語言，基於 PyTorch、Hugging Face Transformers 與 TRL 進行模型載入與訓練循環。它使用 FSDP2、DTensor 與 DeviceMesh 實現資料與模型平行，並透過 DeepEP V2 處理 Expert Parallelism 的 all‑to‑all 通訊。效能層面整合 FlashAttention‑4、Liger Kernel、Grouped GEMM、樹狀打包與 padding‑free 技術，支援 BF16、FP8 以及 AdamWBF16 優化器。針對強化學習，採用 Ray 作為環境 rollout 的執行單元，與 vLLM 或 SGLang 透過原生 NCCL 同步權重。此外，框架提供 LoRA/QLoRA、梯度檢查點與混合精度支援，並可直接掛載 Hugging Face 模型進行微調。
 
 ## 架構
-- **Training methods share the same infrastructure.** Pre-training, SFT, preference optimization, distillation, and RL use the same parallelism and checkpointing code, so a new method doesn't need its own distributed implementation.
-Halo also gains pipeline parallelism and three more model families (benchmarks (human-docs/performance.md)).
-- **Pipeline parallelism** for SFT, preference, offline GRPO, reward, and classification training, with EP
-or ETP inside each stage (docs (agent-docs/parallelism/pipeline-parallelism.md)).
-the images are architecture-specific. The RL inference images are published alongside them
-covering model integrations, parallelism, optimization internals, infrastructure, and troubleshooting.
-Multi-node runs support shared (NFS/Lustre) and node-local filesystems.
-
-相關論文/文件：https://arxiv.org/abs/2606.04036
+Halo 的程式碼結構分為數個主要資料夾：halo/ 包含訓練器、平行ism（EP/CP/TP/ETP/PP）封裝、優化器、自訂核心、資料整理器與回調；scripts/ 提供訓練入口、推論、資料前處理與檢查點工具；examples/ 存放依訓練方法與模型分組的可直接運行 YAML 設定；launcher-configs/ 則有 Accelerate、SkyPilot 與 Nomad 的啟動配置；human-docs/ 與 agent-docs/ 分別提供使用者導向與完整技術參考；skills/ 包含供 Claude Code、Codex 等代理使用的任務腳本。典型執行流程為：使用者先選擇 examples/ 中的 YAML 配置，執行 `halo launch <config>`（或直接呼叫 scripts/training/.py），halo CLI 根據參數選擇 `python`、`torchrun` 或 `accelerate launch` 來啟動進程。訓練器載入 Hugging Face 模型，根據配置分別套用 EP、CP、TP、ETP 或 PP 包裝層，這些包裝層建基於 FSDP2、DTensor 與 DeviceMesh，並呼叫 DeepEP V2 進行專家間的 all‑to‑all 交換。前向與反向傳播使用 FlashAttention‑4、Liger 與 Grouped GEMM 等核心加速。在強化學習情境下，訓練端保持純 Transformers 實作，而環境 rollout 以 Ray Actor 在 vLLM 或 SGLang 伺服器上執行，完成後透過 NCCL 將更新的權重同步回訓練端。檢查點以標準 SafeTensors 形式儲存，可直接由 `from_pretrained` 載入。若需進一步細節（例如具體核心實作或錯誤處理），則需參考 agent-docs/ 中的完整技術參考。
 
 ## README 摘錄（節選）
 ```text
