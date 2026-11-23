@@ -11,13 +11,13 @@
 - 品質分數：10/10 [paper_paired, implementation_signals, stale_seed]
 
 ## 在做什麼
-Halo 是由 White Circle 開源的訓練框架，專門用於大型語言與多模態模型的預訓練、微調、偏好優化以及完全異步多輪強化學習。它直接操作 Hugging Face 模型，支援從單顆 GPU 到多節點的專家平行（EP）、內容平行（CP）、張量平行（TP）、專家‑張量平行（ETP）與管線平行（PP），並整合 FlashAttention‑4、Liger、Grouped GEMM、DeepEP V2 等效能優化。目標使用者為需要高效、可擴展訓練基礎設施的研究員與 ML 工程師，核心問題在於統一不同訓練方法的分散式實作，避免為每種方法重新建立平行化程式碼。
+Halo 是一個由 White Circle 開源的訓練框架，專注於大型語言與多模態模型的預訓練、微調（SFT）、偏好優化以及完全非同步多輪強化學習。它直接操作 Hugging Face 模型，支援單卡到多節點的各種平行策略（EP、CP、TP、ETP、PP、FSDP2），旨在降低分散式訓練的實作複雜度，讓研究者與工程師能在不改動模型程式碼的情況下，使用統一的基礎設施進行不同訓練任務。
 
 ## 技術
-Halo 以 Python 為主要語言，基於 PyTorch、Hugging Face Transformers 與 TRL 進行模型載入與訓練循環。它使用 FSDP2、DTensor 與 DeviceMesh 實現資料與模型平行，並透過 DeepEP V2 處理 Expert Parallelism 的 all‑to‑all 通訊。效能層面整合 FlashAttention‑4、Liger Kernel、Grouped GEMM、樹狀打包與 padding‑free 技術，支援 BF16、FP8 以及 AdamWBF16 優化器。針對強化學習，採用 Ray 作為環境 rollout 的執行單元，與 vLLM 或 SGLang 透過原生 NCCL 同步權重。此外，框架提供 LoRA/QLoRA、梯度檢查點與混合精度支援，並可直接掛載 Hugging Face 模型進行微調。
+Halo 以 Python 為主要語言，基礎建置於 PyTorch、Transformers、TRL、vLLM 與 SGLang。它整合了 DeepEP V2（專家平行）、FlashAttention‑4、Liger、Grouped GEMM、BF16/FP8 精度、FSDP2、DTensor、DeviceMesh 以及自訂 kernels（GLM‑5 Next 等）。平行ism 以獨立設定的 EP、CP、TP、ETP、PP 軸實作，透過包裝現有模型的 MoE 塊、注意力或權重分片來達成，無需另行實作分散式模型。RL 部分採用 Ray actor 作為 vLLM/SGLang 推論伺服器，訓練端透過 NCCL 同步權重。
 
 ## 架構
-Halo 的程式碼結構分為數個主要資料夾：halo/ 包含訓練器、平行ism（EP/CP/TP/ETP/PP）封裝、優化器、自訂核心、資料整理器與回調；scripts/ 提供訓練入口、推論、資料前處理與檢查點工具；examples/ 存放依訓練方法與模型分組的可直接運行 YAML 設定；launcher-configs/ 則有 Accelerate、SkyPilot 與 Nomad 的啟動配置；human-docs/ 與 agent-docs/ 分別提供使用者導向與完整技術參考；skills/ 包含供 Claude Code、Codex 等代理使用的任務腳本。典型執行流程為：使用者先選擇 examples/ 中的 YAML 配置，執行 `halo launch <config>`（或直接呼叫 scripts/training/.py），halo CLI 根據參數選擇 `python`、`torchrun` 或 `accelerate launch` 來啟動進程。訓練器載入 Hugging Face 模型，根據配置分別套用 EP、CP、TP、ETP 或 PP 包裝層，這些包裝層建基於 FSDP2、DTensor 與 DeviceMesh，並呼叫 DeepEP V2 進行專家間的 all‑to‑all 交換。前向與反向傳播使用 FlashAttention‑4、Liger 與 Grouped GEMM 等核心加速。在強化學習情境下，訓練端保持純 Transformers 實作，而環境 rollout 以 Ray Actor 在 vLLM 或 SGLang 伺服器上執行，完成後透過 NCCL 將更新的權重同步回訓練端。檢查點以標準 SafeTensors 形式儲存，可直接由 `from_pretrained` 載入。若需進一步細節（例如具體核心實作或錯誤處理），則需參考 agent-docs/ 中的完整技術參考。
+程式碼結構分為 halo/（訓練器、平行ism、優化器、kernels、collators、callbacks）、scripts/（訓練入口、推論、資料準備、checkpoint 工具）、examples/（依方法與模型分組的可直接運行 YAML 配置）、launcher‑configs/（Accelerate、SkyPilot、Nomad 啟動設定）以及 human‑docs/與 agent‑docs/說明文件。典型執行流程：使用者選取 examples/ 中的配置，執行 `halo launch <config>`（內部依參數選擇 python、torchrun 或 accelerate launch），載入 Hugging Face 模型，根據配置套用 EP/CP/TP/ETP/PP 等平行ism 包裝（EP 透過 DeepEP V2 進行 all‑to‑all，CP/TP/ETP 透過 DeviceMesh 分片，PP 則在各階段內嵌其他平行ism），訓練器負責前向、反向與參數更新；若為 RL 工作流，則透過 Ray actor 啟動 vLLM/SGLang 伺服器進行環境 rollout，訓練端以 NCCL 推送權重更新；checkpoint 以 SafeTensors 格式儲存，可直接由 `from_pretrained` 載入。整個流程在單 GPU 或多節點上皆可運行，無需維護獨立的分散式模型實作。
 
 ## README 摘錄（節選）
 ```text

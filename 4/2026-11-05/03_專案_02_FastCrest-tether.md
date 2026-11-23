@@ -11,13 +11,13 @@
 - 品質分數：8/10 [implementation_signals]
 
 ## 在做什麼
-FastCrest Tether 是一個開源的邊緣到雲端 AI 部署 CLI，專注於驗證與最佳化視覺‑語言‑動作（VLA）機器人政策，提供跨 Jetson、RTX、Apple Silicon、AMD 平台的一致性檢查與混合邊緣‑雲端推理，確保政策在實際執行前能安全前進。
+FastCrest Tether 是一個開源的邊緣到雲端 AI 部署命令列工具，專門針對視覺‑語言‑動作（VLA）模型提供驗證、優化與跨平台部署功能。它支援 Jetson、RTX、Apple Silicon、AMD 等硬體，並提供混合邊緣‑雲端推論以及 parity 證書，幫助機器人與邊緣 AI 開發者確認策略是否安全可執行，解決 VLAs 在不同框架與硬體上的一致性與可靠性問題。
 
 ## 技術
-該專案以 Python 實作 CLI，核心功能包括將 VLA Policy 匯出為單一 ONNX 模型、使用 ONNX Runtime（可選 TensorRT、CUDA 或 Triton 執行提供者）進行推理、支援 safetensors 直接載入權重、提供 ZMQ 低延遲傳輸、以及透過 BaseVLA 脊柱將不同 VLA 家族組合為約 100 行的組合類別。
+Tether 以 Python 實作 CLI，核心功能包括將 PyTorch VLA 政策匯出為單體 ONNX 模型（支援外部權重資料）、使用 ONNX Runtime 配合 TensorRT 執行提供者（可選 Triton 快速核心與 ZMQ 傳輸），並透過 safetensors 直接載入權重以減少記憶體開銷。專案採用 BaseVLA 脊椎架構，將視覺、語言、投影等組件組合為可組合類別，並提供 ROS2 適配器起始套件。依賴項涵盖 fastcrest-tether[serve,gpu]、[fast-kernels]、[onnx] 等額外套件，需 Python ≥3.10。
 
 ## 架構
-Tether 的主要模組包括：CLI 入口（tether connect、tether serve、tether go、tether bench）、模型匯出器（exporters）負責 PyTorch → ONNX 的單一模型與外部資料處理、VLA 模型庫（models/vlas）實作 BaseVLA 脊柱的組合類別、推理服務（serve）載入 ONNX 並根據選擇的執行提供者執行前向傳播、基準測試（bench）測量延遲與精度、以及傳輸層（ZMQ）用於機器人即時通訊。資料流程為：使用者透過 CLI 指令觸發模型匯出或服務啟動 → 載入 ONNX 權重（可外部 .onnx_data） → 建立 ONNX Runtime Session（選擇 EP） → 接收輸入（影像、文字等） → 執行推理 → 輸出動作向量，若使用 ZMQ 則透過 msgpack 序列化傳輸。由於 README 未詳細說明內部模組間的依賴圖與錯誤處理，以上架構描述僅基於可見的 CLI 指令與說明。
+Tether 的架構围绕四個主要指令：install（自動偵測平台並安裝適當的硬體相依套件）、export（將 VLA 政策轉換為單體 ONNX，必要時附帶外部權重檔案並執行 parity 驗證）、serve（啟動 ONNX Runtime 推論服務，可選擇 TensorRT、Triton 快速核心或 ZMQ 傳輸，並載入 tokenizer 與外部資料模組）、bench/connect（基於服務進行效能基準測試或狀態查詢）。資料流程為：使用者透過 CLI 指定模型與硬體，export 階段產生 ONNX 模型並產生 parity 證書；serve 階段載入該模型、建立執行階段提供者、處理輸入（圖像經 JPEG‑msgpack 序列化）並產生動作輸出；connect 與 bench 則是對同一服務發出查詢或基準請求以取得延遲、成功率等指標。若 README 未詳細說明內部模組劃分，則以上說明基於可觀察的指令行為與檔案結構推斷。
 
 ## README 摘錄（節選）
 ```text
