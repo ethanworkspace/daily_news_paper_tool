@@ -11,18 +11,13 @@
 - 品質分數：8/10 [implementation_signals]
 
 ## 在做什麼
-FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
-FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
-
-主要語言：Python；Topics：cli, deployment, edge-ai, edge-cloud, fastcrest, groot, inference, jetson；Stars：86；License：NOASSERTION
+FastCrest Tether 是一個開源的邊緣到雲端 AI 部署命令列工具，專門針對視覺語言動作（VLA）機器人策略提供部署信心。它能在 Jetson、RTX、Apple Silicon、AMD 等平台上最佳化、驗證並部署模型，支援混合式邊緣‑雲端推理與 parity 證明，確保策略在真實硬體上安全前進。目標使用者為機器學習工程師、機器人系統開發者與邊緣設備運維人員，核心問題是如何在異質硬體上保證 VLA 模型的數值等價與推論可靠性。
 
 ## 技術
-實作語言以 Python 為主。
-從 topics 可見技術方向：cli, deployment, edge-ai, edge-cloud, fastcrest, groot, inference, jetson。
-專案描述：FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
+Tether 以 Python 3.10+ 為主要語言，提供 CLI 介面；核心功能包括將 PyTorch VLA 模型匯出為單一 ONNX（支援外部權重資料 >2GB），使用 ONNX Runtime 搭配 CUDA、TensorRT 或 CPU 執行提供者，可選擇 Triton fast kernels 以獲得額外加速；支援 safetensors 直接載入減少記憶體開銷，並提供 ZMQ 傳輸與 msgpack 圖像序列化以實現低延遲機器人通訊；內建 ROS2 適配器起始套件、transformers 5.x DynamicCache 相容性修復以及 DreamZero WAM、FluxVLA 等新 VLA 家族的支援。
 
 ## 架構
-README 未明確提供架構章節；依描述推斷此專案聚焦於：FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
+Tether 的架構圍繞模組化 CLI 指令與 BaseVLA 骨幹展開：安裝階段會偵測硬體與 Python 版本，自動選擇對應的安裝 extras（serve、gpu、onnx、monolithic、fast‑kernels 等）；匯出階段透過各 VLA 的匯出器（pi0、smolvla、gr00t）將模型轉換為 monolithic ONNX，必要時會分割為 .onnx + .onnx_data；服務階段載入 ONNX 模型，依據選擇的執行提供者（CUDAExecutionProvider、TensorrtExecutionProvider 或 CPU）建立推理 session，可透過 --transport zmq 使用 ZMQ 低延遲通道，並將錯誤導向 stderr 以保持 JSON 輸出乾淨；雲端或邊緣驗證則透過 tether connect 與 parity 證明機制，比對參考 PyTorch 政策的輸出以確保數值等價（cos = 1.0）。整體資料流為：使用者指令 → 安裝/匯出 → 本地或遠端推理服務 → 結果回傳給機器人控制迴路或驗證腳本。若 README 未明確說明某些內部細節，則標示為推斷依據不足。
 
 ## README 摘錄（節選）
 ```text
