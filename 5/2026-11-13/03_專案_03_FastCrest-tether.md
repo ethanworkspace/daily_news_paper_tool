@@ -11,18 +11,13 @@
 - 品質分數：8/10 [implementation_signals]
 
 ## 在做什麼
-FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
-FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
-
-主要語言：Python；Topics：cli, deployment, edge-ai, edge-cloud, fastcrest, groot, inference, jetson；Stars：86；License：NOASSERTION
+FastCrest Tether 是一個開源的邊緣到雲端 AI 部署命令列工具，專注於視覺‑語言‑動作（VLA）機器人策略。它提供部署信心，驗證匯出的 ONNX 模型與原始 PyTorch 政策在機器精度下的逐步相等性，支援 Jetson、RTX、Apple Silicon、AMD 等平台的優化、驗證與混合邊緣‑雲端推理，幫助機器學習與機器人工程師安全地將 VLA 政策從開發環境推向生產。
 
 ## 技術
-實作語言以 Python 為主。
-從 topics 可見技術方向：cli, deployment, edge-ai, edge-cloud, fastcrest, groot, inference, jetson。
-專案描述：FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
+Tether 以 Python 實作，核心功能包括使用 ONNX 匯出單體模型、搭配 ONNX Runtime 的 TensorRT 執行提供者（預設）或 CUDA 後備、可選的 Triton 快速核心（需 fast‑kernels extra）以及 ZMQ 傳輸（serve‑extra）。它支援 safetensors 直接載入、transformers 5.x DynamicCache 相容性、ROS2 機器人適配器起始套件，並透過 install.sh 依據硬體自動選擇對應的 CUDA/JetPack 依賴。CLI 提供 tether serve、tether connect、tether go 等子命令進行模型服務、狀態查詢與端到端驗證。
 
 ## 架構
-README 未明確提供架構章節；依描述推斷此專案聚焦於：FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
+Tether 的架構圍繞 CLI 入口與數個內部模組：exporters 負責將各種 VLA（SmolVLA、pi0、pi0.5、GR00T）的 PyTorch 政策匯出為單體 ONNX（含外部資料檔案）；model 包裝 BaseVLA 脊柱與各組件槽位；serve 模組啟動 ONNX Runtime 會話，依據提供者選項（TensorRT、CUDA、Triton）進行推理，並可透過 ZMQ 或 HTTP 進行低延遲機器人通訊；connect 模組提供狀態查詢與健康檢查；go 模組整合匯出、服務與驗證流程；doctor 與 version 檢查模組處理快取失效與平台相容性。資料流程為：使用者透過 CLI 指令觸發匯出 → 產生 ONNX + 權重資料 → serve 載入模型（外部權重選項、Tokenizer 載入） → 接收圖像/文字輸入 → 經過 ONNX 推理產出動作 → 透過 ZMQ 或 HTTP 回傳給機器人或客戶端。若 README 未明確說明的內部細節（例如具體的錯誤處理或排程），則標示為推斷依據不足。
 
 ## README 摘錄（節選）
 ```text
