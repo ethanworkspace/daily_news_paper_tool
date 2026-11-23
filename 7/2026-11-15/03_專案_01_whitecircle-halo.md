@@ -3,26 +3,21 @@
 - 日期：2026-11-15
 - URL：https://github.com/whitecircle/halo
 - 描述：Halo is an open-source framework built by White Circle for training large language and multimodal models
-- Stars：868  |  Forks：50  |  Language：Python
+- Stars：869  |  Forks：50  |  Language：Python
 - License：NOASSERTION
 - Topics：agent, async-rl, distributed-training, fine-tuning, grpo, large-language-models, llm, lora, model-parallelism, moe, multimodal, peft, post-training, pytorch, qlora, quantization, reinforcement-learning, rlhf, transformers, vllm
-- 更新時間：2026-11-20T08:14:25+00:00
+- 更新時間：2026-11-22T08:10:11+00:00
 - 配對論文：https://arxiv.org/abs/2606.04036
 - 品質分數：10/10 [paper_paired, implementation_signals, stale_seed]
 
 ## 在做什麼
-Halo is an open-source framework built by White Circle for training large language and multimodal models
-Halo is an open-source framework built by White Circle for training large language and multimodal models
-
-主要語言：Python；Topics：agent, async-rl, distributed-training, fine-tuning, grpo, large-language-models, llm, lora；Stars：868；License：NOASSERTION
+Halo 是由 White Circle 開發的開源框架，專門用於訓練大型語言與多模態模型。它支援預訓練、監督微調（SFT）、偏好優化、完全非同步多輪強化學習等訓練流程，並能在單顆 GPU 或多節點分散環境中運行。框架直接操作 Hugging Face 模型，檢查點保持標準 SafeTensors 格式，可透過 from_pretrained 直接載入。
 
 ## 技術
-實作語言以 Python 為主。
-從 topics 可見技術方向：agent, async-rl, distributed-training, fine-tuning, grpo, large-language-models, llm, lora。
-專案描述：Halo is an open-source framework built by White Circle for training large language and multimodal models
+Halo 基於 Python 與 PyTorch 建置，整合 Transformers、TRL、vLLM 與 SGLang 等庫。支援 Expert Parallelism (EP)、Context Parallelism (TP/ETP)、Tensor Parallelism (TP)、Pipeline Parallelism (PP) 以及 FSDP2、DTensor、DeviceMesh 等分散原始，並使用 DeepEP V2 進行 all-to-all 通訊。效能優化包含 FlashAttention‑4、Liger、Grouped GEMM、padding‑free、tree packing、AdamWBF16、QLoRA/FP8 量化、LoRA/PEFT 適配器等。RL 部分採用非同步 GRPO，透過 Ray actor 與 vLLM/SGLang 伺服器進行環境 rollout，權重同步經由原生 NCCL。
 
 ## 架構
-README 未明確提供架構章節；依描述推斷此專案聚焦於：Halo is an open-source framework built by White Circle for training large language and multimodal models
+專案結構包括 halo/（訓練器、平行ism、優化器、核心函式、資料整理器與回呼）、scripts/（訓練入口、推論、資料前處理與檢查點工具）、examples/（依方法與模型分組的可直接運行 YAML 設定檔）、launcher-configs/（Accelerate、SkyPilot、Nomad 的啟動設定）、human-docs/ 與 agent-docs/（使用者與代理人文件）、skills/（供 Claude Code、Codex 等代理使用的技能腳本）、tests/（CPU 與分散 GPU 單元測試）以及 Dockerfile、Makefile（映像建置與測試指令）。典型執行流程為：使用者選取 examples/ 中的 YAML 配置，執行 halo launch（或直接呼叫 scripts/training/.py），halo 依參數選擇 python、torchrun 或 accelerate launch 啟動訓練，訓練器載入 Hugging Face 模型，根據配置套用 EP、CP、TP、ETP、PP 等平行ism 包裝，利用 FSDP2/DTensor/DeviceMesh 進行參數切分，DeepEP V2 處理專家間 all-to-all，訓練過程中產生的檢查點以 SafeTensors 形式儲存，可經 from_pretrained 直接載入；在 RL 場景中，權重更新透過 NCCL 推送至運行 vLLM/SGLang 的 Ray actor，環境 rollout 於該端進行，完成後將經驗返回訓練器更新策略。
 
 ## README 摘錄（節選）
 ```text

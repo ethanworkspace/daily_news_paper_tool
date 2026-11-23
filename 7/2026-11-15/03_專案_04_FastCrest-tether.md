@@ -11,18 +11,13 @@
 - 品質分數：8/10 [implementation_signals]
 
 ## 在做什麼
-FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
-FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
-
-主要語言：Python；Topics：cli, deployment, edge-ai, edge-cloud, fastcrest, groot, inference, jetson；Stars：86；License：NOASSERTION
+FastCrest Tether 是一個開源的邊緣到雲端 AI 部署命令列工具，專為視覺‑語言‑動作（VLA）機器人策略設計。它提供模型匯出、驗證與混合邊緣‑雲端推論的一體化流程，幫助機器學習與機器人工程師確認策略在 Jetson、RTX、Apple Silicon、AMD 等硬體上能否安全執行，並保證與參考 PyTorch 實作的位元級一致性。
 
 ## 技術
-實作語言以 Python 為主。
-從 topics 可見技術方向：cli, deployment, edge-ai, edge-cloud, fastcrest, groot, inference, jetson。
-專案描述：FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
+Tether 以 Python 為主要實作語言，核心功能包括使用 ONNX 匯出單體模型、搭配 ONNX Runtime 的 TensorRT 執行提供者（可選 Triton fast kernels 或 ZMQ 傳輸）進行推論、透過 safetensors 直接載入權重減少記憶體佔用、支援 transformers 5.x DynamicCache 以及提供 ROS2 機器人適配器起始套件。此外，它內建硬體檢測與自動相依項選擇（JetPack、CUDA 12/13、Apple Silicon），並提供 Doctor 工具驗證執行環境與精度。
 
 ## 架構
-README 未明確提供架構章節；依描述推斷此專案聚焦於：FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
+專案結構大致分為安裝/啟動階段（install.sh / pip extras）、模型匯出階段（monolithic ONNX 與外部權重資料處理）、驗證階段（parity 檢查與 measured numbers）、服務階段（tether serve 支援 CUDAExecutionProvider、TensorrtExecutionProvider、Triton fast kernels、ZMQ transport）以及客戶端互動階段（tether connect、chat、bench）。資料流程為：使用者透過 CLI 指定模型與硬體 → 安裝適當依賴 → 匯出 PyTorch policy 為 ONNX（必要時外部 .onnx_data） → 透過 Doctor 檢查執行提供者與精度 → 以選擇的執行提供者啟動推論服務 → 透過 HTTP、ZMQ 或其他傳輸方式接受推論請求並回傳動作。若 README 未詳細說明某些內部模組（例如精度轉換或外部適配器），則標示為推斷依據不足。
 
 ## README 摘錄（節選）
 ```text

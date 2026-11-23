@@ -11,35 +11,13 @@
 - 品質分數：10/10 [paper_paired, implementation_signals, stale_seed]
 
 ## 在做什麼
-Halo is an open-source framework built by White Circle for training large language and multimodal models
-Halo is an open-source framework built by White Circle (https://whitecircle.com) for training large language and multimodal models. It supports pre-training, SFT, preference optimization, fully asynchronous multi-turn RL, and much more.
-The same codebase runs on one GPU or across multiple nodes, with EP, CP, TP, ETP, PP, FSDP2, fused kernels, BF16 training, and distributed rollouts.
-Halo trains Hugging Face models directly. Checkpoints still load with `from_pretrained`, and the EP layer a MoE family adds is under 90 lines for every family but GPT-OSS, at 168 (Model Integration Cost (human-docs/model-integration-cost.md)).
-On 8× B300, Halo 1.2.0 trains Qwen3.6-35B-A3B on packed 64k and 128k rows at 1.10–1.12× Megatron Bridge, 1.47× TRL 1.17.1 and 1.9–2.0× NeMo AutoModel 0.7.0, and Qwen3.5-122B-A10B at 1.50× TRL and 1.7–1.9× NeMo; it trails a tuned Megatron by 11.5% on dense Qwen3.5-9B at
-
-主要語言：Python；Topics：agent, async-rl, distributed-training, fine-tuning, grpo, large-language-models, llm, lora；Stars：869；License：NOASSERTION
+Halo 是由 White Circle 開發的開源框架，專門用於訓練大型語言與多模態模型。它支援預訓練、監督微調（SFT）、偏好優化、完全非同步多輪強化學習等訓練流程，並能在單顆 GPU 或多節點分散環境中運行。框架直接操作 Hugging Face 模型，檢查點保持標準 SafeTensors 格式，可透過 from_pretrained 直接載入。
 
 ## 技術
-Halo ships as separate Docker images for Blackwell and Hopper, with PyTorch, Flash Attention, and
-DeepEP V2 built in. Pull them anonymously, with no account:
-[code block omitted]
-Versioned tags (`:blackwell-1.3.0rc1`, `:hopper-1.3.0rc1`) pin the release. There is no `latest` tag, since
-the images are architecture-specific. The RL inference images are published alongside them
-(`:vllm-0.32.0`, `:sglang-0.5.22`), pinned as `:vllm-0.32.0-1.3.0rc1` and `:sglang-0.5.22-1.3.0rc1`.
-To build locally instead:
-[code block omitted]
-No host Python environment is required. See Installation (human-docs/installation.md) for image details and build options.
+Halo 基於 Python 與 PyTorch 建置，整合 Transformers、TRL、vLLM 與 SGLang 等庫。支援 Expert Parallelism (EP)、Context Parallelism (TP/ETP)、Tensor Parallelism (TP)、Pipeline Parallelism (PP) 以及 FSDP2、DTensor、DeviceMesh 等分散原始，並使用 DeepEP V2 進行 all-to-all 通訊。效能優化包含 FlashAttention‑4、Liger、Grouped GEMM、padding‑free、tree packing、AdamWBF16、QLoRA/FP8 量化、LoRA/PEFT 適配器等。RL 部分採用非同步 GRPO，透過 Ray actor 與 vLLM/SGLang 伺服器進行環境 rollout，權重同步經由原生 NCCL。
 
 ## 架構
-- **Training methods share the same infrastructure.** Pre-training, SFT, preference optimization, distillation, and RL use the same parallelism and checkpointing code, so a new method doesn't need its own distributed implementation.
-Halo also gains pipeline parallelism and three more model families (benchmarks (human-docs/performance.md)).
-- **Pipeline parallelism** for SFT, preference, offline GRPO, reward, and classification training, with EP
-or ETP inside each stage (docs (agent-docs/parallelism/pipeline-parallelism.md)).
-the images are architecture-specific. The RL inference images are published alongside them
-covering model integrations, parallelism, optimization internals, infrastructure, and troubleshooting.
-Multi-node runs support shared (NFS/Lustre) and node-local filesystems.
-
-相關論文/文件：https://arxiv.org/abs/2606.04036
+專案結構包括 halo/（訓練器、平行ism、優化器、核心函式、資料整理器與回呼）、scripts/（訓練入口、推論、資料前處理與檢查點工具）、examples/（依方法與模型分組的可直接運行 YAML 設定檔）、launcher-configs/（Accelerate、SkyPilot、Nomad 的啟動設定）、human-docs/ 與 agent-docs/（使用者與代理人文件）、skills/（供 Claude Code、Codex 等代理使用的技能腳本）、tests/（CPU 與分散 GPU 單元測試）以及 Dockerfile、Makefile（映像建置與測試指令）。典型執行流程為：使用者選取 examples/ 中的 YAML 配置，執行 halo launch（或直接呼叫 scripts/training/.py），halo 依參數選擇 python、torchrun 或 accelerate launch 啟動訓練，訓練器載入 Hugging Face 模型，根據配置套用 EP、CP、TP、ETP、PP 等平行ism 包裝，利用 FSDP2/DTensor/DeviceMesh 進行參數切分，DeepEP V2 處理專家間 all-to-all，訓練過程中產生的檢查點以 SafeTensors 形式儲存，可經 from_pretrained 直接載入；在 RL 場景中，權重更新透過 NCCL 推送至運行 vLLM/SGLang 的 Ray actor，環境 rollout 於該端進行，完成後將經驗返回訓練器更新策略。
 
 ## README 摘錄（節選）
 ```text

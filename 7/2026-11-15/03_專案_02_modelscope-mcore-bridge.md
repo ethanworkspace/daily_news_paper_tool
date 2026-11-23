@@ -11,18 +11,13 @@
 - 品質分數：9/10 [implementation_signals]
 
 ## 在做什麼
-MCore-Bridge: Providing Megatron-Core model definitions for state-of-the-art large models and making Megatron training as simple as Transformers — with support for 300+ large language models (Qwen3-Next, GLM-5.3, Deepseek-V4, MiniMax-2.7, ...) and 200+ multimodal large models (Qwen3.8, Qwen3-Omni, Gemma4, ...).
-MCore-Bridge: Providing Megatron-Core model definitions for state-of-the-art large models and making Megatron training as simple as Transformers — with support for 300+ large language models (Qwen3-Next, GLM-5.3, Deepseek-V4, MiniMax-2.7, ...) and 200+ multimodal large models (Qwen3.8, Qwen3-Omni, Gemma4, ...).
-
-主要語言：Python；Topics：deepseek-r1, deepseek-v4, gemma4, glm-5, gpt-oss, llama4, llm, lora；Stars：107；License：Apache-2.0
+MCore-Bridge 是 ModelScope 社群基於 Megatron-Core 生態系統開發的大語言模型與多模態大模型定義庫，提供 300+ 純文字及 200+ 多模態模型的 Megatron-Core 實作，讓研究者與工程師能以類似 Transformers 的使用方式進行大規模模型的全參數或 LoRA 訓練，解決 Megatron-Core 模型定義繁雜、支援度不足的問題。
 
 ## 技術
-實作語言以 Python 為主。
-從 topics 可見技術方向：deepseek-r1, deepseek-v4, gemma4, glm-5, gpt-oss, llama4, llm, lora。
-專案描述：MCore-Bridge: Providing Megatron-Core model definitions for state-of-the-art large models and making Megatron training as simple as Transformers — with support for 300+ large language models (Qwen3-Next, GLM-5.3, Deepseek-V4, MiniMax-2.7, ...) and 200+ multimodal large models (Qwen3.8, Qwen3-Omni, Gemma4, ...).
+技術上，MCore-Bridge 以 Python 實作，依賴 Megatron-Core 進行模型定義與訓練，支援 Transformers、PEFT、ms-swift 生態系統，可直接載入與儲存 safetensors 權重；提供完整參數訓練與 LoRA 訓練，並支援 Megatron-Core 的多種平行策略（張量、管線、序列、上下文、專家、虛擬管線），以及多模態 FP8 訓練、MTP、序列填充自由與打包功能，可與 vLLM、SGLang 等推理框架相容。
 
 ## 架構
-README 未明確提供架構章節；依描述推斷此專案聚焦於：MCore-Bridge: Providing Megatron-Core model definitions for state-of-the-art large models and making Megatron training as simple as Transformers — with support for 300+ large language models (Qwen3-Next, GLM-5.3, Deepseek-V4, MiniMax-2.7, ...) and 200+ multimodal large models (Qwen3.8, Qwen3-Omni, Gemma4, ...).
+架構方面，MCore-Bridge 主要由模型定義庫（提供繼承 Megatron-Core 的模型類別與註冊機制）、權重載入／儲存工具（支援 safetensors、LoRA 權重）、訓練整合層（與 ms-swift、PEFT 結合，透過 torchrun 啟動多卡訓練）以及範例腳本組成。使用者先建立模型實例，載入預訓練權重或初始化，然後在資料載器饋入批次，透過前向傳播計算 logits，依任務類型計算 loss，再利用 Megatron-Core 的張量／管線等平行策略進行反向傳播與參數更新；訓練完成後可匯出 LoRA 或完整權重供 vLLM、SGLang 等推理框架使用。README 未詳細說明推論服務的內部實作，僅提及可參考模型卡進行推論。
 
 ## README 摘錄（節選）
 ```text
