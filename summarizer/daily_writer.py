@@ -17,6 +17,37 @@ from core.security import redact_secrets
 from iai_client import IAIClient, IAIClientError
 
 
+# 保守的簡→繁對照：只收錄語意明確、不會誤傷既有繁體專名的字。
+_TRADITIONAL_MAP = str.maketrans({
+    "围": "圍", "绕": "繞", "实": "實", "现": "現", "训": "訓", "练": "練",
+    "数": "數", "据": "據", "网": "網", "络": "絡", "设": "設", "备": "備",
+    "学": "學", "习": "習", "识": "識", "别": "別", "预": "預", "测": "測",
+    "医": "醫", "疗": "療", "确": "確", "优": "優", "试": "試", "趋": "趨",
+    "势": "勢", "关": "關", "键": "鍵", "问": "問", "题": "題", "时": "時",
+    "间": "間", "较": "較", "针": "針", "对": "對", "产": "產", "业": "業",
+    "资": "資", "讯": "訊", "软": "軟", "体": "體", "应": "應", "这": "這",
+    "为": "為", "与": "與", "图": "圖", "长": "長", "门": "門", "闻": "聞",
+    "启": "啟", "动": "動", "静": "靜", "处": "處", "结": "結", "构": "構",
+    "显": "顯", "级": "級", "联": "聯", "统": "統", "达": "達", "称": "稱",
+    "质": "質", "评": "評", "证": "證", "响": "響", "输": "輸", "舰": "艦",
+    "电": "電", "脑": "腦", "视": "視", "觉": "覺", "语": "語", "义": "義",
+    "务": "務", "开": "開", "场": "場", "点": "點", "线": "線", "转": "轉",
+    "换": "換", "标": "標", "签": "簽", "记": "記", "录": "錄", "库": "庫",
+    "范": "範",
+})
+
+
+def _to_traditional(value: object) -> object:
+    """模型輸出正規化為繁體（保守字表，不改动 URL/程式碼以外的结构）。"""
+    if isinstance(value, str):
+        return value.translate(_TRADITIONAL_MAP)
+    if isinstance(value, list):
+        return [_to_traditional(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _to_traditional(item) for key, item in value.items()}
+    return value
+
+
 def _clip(text: object, limit: int) -> str:
     value = re.sub(r"\s+", " ", str(text or "")).strip()
     return value[:limit]
@@ -43,10 +74,12 @@ class DailyWriter:
             return ""
         try:
             if model == "coder":
-                return self.client.chat_coder(prompt, max_tokens=max_tokens, temperature=temperature)
-            if model == "large":
-                return self.client.chat_large(prompt, max_tokens=max_tokens, temperature=temperature)
-            return self.client.chat_max(prompt, max_tokens=max_tokens, temperature=temperature)
+                result = self.client.chat_coder(prompt, max_tokens=max_tokens, temperature=temperature)
+            elif model == "large":
+                result = self.client.chat_large(prompt, max_tokens=max_tokens, temperature=temperature)
+            else:
+                result = self.client.chat_max(prompt, max_tokens=max_tokens, temperature=temperature)
+            return str(_to_traditional(result))
         except IAIClientError as exc:
             msg = redact_secrets(exc)
             self.last_errors.append(f"{model}:{msg}")
@@ -68,6 +101,7 @@ class DailyWriter:
         for mdl, mt in attempts:
             try:
                 data = self.client.chat_json(prompt, model=mdl, schema_hint=schema_hint, max_tokens=mt)
+                data = _to_traditional(data)
                 if isinstance(data, dict) and data:
                     return data
                 self.fallbacks.append(f"json:{mdl}:non_dict")
