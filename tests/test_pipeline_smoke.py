@@ -55,6 +55,8 @@ class FakePaperEngine:
 
 class FakeRepoEngine:
     def collect(self, count, *, now=None, paper_seeds=None):
+        for seed in paper_seeds or []:
+            assert seed.get("paper_url") and seed.get("paper_title"), seed
         items = []
         for i in range(count):
             seed = (paper_seeds or [{}])[i] if i < len(paper_seeds or []) else {}

@@ -114,6 +114,30 @@ def normalize_arxiv_id(value: object) -> str:
     return text.strip()
 
 
+def paper_identity_keys(value: object) -> set[str]:
+    """回傳可用於比對同一篇論文的規範化識別字（DOI / arXiv / 去除版本號的 URL）。"""
+    keys: set[str] = set()
+    if not isinstance(value, str) or not value.strip():
+        return keys
+    doi = normalize_doi(value)
+    if doi:
+        keys.add(f"doi:{doi.lower()}")
+    arxiv = extract_arxiv_id(value)
+    if arxiv:
+        keys.add(f"arxiv:{arxiv.lower()}")
+    bare = normalize_arxiv_id(value)
+    if re.fullmatch(r"\d{4}\.\d{4,5}", bare):
+        keys.add(f"arxiv:{bare}")
+    url = normalize_url(value)
+    if url:
+        keys.add(f"url:{url.rstrip('/').lower()}")
+        # arXiv abs/pdf 與版本號差異不算不同論文
+        arxiv_from_url = extract_arxiv_id(url)
+        if arxiv_from_url:
+            keys.add(f"arxiv:{arxiv_from_url}")
+    return keys
+
+
 def make_keys(
     *,
     url: object = "",

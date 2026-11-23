@@ -8,6 +8,7 @@ from collectors.repo_engine import (
     RepoEngine,
     RepoQuotaError,
     link_papers_to_repos,
+    paper_seed_entries,
     paper_seed_map,
     select_repos,
 )
@@ -96,9 +97,38 @@ class PairingTests(unittest.TestCase):
         self.assertEqual(papers[1]["paired_repo"], "org/repo2")
         self.assertEqual(report["papers_paired"], 2)
 
+    def test_paper_seed_entries_is_idempotent(self):
+        paper = {
+            "title": "Paper title",
+            "url": "https://arxiv.org/abs/2601.01234v1",
+            "code_url": "https://github.com/org/repo",
+            "doi": "",
+            "arxiv_id": "2601.01234",
+            "source": "arXiv",
+        }
+        once = paper_seed_entries([paper])[0]
+        twice = paper_seed_entries([once])[0]
+        for key in ("repo", "paper_url", "paper_title", "arxiv_id", "source"):
+            self.assertEqual(twice[key], once[key], key)
+
+    def test_link_papers_to_repos_canonical_arxiv_id(self):
+        papers = [{
+            "title": "P1",
+            "url": "http://arxiv.org/abs/2601.01234v1",
+            "code_url": "",
+            "paired_repo": "",
+            "doi": "",
+            "arxiv_id": "",
+        }]
+        repos = [_item("org/repo1", paper="https://arxiv.org/abs/2601.01234")]
+        report = link_papers_to_repos(papers, repos)
+        self.assertEqual(papers[0]["paired_repo"], "org/repo1")
+        self.assertEqual(report["papers_paired"], 1)
+
 
 class FakeSources:
     def __init__(self):
+        self.search_calls: list[tuple[str, dict]] = []
         self._repos = {
             "org/maritime": RepoCandidate(
                 full_name="org/maritime",
@@ -127,7 +157,14 @@ class FakeSources:
             ),
         }
 
-    def search_repos(self, query, *, per_page=20, pushed_after="", min_stars=0):
+    def search_repos(self, query, *, per_page=20, pushed_after="", min_stars=0, sort="updated", order="desc"):
+        self.search_calls.append((query, {
+            "per_page": per_page,
+            "pushed_after": pushed_after,
+            "min_stars": min_stars,
+            "sort": sort,
+            "order": order,
+        }))
         st = SourceStats("github_search", found=len(self._repos), fetched=len(self._repos))
         return list(self._repos.values()), st
 
@@ -202,6 +239,113 @@ class RepoEngineTests(unittest.TestCase):
         )
         with self.assertRaises(RepoQuotaError):
             engine.collect(3, now=datetime(2026, 11, 21, tzinfo=timezone.utc))
+
+    def test_discover_repo_requires_literal_paper_id(self):
+        sources = FakeSources()
+        sources._repos["org/paper"] = RepoCandidate(
+            full_name="org/paper",
+            html_url="https://github.com/org/paper",
+            description="Implementation of a maritime AI paper",
+            stars=12,
+            language="Python",
+            topics=["ai", "maritime"],
+            updated_at=datetime(2026, 11, 20, tzinfo=timezone.utc),
+            readme_text="Implementation for arXiv:2601.01234. Install with pip install paper.",
+        )
+        sources._repos["org/title-only"] = RepoCandidate(
+            full_name="org/title-only",
+            html_url="https://github.com/org/title-only",
+            description="Maritime AI paper implementation",
+            stars=8,
+            language="Python",
+            topics=["ai", "maritime"],
+            updated_at=datetime(2026, 11, 20, tzinfo=timezone.utc),
+            readme_text="Similar title but no paper identifier or link is mentioned here.",
+        )
+        engine = RepoEngine(sources=sources, queries=[], min_quality_score=0)
+        found = engine._discover_repo_for_paper(
+            {
+                "repo": "",
+                "paper_url": "https://arxiv.org/abs/2601.01234v1",
+                "paper_title": "Maritime AI paper implementation",
+                "arxiv_id": "",
+                "doi": "",
+            },
+            reference=datetime(2026, 11, 21, tzinfo=timezone.utc),
+        )
+        self.assertIsNotNone(found)
+        self.assertEqual(found.full_name, "org/paper")
+        self.assertTrue(sources.search_calls)
+        query, kwargs = sources.search_calls[0]
+        self.assertIn("in:readme", query)
+        self.assertEqual(kwargs["per_page"], 20)
+        self.assertEqual(kwargs["sort"], "updated")
+
+    def test_discover_repo_rejects_title_only_match(self):
+        sources = FakeSources()
+        sources._repos = {
+            "org/title-only": RepoCandidate(
+                full_name="org/title-only",
+                html_url="https://github.com/org/title-only",
+                description="Maritime AI paper implementation",
+                stars=8,
+                language="Python",
+                topics=["ai", "maritime"],
+                updated_at=datetime(2026, 11, 20, tzinfo=timezone.utc),
+                readme_text="Similar title but no paper identifier or link is mentioned here.",
+            )
+        }
+        engine = RepoEngine(sources=sources, queries=[], min_quality_score=0)
+        found = engine._discover_repo_for_paper(
+            {
+                "repo": "",
+                "paper_url": "",
+                "paper_title": "Maritime AI paper implementation",
+                "arxiv_id": "",
+                "doi": "",
+            },
+            reference=datetime(2026, 11, 21, tzinfo=timezone.utc),
+        )
+        self.assertIsNone(found)
+
+    def test_seed_survives_enrich_error(self):
+        class EnrichFailSources(FakeSources):
+            def enrich_repo(self, repo, *, refresh=False):
+                raise RuntimeError("boom")
+
+        sources = EnrichFailSources()
+        sources._repos["org/paired"] = RepoCandidate(
+            full_name="org/paired",
+            html_url="https://github.com/org/paired",
+            description="Implementation for a medical AI paper",
+            stars=40,
+            language="Python",
+            topics=["medical", "pytorch"],
+            updated_at=datetime(2026, 11, 20, tzinfo=timezone.utc),
+            readme_text="# Paired\n\n## Install\npip install paired\n",
+        )
+        engine = RepoEngine(
+            sources=sources,
+            queries=[],
+            min_paired=1,
+            min_quality_score=2,
+            enrich_limit=5,
+            allow_stale=True,
+        )
+        sel = engine.collect(
+            1,
+            now=datetime(2026, 11, 21, tzinfo=timezone.utc),
+            paper_seeds=[{
+                "repo": "org/paired",
+                "paper_url": "https://arxiv.org/abs/2601.01234",
+                "paper_title": "P",
+                "arxiv_id": "",
+                "doi": "",
+            }],
+        )
+        self.assertEqual(sel.items[0].full_name, "org/paired")
+        self.assertTrue(sel.items[0].extra.get("is_paper_seed"))
+        self.assertIn("enrich_error", sel.items[0].extra)
 
 
 if __name__ == "__main__":

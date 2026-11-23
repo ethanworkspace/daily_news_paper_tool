@@ -1,6 +1,7 @@
 """GitHub 專案蒐集引擎：多查詢 + 論文配對種子 → 去重 → 時效 → AI 相關性 → 品質篩選 → 配額選取。"""
 from __future__ import annotations
 
+import re
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -23,7 +24,7 @@ from collectors.repo_parse import (
     github_repo_full_name,
 )
 from collectors.repo_sources import RepoSources
-from core.dedupe import Deduper, extract_arxiv_id, is_similar_title, make_keys, normalize_doi
+from core.dedupe import Deduper, extract_arxiv_id, is_similar_title, make_keys, paper_identity_keys
 from core.models import RepoItem, SchemaError
 from core.timewin import is_within_window, now_utc, to_utc
 
@@ -64,7 +65,7 @@ def candidate_to_item(candidate: RepoCandidate) -> RepoItem:
     sections = candidate.sections or build_repo_sections(candidate)
     paper_url = candidate.paper_url or (candidate.paper_urls[0] if candidate.paper_urls else "")
     paired_paper = candidate.paired_paper or paper_url
-    return RepoItem(
+    item = RepoItem(
         full_name=candidate.full_name,
         html_url=candidate.html_url,
         description=candidate.description or "",
@@ -83,6 +84,10 @@ def candidate_to_item(candidate: RepoCandidate) -> RepoItem:
         quality_flags=list(candidate.quality_flags or []),
         sections=sections,
     )
+    # RepoCandidate 帶有 seed/discovery 中繼資料；RepoItem 資料模型不必宣告該欄位，
+    # 但下游品質閘門與重試需要保留它（dynamic attribute）。
+    item.extra = dict(getattr(candidate, "extra", {}) or {})
+    return item
 
 
 def select_repos(
@@ -179,16 +184,26 @@ def _set_value(obj: Any, name: str, value: str) -> None:
 
 
 def paper_seed_entries(papers: Iterable[Any]) -> list[dict]:
-    """Build seed entries for papers. Includes papers without code_url so repo search can try to pair them."""
+    """Build seed entries for papers. Idempotent: accepts PaperItem or an existing seed dict."""
     entries: list[dict] = []
     for paper in papers:
-        repo = github_repo_full_name(_value(paper, "code_url"))
+        # pipeline already normalizes once; accept both shapes so a second pass keeps paper identity.
+        raw_repo = _value(paper, "code_url") or _value(paper, "repo")
+        repo = github_repo_full_name(raw_repo)
+        if not repo and "/" in raw_repo and "://" not in raw_repo:
+            repo = raw_repo.strip("/")
+        paper_url = _value(paper, "paper_url") or _value(paper, "url")
+        paper_title = _value(paper, "paper_title") or _value(paper, "title")
+        doi = _value(paper, "doi")
+        arxiv_id = _value(paper, "arxiv_id")
+        if not arxiv_id:
+            arxiv_id = extract_arxiv_id(paper_url)
         entries.append({
             "repo": repo,
-            "paper_url": _value(paper, "url"),
-            "paper_title": _value(paper, "title"),
-            "doi": _value(paper, "doi"),
-            "arxiv_id": _value(paper, "arxiv_id"),
+            "paper_url": paper_url,
+            "paper_title": paper_title,
+            "doi": doi,
+            "arxiv_id": arxiv_id,
             "source": _value(paper, "source"),
         })
     return entries
@@ -206,15 +221,16 @@ def paper_seed_map(papers: Iterable[Any]) -> dict[str, dict]:
 
 
 def _paper_ids(paper: Any) -> tuple[set[str], set[str]]:
-    dois: set[str] = set()
-    arxivs: set[str] = set()
-    for raw in (_value(paper, "doi"), _value(paper, "url"), _value(paper, "arxiv_id")):
-        doi = normalize_doi(raw)
-        if doi:
-            dois.add(doi.lower())
-        arxiv = extract_arxiv_id(raw)
-        if arxiv:
-            arxivs.add(arxiv.lower())
+    keys: set[str] = set()
+    for raw in (
+        _value(paper, "doi"),
+        _value(paper, "url"),
+        _value(paper, "paper_url"),
+        _value(paper, "arxiv_id"),
+    ):
+        keys |= paper_identity_keys(raw)
+    dois = {key.split(":", 1)[1] for key in keys if key.startswith("doi:")}
+    arxivs = {key.split(":", 1)[1] for key in keys if key.startswith("arxiv:")}
     return dois, arxivs
 
 
@@ -502,20 +518,31 @@ class RepoEngine:
         doi = str(meta.get("doi", "") or "").strip()
         title = str(meta.get("paper_title", "") or "").strip()
         paper_url = str(meta.get("paper_url", "") or "").strip()
+        identity = (
+            paper_identity_keys(paper_url)
+            | paper_identity_keys(arxiv_id)
+            | paper_identity_keys(doi)
+        )
+        arxiv_id = next((k.split(":", 1)[1] for k in sorted(identity) if k.startswith("arxiv:")), "")
+        doi = next((k.split(":", 1)[1] for k in sorted(identity) if k.startswith("doi:")), "")
         queries: list[str] = []
         if arxiv_id:
-            queries.append(arxiv_id)
+            queries.extend([arxiv_id, f"arxiv {arxiv_id}"])
         if doi:
             queries.append(doi)
         if title:
-            # use a compact title query; keep it simple to avoid GitHub query syntax issues
             words = [w for w in re.findall(r"[A-Za-z0-9][A-Za-z0-9\-]{2,}", title)[:8]]
             if words:
                 queries.append(" ".join(words))
+        # 只接受 README/中繼資料中真正出現論文識別碼的 repo；標題查询只拿來找候選，不直接配對。
+        id_values = [k.split(":", 1)[1].lower() for k in identity if k.startswith(("arxiv:", "doi:"))]
         seen: set[str] = set()
-        for q in queries:
+        for term in queries:
+            q = f"{term} in:readme"
             try:
-                repos, _st = self.sources.search_repos(q, per_page=5, pushed_after="", min_stars=0, sort="stars", order="desc")
+                repos, _st = self.sources.search_repos(
+                    q, per_page=20, pushed_after="", min_stars=0, sort="updated", order="desc"
+                )
             except Exception:
                 continue
             for repo in repos:
@@ -529,13 +556,7 @@ class RepoEngine:
                     continue
                 item = candidate_to_item(enriched)
                 text = f"{item.paper_url} {item.paired_paper} {item.readme_text} {item.readme_excerpt}".lower()
-                matched = False
-                if arxiv_id and arxiv_id.lower() in text:
-                    matched = True
-                if doi and doi.lower() in text:
-                    matched = True
-                if paper_url and paper_url.lower() in text:
-                    matched = True
+                matched = any(value and value in text for value in id_values)
                 if not matched:
                     continue
                 # attach seed metadata
@@ -588,6 +609,7 @@ class RepoEngine:
                 quality_score=item.quality_score,
                 quality_flags=list(item.quality_flags),
                 sections=dict(item.sections),
+                extra=dict(getattr(item, "extra", {}) or {}),
             )
             enriched = self.sources.enrich_repo(cand)
             new_item = candidate_to_item(enriched).validate()
@@ -604,11 +626,17 @@ class RepoEngine:
             item.readme_text = new_item.readme_text or item.readme_text
             item.readme_excerpt = new_item.readme_excerpt or item.readme_excerpt
             item.sections = new_item.sections or item.sections
+            item.extra = dict(getattr(new_item, "extra", {}) or {})
             return True
         except Exception as exc:  # noqa: BLE001
+            reason = f"enrich_error:{type(exc).__name__}"
+            if getattr(item, "extra", {}).get("is_paper_seed"):
+                # 論文種子即使 README 抓取失敗也保留原有描述/配對資訊，交給品質閘門判斷。
+                item.extra["enrich_error"] = reason
+                return True
             rejected.append({
                 "title": item.full_name,
-                "reason": f"enrich_error:{type(exc).__name__}",
+                "reason": reason,
                 "source": "github",
             })
             return False

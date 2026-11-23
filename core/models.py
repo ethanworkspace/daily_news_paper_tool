@@ -14,6 +14,7 @@ from datetime import date, datetime
 from typing import Any
 
 from config import NEWS_MAX_AGE_DAYS, PAPER_MAX_AGE_DAYS, REPO_MAX_AGE_DAYS
+from core.dedupe import paper_identity_keys
 from core.security import UnsafeURLError, assert_public_http_url
 from core.timewin import end_of_day_utc, is_within_window, parse_datetime
 
@@ -408,10 +409,20 @@ class DailyBundle:
         )
         maritime = sum(1 for n in self.news if n.is_maritime or "maritime" in n.domains)
         paired_seed = sum(1 for p in self.papers if p.code_url or p.paired_repo)
-        paper_urls = {str(p.url).strip() for p in self.papers if str(p.url).strip()}
-        repo_urls = {str(r.paper_url or r.paired_paper).strip() for r in self.repos if str(r.paper_url or r.paired_paper).strip()}
-        paired_actual = sum(1 for p in self.papers if str(p.url).strip() and str(p.url).strip() in repo_urls)
-        repo_paired_actual = sum(1 for r in self.repos if str(r.paper_url or r.paired_paper).strip() in paper_urls)
+        paper_keys = [
+            paper_identity_keys(str(p.url))
+            | paper_identity_keys(str(getattr(p, "doi", "") or ""))
+            | paper_identity_keys(str(getattr(p, "arxiv_id", "") or ""))
+            for p in self.papers
+        ]
+        repo_keys = [
+            paper_identity_keys(str(r.paper_url or r.paired_paper or ""))
+            for r in self.repos
+        ]
+        all_repo_keys = set().union(*repo_keys) if repo_keys else set()
+        all_paper_keys = set().union(*paper_keys) if paper_keys else set()
+        paired_actual = sum(1 for keys in paper_keys if keys & all_repo_keys)
+        repo_paired_actual = sum(1 for keys in repo_keys if keys & all_paper_keys)
         repo_paired_seed = sum(1 for r in self.repos if r.paper_url or r.paired_paper)
         quotas = {
             "news_total": len(self.news),

@@ -262,6 +262,14 @@ class TestDailyBundle(unittest.TestCase):
         self.assertEqual(quotas["paired_papers"], 0)
         self.assertTrue(quotas["cross_domain_ok"])
 
+    def test_canonical_arxiv_url_pairing_counts(self):
+        bundle = self.build_bundle()
+        bundle.papers[0].url = "http://arxiv.org/abs/2601.01230v1"
+        bundle.repos[0].paper_url = "https://arxiv.org/abs/2601.01230"
+        quotas = bundle.validate(now=NOW)
+        self.assertGreaterEqual(quotas["paired_papers"], 1)
+        self.assertGreaterEqual(quotas["paired_repos"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
