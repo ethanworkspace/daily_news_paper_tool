@@ -151,6 +151,27 @@ class TestClientChat(unittest.TestCase):
         with self.assertRaises(ic.IAIClientError):
             client.chat_json("給我一組 JSON", max_repair=2)
 
+    def test_retry_errors_are_tracked_separately(self):
+        client = self.make_client(FakeSession([]))
+
+        state = {"calls": 0}
+
+        def chat_side_effect(*_args, **_kwargs):
+            state["calls"] += 1
+            if state["calls"] == 1:
+                client._record(error=True, detail="empty_response")
+                raise ic.IAIClientError("empty_response")
+            return '{"ok": true}'
+
+        client.chat = mock.Mock(side_effect=chat_side_effect)
+        self.assertEqual(client.chat_json("給我一組 JSON"), {"ok": True})
+        usage = client.usage()
+        self.assertEqual(usage["errors"], 1)
+        self.assertEqual(usage["retry_errors"], 1)
+        events = client.recent_error_events()
+        self.assertEqual([e["kind"] for e in events], ["error", "retry"])
+        self.assertIn("empty_response", events[-1]["detail"])
+
 
 class TestModelsAndImages(unittest.TestCase):
     def test_list_models_masks_keys(self):

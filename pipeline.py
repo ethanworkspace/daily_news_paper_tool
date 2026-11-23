@@ -235,10 +235,15 @@ class DailyPipeline:
                 report["ai"] = {
                     "model_usage": ai_report.get("model_usage", {}),
                     "errors": ai_report.get("ai_errors", []),
+                    "retry_errors": ai_report.get("retry_errors", []),
+                    "error_events": ai_report.get("error_events", []),
                     "fallbacks": ai_report.get("fallbacks", []),
                 }
                 for e in ai_report.get("ai_errors", [])[:5]:
                     manifest.warning(f"ai_error:{e}")
+                retry_errors = ai_report.get("retry_errors") or []
+                if retry_errors:
+                    manifest.warning(f"ai_retry_errors={len(retry_errors)}")
                 if ai_report.get("fallbacks"):
                     manifest.warning(f"ai_fallbacks={len(ai_report['fallbacks'])}")
 
@@ -255,6 +260,10 @@ class DailyPipeline:
                 quotas = bundle.validate(now=reference, require_counts=True, require_sections=False, require_quotas=True, allow_stale=self.allow_stale)
             report["quotas"] = quotas
             manifest.quotas = quotas
+            for warning in bundle.warnings:
+                if warning not in report["warnings"]:
+                    report["warnings"].append(warning)
+                    manifest.warning(warning)
 
             if write:
                 with manifest.stage("write_files"):

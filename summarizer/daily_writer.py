@@ -85,10 +85,18 @@ class DailyWriter:
             usage = self.client.usage() if hasattr(self.client, "usage") else {}
         except Exception:
             usage = {}
+        error_events: list[dict[str, str]] = []
+        try:
+            if hasattr(self.client, "recent_error_events"):
+                error_events = self.client.recent_error_events(50)
+        except Exception:
+            error_events = []
         return {
             "available": self.available,
             "model_usage": usage,
             "ai_errors": self.last_errors[-20:],
+            "retry_errors": [e for e in error_events if e.get("kind") == "retry"][-20:],
+            "error_events": error_events[-50:],
             "fallbacks": self.fallbacks[-50:],
         }
 

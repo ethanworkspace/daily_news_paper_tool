@@ -75,6 +75,14 @@ class FakeRepoEngine:
         return RepoSelection(items=items, report={"raw_count": count, "seed_count": len(paper_seeds or [])})
 
 
+class FakeShortRepoEngine(FakeRepoEngine):
+    def collect(self, count, *, now=None, paper_seeds=None):
+        selection = super().collect(count, now=now, paper_seeds=paper_seeds)
+        selection.items = selection.items[: count - 1]
+        selection.report["quota_shortfall"] = f"repos:{len(selection.items)}/{count}"
+        return selection
+
+
 class PipelineSmokeTests(unittest.TestCase):
     def test_run_writes_new_structure(self):
         with TemporaryDirectory() as td:
@@ -94,6 +102,20 @@ class PipelineSmokeTests(unittest.TestCase):
             self.assertIn("## 論文（5）", digest)
             self.assertIn("## GitHub 專案（5）", digest)
             self.assertGreaterEqual(report["pairing"]["papers_paired"], 3)
+
+    def test_bundle_quota_warnings_are_surfaced(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            pipe = DailyPipeline(
+                root=root,
+                news_engine=FakeNewsEngine(),
+                paper_engine=FakePaperEngine(),
+                repo_engine=FakeShortRepoEngine(),
+                allow_stale=True,
+            )
+            report = pipe.run(target="2026-11-21", write=False, push=False, use_ai=False)
+            self.assertEqual(report["status"], "ok")
+            self.assertIn("quota_shortfall:repos:4/5", report["warnings"])
 
 
 if __name__ == "__main__":

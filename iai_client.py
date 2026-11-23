@@ -207,7 +207,16 @@ class IAIClient:
         self._key_sems_lock = threading.Lock()
 
         self._stats_lock = threading.Lock()
-        self.stats = {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0, "images": 0, "errors": 0}
+        # errors = 所有失敗事件（含重試後成功）；retry_errors 是其中已由上層重試修復的數量。
+        self.stats = {
+            "calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "images": 0,
+            "errors": 0,
+            "retry_errors": 0,
+        }
+        self.error_events: list[dict[str, str]] = []
 
     # ---------- 對外屬性 ----------
     @property
@@ -220,7 +229,15 @@ class IAIClient:
                 self._key_sems[key] = threading.BoundedSemaphore(self._per_key_limit)
             return self._key_sems[key]
 
-    def _record(self, *, prompt_tokens: int = 0, completion_tokens: int = 0, images: int = 0, error: bool = False) -> None:
+    def _record(
+        self,
+        *,
+        prompt_tokens: int = 0,
+        completion_tokens: int = 0,
+        images: int = 0,
+        error: bool = False,
+        detail: str = "",
+    ) -> None:
         with self._stats_lock:
             self.stats["calls"] += 1
             self.stats["prompt_tokens"] += prompt_tokens
@@ -228,10 +245,21 @@ class IAIClient:
             self.stats["images"] += images
             if error:
                 self.stats["errors"] += 1
+                self.error_events.append({"kind": "error", "detail": redact(detail)[:500]})
+
+    def mark_retry_error(self, detail: str = "") -> None:
+        """標記一個已被上層重試修復的錯誤；不重複計入 errors。"""
+        with self._stats_lock:
+            self.stats["retry_errors"] += 1
+            self.error_events.append({"kind": "retry", "detail": redact(detail)[:500]})
 
     def usage(self) -> dict[str, int]:
         with self._stats_lock:
             return dict(self.stats)
+
+    def recent_error_events(self, limit: int = 50) -> list[dict[str, str]]:
+        with self._stats_lock:
+            return list(self.error_events[-limit:])
 
     # ---------- HTTP ----------
     def _request(self, method: str, path: str, payload: dict | None = None, timeout: int | None = None):
@@ -294,7 +322,7 @@ class IAIClient:
                 f"HTTP {response.status_code}：{redact(response.text[:300])}"
             )
 
-        self._record(error=True)
+        self._record(error=True, detail=f"request_failed_after_{attempts}:{last_error}")
         raise IAIClientError(f"請求失敗（已重試 {attempts} 次）：{redact(last_error)}")
 
     def _resolve_model(self, model: str | None, default: str) -> str:
@@ -376,7 +404,7 @@ class IAIClient:
                 except Exception:
                     continue
         if not text:
-            self._record(error=True)
+            self._record(error=True, detail=f"empty_response:{model}:finish_reason={finish_reason}")
             raise IAIClientError(
                 f"模型回應為空（finish_reason={finish_reason}）；若為推理模型請提高 max_tokens"
             )
@@ -423,6 +451,7 @@ class IAIClient:
                 last_exc = exc
                 if attempt >= max_repair:
                     raise
+                self.mark_retry_error(f"chat_json_repaired:{exc}")
                 # on empty/length error, ask for shorter JSON
                 messages = messages + [
                     {"role": "user", "content": "上一個回應為空或被截斷。請只輸出短而完整的合法 JSON。"},
@@ -471,7 +500,7 @@ class IAIClient:
         data = response.json()
         items = data.get("data") or []
         if not items:
-            self._record(error=True)
+            self._record(error=True, detail="image_empty_response")
             raise IAIClientError("生圖回應為空")
         self._record(images=len(items))
         return items
