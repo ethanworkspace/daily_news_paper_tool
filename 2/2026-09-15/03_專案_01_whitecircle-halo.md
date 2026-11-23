@@ -3,26 +3,21 @@
 - 日期：2026-09-15
 - URL：https://github.com/whitecircle/halo
 - 描述：Halo is an open-source framework built by White Circle for training large language and multimodal models
-- Stars：868  |  Forks：50  |  Language：Python
+- Stars：869  |  Forks：50  |  Language：Python
 - License：NOASSERTION
 - Topics：agent, async-rl, distributed-training, fine-tuning, grpo, large-language-models, llm, lora, model-parallelism, moe, multimodal, peft, post-training, pytorch, qlora, quantization, reinforcement-learning, rlhf, transformers, vllm
-- 更新時間：2026-11-20T08:14:25+00:00
+- 更新時間：2026-11-22T08:10:11+00:00
 - 配對論文：https://arxiv.org/abs/2606.04036
 - 品質分數：10/10 [paper_paired, implementation_signals, stale_seed]
 
 ## 在做什麼
-Halo is an open-source framework built by White Circle for training large language and multimodal models
-Halo is an open-source framework built by White Circle for training large language and multimodal models
-
-主要語言：Python；Topics：agent, async-rl, distributed-training, fine-tuning, grpo, large-language-models, llm, lora；Stars：868；License：NOASSERTION
+Halo 是由 White Circle 開源的訓練框架，專門用於大型語言與多模態模型的預訓練、指令微調（SFT）、偏好優化以及完全非同步多輪強化學習（RL）。它直接操作 Hugging Face 模型，支援單卡到多節點的專家平行（EP）、上下文平行（CP）、張量平行（TP）、專家‑張量平行（ETP）與管線平行（PP），並搭配 FSDP2、DTensor、DeviceMesh 與 DeepEP 等底層原始實作，使得相同程式碼可在不同規模的硬體上運行，並保持標準 SafeTensors 檢查點與 from_pretrained 相容。
 
 ## 技術
-實作語言以 Python 為主。
-從 topics 可見技術方向：agent, async-rl, distributed-training, fine-tuning, grpo, large-language-models, llm, lora。
-專案描述：Halo is an open-source framework built by White Circle for training large language and multimodal models
+Halo 以 Python 為主要語言，基於 PyTorch 構建分散式訓練堆疊，使用 Transformers 與 TRL 為高階介紹，並直接載入 Hugging Face 模型。其核心技術包括專家平行（EP）透過 DeepEP V2 實作 all‑to‑all 通訊，上下文平行（CP）與張量平行（TP/ETP）利用 FSDP2、DTensor 與 DeviceMesh 進行權重切分，管線平行（PP）則在各階段內嵌 EP/ETP。效能方面整合 FlashAttention‑4、Liger Kernel、Grouped GEMM、樹狀打包與 padding‑free 等優化，並提供 AdamWBF16 優化器與 BF16 完整精度訓練。針對強化學習，採用 Ray 作為環境 Rollout 的 Actor，與 vLLM 或 SGLang 伺服器進行非同步多輪互動，權重同步經由原生 NCCL 完成。此外，框架提供 Docker 镜像（Blackwell/Hopper）與腳本（halo launch、scripts/training/*.py）以免除主機 Python 環境需求。
 
 ## 架構
-README 未明確提供架構章節；依描述推斷此專案聚焦於：Halo is an open-source framework built by White Circle for training large language and multimodal models
+Halo 的程式碼結構如下：halo/ 目錄存放訓練器、平行ism 實作（EP、CP、TP、ETP、PP）、優化器、自訂核心（kernels）、資料整理器與回調；scripts/ 包含訓練入口、推論、資料前處理與檢查點工具；examples/ 提供依訓練方法與模型分組的可直接運行 YAML 配置；launcher‑configs/ 則有 Accelerate、SkyPilot 與 Nomad 的啟動設定；human‑docs/ 與 agent‑docs/ 分別提供面向使用者與代理的文件；skills/ 內建代理技能，用於作業啟動、平行ism 選擇、除錯、模型加入、檢查點管理、資料準備、吞吐優化、RL 設置、測試編寫與文件維護；tests/ 放置 CPU 與分散式 GPU 單元測試；Dockerfile 與 Makefile 負責映像建置、測試與訓練指令。典型執行流程為：先在 examples/ 中選擇對應的 YAML 配置，然後執行 halo launch <config>（或直接運行 scripts/training/.py），在對應的 Blackwell 或 Hopper Docker 映像內啟動 torchrun 或 accelerate launch，訓練器會載入 Hugging Face 模型，依配置套用對應的平行ism 包裝（EP 包裝 MoE 塊，CP 包裝注意力，TP/ETP 切分權重，PP 分割管線階段），進行前向與反向計算；若啟用 RL，則透過 Ray Actor 呼叫 vLLM/SGLang 伺服器取得環境樣本，經過獎勵計算後將更新的權重經 NCCL 同步回訓練端，完成一個訓練步驟。所有檢查點仍以標準 SafeTensors 形式儲存，可透過 from_pretrained 直接載入。
 
 ## README 摘錄（節選）
 ```text
