@@ -2,7 +2,7 @@
 
 - 日期：2026-11-06
 - URL：https://github.com/babutree/TTS-API
-- 描述：Self-hosted streaming TTS gateway with Web UI + REST/WebSocket API — dual-engine local Kokoro CPU inference + Microsoft Edge neural voices, ready-to-run for AI apps, extensions, and automation. 开箱即用的自托管流式 TTS 网关，提供 Web UI + REST/WebSocket API —— 支持本地 Kokoro CPU 推理语音与 Microsoft Edge 语音，面向 AI 应用、浏览器扩展和自动化工作流。
+- 描述：Self-hosted streaming TTS gateway with Web UI + REST/WebSocket API — dual-engine local Kokoro CPU inference + Microsoft Edge neural voices, ready-to-run for AI apps, extensions, and automation. 開箱即用的自托管流式 TTS 網關，提供 Web UI + REST/WebSocket API —— 支持本地 Kokoro CPU 推理語音與 Microsoft Edge 語音，面向 AI 應用、浏览器扩展和自動化工作流。
 - Stars：41  |  Forks：3  |  Language：Python
 - License：MIT
 - Topics：

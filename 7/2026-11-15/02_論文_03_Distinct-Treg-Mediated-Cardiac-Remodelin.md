@@ -22,7 +22,7 @@
 Heart failure with preserved ejection fraction lacks effective disease-modifying therapies. We show that neonatal mesenchymal stem cells and their secretome improve diastolic function by expanding regulatory T cells, reducing inflammation and fibrosis. Our new causal machine learning framework, variable importance prediction for cellular function, identified causal immune pathways driving cardiac functional improvement and revealed regulatory T cells as a therapeutic target.
 
 ## 背景與目的
-心臟衰竭合併保留射出分數（HFpEF）缺乏有效的疾病修飾療法。本研究旨在探討新生兒間充質幹細胞（MSCs）及其分泌組對HFpEF小鼠舒張功能的影響，並發現其可透過擴增調節性T細胞（Tregs）、減少發炎與纖維化來改善舒張功能。此外，研究團隊開發一種新型因果機器學習框架——「細胞功能變數重要性預測」，以識別驅動心臟功能改善的因果免疫途徑，並揭示Tregs作為治療標靶。此工作为HFpEF提供潛在疾病修飾策略，並建立因果推論工具以解析細胞療法機制。
+心臟衰竭合併保留射出分數（HFpEF）缺乏有效的疾病修飾療法。本研究旨在探討新生兒間充質幹細胞（MSCs）及其分泌組對HFpEF小鼠舒張功能的影響，並發現其可透過擴增調節性T細胞（Tregs）、減少發炎與纖維化來改善舒張功能。此外，研究團隊開發一種新型因果機器學習框架——「細胞功能變數重要性預測」，以識別驅動心臟功能改善的因果免疫途徑，並揭示Tregs作為治療標靶。此工作為HFpEF提供潛在疾病修飾策略，並建立因果推論工具以解析細胞療法機制。
 
 ## 方法
 本研究方法部分在提供的摘錄中僅提及核心框架名稱與目標，缺乏詳細技術細節。已知資訊：研究建立一個名為「細胞功能變數重要性預測」的因果機器學習框架，旨在從免疫細胞數據中識別導致心臟功能改善的因果免疫途徑，並將調節性T細胞（Tregs）標記為治療標靶。然而，摘錄未描述問題設定（輸入/輸出格式）、模型整體架構、核心模組或演算法機制（如因果發現演算法、變數重要性計算方式）、資料前處理與特徵表示（如單細胞轉錄組、流式細胞術數據）、訓練目標、損失函數、最佳化策略、推論流程，亦未與既有因果推論方法進行比較。依目前可取得資料，無法確認上述方法論細節。

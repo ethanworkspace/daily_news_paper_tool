@@ -17,7 +17,7 @@ FastCrest Tether 是一個開源的邊緣到雲端 AI 部署命令列工具，�
 Tether 以 Python 實作 CLI，核心功能包括將 PyTorch VLA 政策匯出為單體 ONNX 模型（支援外部權重資料）、使用 ONNX Runtime 配合 TensorRT 執行提供者（可選 Triton 快速核心與 ZMQ 傳輸），並透過 safetensors 直接載入權重以減少記憶體開銷。專案採用 BaseVLA 脊椎架構，將視覺、語言、投影等組件組合為可組合類別，並提供 ROS2 適配器起始套件。依賴項涵盖 fastcrest-tether[serve,gpu]、[fast-kernels]、[onnx] 等額外套件，需 Python ≥3.10。
 
 ## 架構
-Tether 的架構围绕四個主要指令：install（自動偵測平台並安裝適當的硬體相依套件）、export（將 VLA 政策轉換為單體 ONNX，必要時附帶外部權重檔案並執行 parity 驗證）、serve（啟動 ONNX Runtime 推論服務，可選擇 TensorRT、Triton 快速核心或 ZMQ 傳輸，並載入 tokenizer 與外部資料模組）、bench/connect（基於服務進行效能基準測試或狀態查詢）。資料流程為：使用者透過 CLI 指定模型與硬體，export 階段產生 ONNX 模型並產生 parity 證書；serve 階段載入該模型、建立執行階段提供者、處理輸入（圖像經 JPEG‑msgpack 序列化）並產生動作輸出；connect 與 bench 則是對同一服務發出查詢或基準請求以取得延遲、成功率等指標。若 README 未詳細說明內部模組劃分，則以上說明基於可觀察的指令行為與檔案結構推斷。
+Tether 的架構圍繞四個主要指令：install（自動偵測平台並安裝適當的硬體相依套件）、export（將 VLA 政策轉換為單體 ONNX，必要時附帶外部權重檔案並執行 parity 驗證）、serve（啟動 ONNX Runtime 推論服務，可選擇 TensorRT、Triton 快速核心或 ZMQ 傳輸，並載入 tokenizer 與外部資料模組）、bench/connect（基於服務進行效能基準測試或狀態查詢）。資料流程為：使用者透過 CLI 指定模型與硬體，export 階段產生 ONNX 模型並產生 parity 證書；serve 階段載入該模型、建立執行階段提供者、處理輸入（圖像經 JPEG‑msgpack 序列化）並產生動作輸出；connect 與 bench 則是對同一服務發出查詢或基準請求以取得延遲、成功率等指標。若 README 未詳細說明內部模組劃分，則以上說明基於可觀察的指令行為與檔案結構推斷。
 
 ## README 摘錄（節選）
 ```text
