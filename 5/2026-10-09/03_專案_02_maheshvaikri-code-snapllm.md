@@ -11,18 +11,13 @@
 - 品質分數：10/10 [paper_paired, implementation_signals, stale_seed]
 
 ## 在做什麼
-🔥 Alternative to Ollama — multi-model serving with sub-ms model switching · CPU-only 20B inference for Edge AI · llama.cpp + stablediffusion.cpp
-🔥 Alternative to Ollama — multi-model serving with sub-ms model switching · CPU-only 20B inference for Edge AI · llama.cpp + stablediffusion.cpp
-
-主要語言：C++；Topics：agentic-ai, cpu-inference, edge-ai, llm, llm-inference, llm-serving, llm-tools, local-llm；Stars：44；License：NOASSERTION
+SnapLLM 是一個基於 llama.cpp 與 stable-diffusion.cpp 的本地多模型推理引擎，目標使用者為需要在邊緣或桌面環境同時運行多種 LLM、視覺與擴散模型的開發者與 AI 愛好者。它解決單一模型頻繁載入與卸載導致的延遲與資源浪費問題，透過已駐留模型的即時切換、OpenAI 相容 API、React/Vite 桌面 UI 與 CLI，提供統一的模型管理與推理服務。
 
 ## 技術
-實作語言以 C++ 為主。
-從 topics 可見技術方向：agentic-ai, cpu-inference, edge-ai, llm, llm-inference, llm-serving, llm-tools, local-llm。
-專案描述：🔥 Alternative to Ollama — multi-model serving with sub-ms model switching · CPU-only 20B inference for Edge AI · llama.cpp + stablediffusion.cpp
+SnapLLM 使用 C++ 作為核心推理引擎，整合 llama.cpp 進行 LLM 推理與 stable-diffusion.cpp 進行圖像生成，支援 GGUF 量化模型、視覺模型（Gemma 3 Vision、Qwen‑VL、LLaVA）與擴散模型（SD 1.5、SDXL、SD3、FLUX）。桌面端採用 React 與 Vite 構建 UI，Node.js 18+ 提供開發與打包環境，透過 CMake 3.18+ 與 Visual Studio 2022 / GCC 11+ / Clang 14+ 編譯。提供 OpenAI 相容的 REST API，內建 KV Cache 持久化（vPID L2）與模型快取（vPID L1），支援 GPU/CPU 混合層分配，並可透過環境變數控制 API 金鑰、CORS 與工作空間路徑。
 
 ## 架構
-README 未明確提供架構章節；依描述推斷此專案聚焦於：🔥 Alternative to Ollama — multi-model serving with sub-ms model switching · CPU-only 20B inference for Edge AI · llama.cpp + stablediffusion.cpp
+SnapLLM 架構分為三層：底層推理引擎（C++）負責模型載入、權重管理與推理執行；中層 vPID 系統實作 L1 模型快取與 L2 KV Cache 持久化，提供已載入模型的即時切換與上下文索引查詢；頂層服務與介面層包含 OpenAI 相容的 HTTP API（預設 127.0.0.1:6930）、React/Vite 桌面 UI（預設 localhost:9780）與 CLI。資料流程為：使用者透過 API 或 UI 載入模型至模型工作區，模型被放置於 HOT（GPU VRAM）、WARM（CPU RAM）或 COLD（SSD）記憶體層級；切換時僅更新 vPID L1 指標，無需重新載入權重；生成請求會調用對應引擎，必要時讀取 L2 KV Cache 進行上下文查詢，最後返回結果給 API 或 UI。
 
 ## README 摘錄（節選）
 ```text
