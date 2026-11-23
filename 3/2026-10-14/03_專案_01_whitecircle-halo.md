@@ -3,26 +3,21 @@
 - 日期：2026-10-14
 - URL：https://github.com/whitecircle/halo
 - 描述：Halo is an open-source framework built by White Circle for training large language and multimodal models
-- Stars：868  |  Forks：50  |  Language：Python
+- Stars：869  |  Forks：49  |  Language：Python
 - License：NOASSERTION
 - Topics：agent, async-rl, distributed-training, fine-tuning, grpo, large-language-models, llm, lora, model-parallelism, moe, multimodal, peft, post-training, pytorch, qlora, quantization, reinforcement-learning, rlhf, transformers, vllm
-- 更新時間：2026-11-20T08:14:25+00:00
+- 更新時間：2026-11-22T08:10:11+00:00
 - 配對論文：https://arxiv.org/abs/2606.04036
 - 品質分數：10/10 [paper_paired, implementation_signals, stale_seed]
 
 ## 在做什麼
-Halo is an open-source framework built by White Circle for training large language and multimodal models
-Halo is an open-source framework built by White Circle for training large language and multimodal models
-
-主要語言：Python；Topics：agent, async-rl, distributed-training, fine-tuning, grpo, large-language-models, llm, lora；Stars：868；License：NOASSERTION
+Halo 是由 White Circle 開放原始碼的訓練框架，專門用於大型語言與多模態模型的預訓練、微調、偏好優化以及完全非同步多輪強化學習。它支援單 GPU 到多節點的分散式訓練，直接使用 Hugging Face 模型，並提供統一的平行ism 與檢查點基礎設施，讓研究者與工程師能在不重新實作分散式邏輯的情況下，擴展各種訓練方法。
 
 ## 技術
-實作語言以 Python 為主。
-從 topics 可見技術方向：agent, async-rl, distributed-training, fine-tuning, grpo, large-language-models, llm, lora。
-專案描述：Halo is an open-source framework built by White Circle for training large language and multimodal models
+Halo 以 Python 為主要語言，基於 PyTorch、Hugging Face Transformers 與 TRL 建構，並整合 vLLM 或 SGLang 作為 RL 推論後端。核心技術包含 DeepEP V2 專家平行 all-to-all、FlashAttention 4、Liger、Grouped GEMM、FSDP2、DTensor、DeviceMesh，以及專家平行（EP）、內容平行（CP）、張量平行（TP）、專家‑張量平行（ETP）與管線平行（PP）。支援 LoRA/QLoRA、BF16 訓練、AdamWBF16 優化器，並提供 Docker 镜像（Blackwell/Hopper）與 Ray 執行的非同步環境 rollout。
 
 ## 架構
-README 未明確提供架構章節；依描述推斷此專案聚焦於：Halo is an open-source framework built by White Circle for training large language and multimodal models
+架構將核心代碼放在 halo/，包含訓練器、平行ism（EP/CP/TP/ETP/PP）、優化器、核心、整理器與回調；scripts/ 為訓練入口與工具；examples/ 提供依方法與模型分組的 YAML 配置；launcher-configs/ 包含 Accelerate、SkyPilot 與 Nomad 的啟動設定。執行時，halo launch 依參數選擇 python、torchrun 或 accelerate launch，載入 Hugging Face 模型並根據配置加入相應平行ism；訓練器負責前向、損失與反向傳播。RL 中，透過 Ray actor 呼叫 vLLM/SGLang 伺服器進行多輪環境 rollout，權重更新經由 NCCL 同步；檢查點以 SafeTensors 儲存，可直接由 from_pretrained 載入。skills/ 提供給代理的 CLI 技能，用於啟動作業、選平行ism、除錯、加模型、管理檢查點、準備資料、優化吞吐量、設定 RL 以及寫測試與文件。
 
 ## README 摘錄（節選）
 ```text
