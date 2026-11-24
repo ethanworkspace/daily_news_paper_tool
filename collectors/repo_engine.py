@@ -26,7 +26,7 @@ from collectors.repo_parse import (
 from collectors.repo_sources import RepoSources
 from core.dedupe import Deduper, extract_arxiv_id, is_similar_title, make_keys, paper_identity_keys
 from core.models import RepoItem, SchemaError
-from core.timewin import is_future, is_within_window, now_utc, to_utc
+from core.timewin import is_future, is_within_window, now_utc, parse_datetime, to_utc
 
 
 class RepoQuotaError(RuntimeError):
@@ -578,8 +578,8 @@ class RepoEngine:
                     language=item.language,
                     license_name=item.license_name,
                     topics=list(item.topics),
-                    updated_at=item.updated_at.isoformat() if item.updated_at else "",
-                    created_at=item.created_at.isoformat() if item.created_at else "",
+                    updated_at=item.updated_at,
+                    created_at=item.created_at,
                     readme_text=item.readme_text,
                     readme_excerpt=item.readme_excerpt,
                     paper_url=item.paper_url,
@@ -729,9 +729,13 @@ class RepoEngine:
             if (cand.extra or {}).get("archived"):
                 rejected.append({"title": cand.full_name, "reason": "archived", "source": "github"})
                 continue
-            updated = cand.updated_at or cand.pushed_at
-            if updated is None:
+            updated_raw = cand.updated_at or cand.pushed_at
+            if updated_raw is None:
                 rejected.append({"title": cand.full_name, "reason": "no_date", "source": "github"})
+                continue
+            updated = parse_datetime(updated_raw)
+            if updated is None:
+                rejected.append({"title": cand.full_name, "reason": "invalid_date", "source": "github"})
                 continue
             updated = to_utc(updated)
             cand.updated_at = updated

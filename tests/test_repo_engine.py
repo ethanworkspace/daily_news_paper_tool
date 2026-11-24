@@ -276,6 +276,7 @@ class RepoEngineTests(unittest.TestCase):
         )
         self.assertIsNotNone(found)
         self.assertEqual(found.full_name, "org/paper")
+        self.assertIsInstance(found.updated_at, datetime)
         self.assertTrue(sources.search_calls)
         query, kwargs = sources.search_calls[0]
         self.assertIn("in:readme", query)
@@ -377,6 +378,34 @@ class RepoEngineTests(unittest.TestCase):
         self.assertIn("future", sel.report["rejected_counts"])
         self.assertEqual(sel.report["rejected_counts"]["future"], 1)
         self.assertEqual(sources.search_calls[0][1]["pushed_before"], "2026-11-22")
+
+    def test_collect_accepts_string_updated_at(self):
+        sources = FakeSources()
+        sources._repos = {}
+        sources._repos["org/string-date"] = RepoCandidate(
+            full_name="org/string-date",
+            html_url="https://github.com/org/string-date",
+            description="AI repo with string timestamp",
+            stars=80,
+            language="Python",
+            topics=["ai"],
+            updated_at="2026-11-20T00:00:00Z",
+            readme_text="# String Date\n\n## Install\npip install string-date\n\n## Usage\npython -m string_date.run\n" + ("x " * 200),
+        )
+        engine = RepoEngine(
+            sources=sources,
+            queries=[{"query": "ai", "hint": "general", "min_stars": 0}],
+            max_per_source=5,
+            max_age_days=30,
+            min_paired=0,
+            min_quality_score=2,
+            enrich_limit=5,
+        )
+
+        sel = engine.collect(1, now=datetime(2026, 11, 21, tzinfo=timezone.utc))
+
+        self.assertEqual(sel.items[0].full_name, "org/string-date")
+        self.assertIsInstance(sel.items[0].updated_at, datetime)
 
 
 if __name__ == "__main__":
