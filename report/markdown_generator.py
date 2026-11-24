@@ -1,7 +1,7 @@
-import os
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
-from config import BASE_DIR, DAILY_SUMMARY_FOLDER_NAME
+
+from core.paths import day_dir, digest_path
 
 
 def format_report_markdown(
@@ -98,11 +98,11 @@ def format_summary_markdown(
     paper_items: list[dict],
     repo_items: list[dict],
 ) -> str:
-    """生成「今日匯報總結」Markdown：先分別對新聞/論文/專案做 AI 總結，再附重點清單"""
+    """生成每日匯報 Markdown（相容性 helper；新流程詳見 daily_reporter.py）。"""
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     md = []
-    md.append(f"# 📋 今日匯報總結 — {topic_name}")
+    md.append(f"# 📋 每日匯報 — {topic_name}")
     md.append(f"> 📅 **日期**：{date_str} ({weekday_name})  |  🏷️ **今日主題**：`{topic_name}`  |  🕒 **生成時間**：{now_str}\n")
     md.append("---\n")
 
@@ -158,27 +158,20 @@ def format_summary_markdown(
 
 def save_reports(date_str: str, topic_info: dict, full_content: str, summary_content: str) -> tuple[Path, Path]:
     """
-    儲存 Markdown 報告：
-    1. 完整詳細日報 → 該主題資料夾 (例如 1.LLM、RAG、Fine tune)
-    2. 精簡「今日匯報總結」→ 8.每日新聞總結
+    相容性 helper；新流程請直接使用 core.paths。
+
+    儲存位置遵循凍結的新輸出結構：
+    1. 完整詳細日報 → <1..7>/<YYYY-MM-DD>/
+    2. 精簡「每日匯報」→ 每日匯報/<YYYY-MM-DD>_每日匯報.md
     """
-    # 建立檔案名稱 (檔名過濾特殊字元)
-    safe_topic_name = topic_info['name'].replace("、", "_").replace(" ", "_").replace("/", "_")
-    full_filename = f"{date_str}_{safe_topic_name}.md"
-    summary_filename = f"{date_str}_今日匯報總結.md"
+    target_date = date.fromisoformat(date_str)
+    out_day_dir = day_dir(Path.cwd(), target_date)
+    out_day_dir.mkdir(parents=True, exist_ok=True)
+    topic_file = out_day_dir / "01_新聞_10篇.md"
+    topic_file.write_text(full_content, encoding="utf-8")
 
-    # 1. 該主題資料夾 (完整詳細日報)
-    topic_dir = BASE_DIR / topic_info["folder"]
-    topic_dir.mkdir(parents=True, exist_ok=True)
-    topic_file = topic_dir / full_filename
-    with open(topic_file, "w", encoding="utf-8") as f:
-        f.write(full_content)
-
-    # 2. 每日新聞總結資料夾 (精簡總結)
-    summary_dir = BASE_DIR / DAILY_SUMMARY_FOLDER_NAME
-    summary_dir.mkdir(parents=True, exist_ok=True)
-    summary_file = summary_dir / summary_filename
-    with open(summary_file, "w", encoding="utf-8") as f:
-        f.write(summary_content)
+    summary_file = digest_path(Path.cwd(), target_date)
+    summary_file.parent.mkdir(parents=True, exist_ok=True)
+    summary_file.write_text(summary_content, encoding="utf-8")
 
     return topic_file, summary_file

@@ -147,13 +147,13 @@ def generate_daily_overview(topic_name: str, news_list: list, paper_list: list, 
 
 
 def generate_daily_summary(topic_name: str, news_list: list, paper_list: list, repo_list: list) -> str:
-    """結合今日所有資訊，生成「今日匯報總結」精簡摘要（與詳細總覽互補）"""
+    """相容性 helper：生成「每日匯報」精簡摘要（新流程詳見 report/daily_reporter.py）。"""
     news_titles = "\n".join([f"- {n.get('title')}" for n in news_list])
     paper_titles = "\n".join([f"- {p.get('title')}" for p in paper_list])
     repo_names = "\n".join([f"- {r.get('full_name')} (⭐ {r.get('stars')})" for r in repo_list])
 
     prompt = f"""今日主題為【{topic_name}】的每日 AI 科技新聞匯報已收集完成。
-請為其生成一份「今日匯報總結」，重點是「精簡」，約 150-250 字（繁體中文）：
+請為其生成一份「每日匯報」摘要，重點是「精簡」，約 150-250 字（繁體中文）：
 1. 用 2-3 句話指出今日最重要的 1~2 個焦點或趨勢。
 2. 點出今日資訊對相關開發者/研究者的整體參考價值。
 請勿逐條重複清單細節。

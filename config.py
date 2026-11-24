@@ -102,8 +102,8 @@ GITHUB_TOKEN = get_secure_env("GITHUB_TOKEN", "")
 SEMANTIC_SCHOLAR_API_KEY = get_secure_env("SEMANTIC_SCHOLAR_API_KEY", "")
 MAILTO_CONTACT = "daily_agent@nkust.edu.tw"
 
-# 每日新聞總結目錄名稱
-DAILY_SUMMARY_FOLDER_NAME = "8.每日新聞總結"
+# 每日匯報目錄名稱（新輸出結構）
+DAILY_SUMMARY_FOLDER_NAME = "每日匯報"
 
 # ===== P2：新聞蒐集設定 =====
 NEWS_HTTP_TIMEOUT = int(get_secure_env("NEWS_HTTP_TIMEOUT", "20"))
@@ -176,7 +176,7 @@ TOPICS = {
     0: {
         "id": 1,
         "name": "LLM、RAG、Fine tune",
-        "folder": "1.LLM、RAG、Fine tune",
+        "folder": "1",
         "weekday_name": "禮拜一",
         "news_query": "LLM OR RAG OR Fine-tuning 大語言模型",
         "arxiv_query": "cat:cs.CL",
@@ -187,7 +187,7 @@ TOPICS = {
     1: {
         "id": 2,
         "name": "機器學習、AI資訊安全",
-        "folder": "2.機器學習、AI資訊安全",
+        "folder": "2",
         "weekday_name": "禮拜二",
         "news_query": "\"機器學習\" OR \"Machine Learning\" OR AI資訊安全 OR 資安 OR \"AI Security\"",
         "arxiv_query": "(cat:cs.LG OR cat:cs.CR)",
@@ -198,7 +198,7 @@ TOPICS = {
     2: {
         "id": 3,
         "name": "深度學習",
-        "folder": "3.深度學習",
+        "folder": "3",
         "weekday_name": "禮拜三",
         "news_query": "深度學習 OR \"Deep Learning\" 神經網路",
         "arxiv_query": "cat:cs.CV OR cat:cs.NE",
@@ -209,7 +209,7 @@ TOPICS = {
     3: {
         "id": 4,
         "name": "ai agent",
-        "folder": "4.ai agent",
+        "folder": "4",
         "weekday_name": "禮拜四",
         "news_query": "\"AI Agent\" OR \"AI代理\" OR \"智慧代理\" OR \"autonomous agent\"",
         "arxiv_query": "cat:cs.AI AND (ti:agent OR ti:autonomous OR abs:agent)",
@@ -220,7 +220,7 @@ TOPICS = {
     4: {
         "id": 5,
         "name": "智慧機器人",
-        "folder": "5.智慧機器人",
+        "folder": "5",
         "weekday_name": "禮拜五",
         "news_query": "智慧機器人 OR 具身智能 OR \"Embodied AI\" OR \"Robotics\"",
         "arxiv_query": "cat:cs.RO",
@@ -231,7 +231,7 @@ TOPICS = {
     5: {
         "id": 6,
         "name": "AI硬體應用、AI自動化",
-        "folder": "6.AI硬體應用、AI自動化",
+        "folder": "6",
         "weekday_name": "禮拜六",
         "news_query": "\"AI晶片\" OR \"AI硬體\" OR \"AI自動化\" OR \"NPU\" OR \"GPU AI\"",
         "arxiv_query": "cat:cs.AR",
@@ -242,7 +242,7 @@ TOPICS = {
     6: {
         "id": 7,
         "name": "海事AI、醫療AI",
-        "folder": "7.海事AI、醫療AI",
+        "folder": "7",
         "weekday_name": "禮拜日",
         "news_query": "海事AI OR 智慧航運 OR \"Maritime AI\" OR \"Medical AI\" OR 醫療AI OR 智慧醫療",
         "arxiv_query": "(abs:maritime OR abs:shipping OR abs:medical OR abs:health) AND (cat:cs.AI OR cat:eess.SP OR cat:q-bio.BM OR cat:q-bio.QM)",
