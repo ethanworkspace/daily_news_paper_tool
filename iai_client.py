@@ -143,6 +143,10 @@ class KeyPool:
     def __len__(self) -> int:
         return len(self._keys)
 
+    @property
+    def keys(self) -> list[str]:
+        return list(self._keys)
+
     def masked(self) -> list[str]:
         return [mask_key(k) for k in self._keys]
 
@@ -207,6 +211,7 @@ class IAIClient:
         self._key_sems_lock = threading.Lock()
 
         self._stats_lock = threading.Lock()
+        self._budget_exceeded_until = 0.0
         # errors = 所有失敗事件（含重試後成功）；retry_errors 是其中已由上層重試修復的數量。
         self.stats = {
             "calls": 0,
@@ -222,6 +227,17 @@ class IAIClient:
     @property
     def has_keys(self) -> bool:
         return len(self.pool) > 0
+
+    @property
+    def budget_exceeded(self) -> bool:
+        """帳號額度耗盡時為 True；此時所有請求直接熔斷，避免重試風暴。"""
+        return time.monotonic() < self._budget_exceeded_until
+
+    def _trip_budget(self, detail: str) -> None:
+        self._budget_exceeded_until = time.monotonic() + 3600
+        for key in list(self.pool.keys):
+            self.pool.cooldown(key, 3600)
+        self._record(error=True, detail=f"budget_exceeded:{detail}")
 
     def _key_sem(self, key: str) -> threading.BoundedSemaphore:
         with self._key_sems_lock:
@@ -265,6 +281,8 @@ class IAIClient:
     def _request(self, method: str, path: str, payload: dict | None = None, timeout: int | None = None):
         if not self.has_keys:
             raise IAIClientError("未設定任何 iAI API key（請設定 IAI_API_KEYS 或 IAI_API_KEY_1..4）")
+        if self.budget_exceeded:
+            raise IAIClientError("iAI 帳號額度已用盡；請確認配額後再重試")
 
         url = f"{self.base_url}{path}"
         attempts = max(self.max_retries, 1) + 1
@@ -298,6 +316,10 @@ class IAIClient:
                 return response
 
             if response.status_code == 429:
+                body = response.text or ""
+                if "ExceededBudget" in body or "budget_exceeded" in body or "over budget" in body:
+                    self._trip_budget(redact(body[:200]))
+                    raise IAIClientError("iAI 帳號額度已用盡；請確認配額後再重試")
                 retry_after = response.headers.get("Retry-After", "")
                 try:
                     cooldown = float(retry_after)

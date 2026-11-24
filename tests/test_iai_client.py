@@ -132,6 +132,20 @@ class TestClientChat(unittest.TestCase):
         with self.assertRaises(ic.IAIClientError):
             client.chat("hi")
 
+    def test_budget_exceeded_circuit_breaker(self):
+        budget_error = '{"error":{"message":"ExceededBudget: User=X over budget.","code":"budget_exceeded"}}'
+        session = FakeSession([FakeResponse(429, {}, text=budget_error)])
+        client = self.make_client(session, keys=("sk-aaaaaaaaaaaa", "sk-bbbbbbbbbbbb"))
+
+        with self.assertRaises(ic.IAIClientError):
+            client.chat("hi")
+        self.assertEqual(len(session.requests), 1)
+        self.assertTrue(client.budget_exceeded)
+
+        with self.assertRaises(ic.IAIClientError):
+            client.chat("hi again")
+        self.assertEqual(len(session.requests), 1)
+
     def test_chat_json_repairs(self):
         session = FakeSession([
             FakeResponse(200, chat_payload("這不是 JSON")),
