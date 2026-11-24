@@ -69,7 +69,7 @@ python main.py --no-push                         # 不自動推送
 python main.py --backfill-from 2026-09-12 --backfill-to 2026-11-21 --allow-stale --force
 ```
 
-`--allow-stale` 放寬歷史回補的新鮮度下限，但**仍拒絕任何晚於報告日的資料**；manifest 與警告會標記 `stale_backfill=true`。回補新聞改用 Google News RSS 的 `after:/before:` 日期限定查詢（比照既有 `news_collector.py` 的公開 RSS 端點處理），論文/專案來源也加上日期窗口；GitHub 401/403 或種子抓取失敗會以 `seed_repo_fetch_failed`／`quota_shortfall` 警告記錄，不偽造配對或專案。
+`--allow-stale` 放寬歷史回補的新鮮度下限，但**仍拒絕任何晚於報告日的資料**；manifest 與警告會標記 `stale_backfill=true`。回補新聞改用 Google News RSS 的 `after:/before:` 日期限定查詢，最多回溯 14 天（比照既有 `news_collector.py` 的公開 RSS 端點處理），論文/專案來源也加上日期窗口；GitHub 401/403 或種子抓取失敗會以 `seed_repo_fetch_failed`／`quota_shortfall` 警告記錄，不偽造配對或專案。
 
 ---
 

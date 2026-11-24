@@ -295,7 +295,7 @@ class TestNewsEngine(unittest.TestCase):
         self.assertTrue(all(item.published_at <= target for item in selection.items))
         self.assertTrue(any(
             "news.google.com/rss/search" in call["url"]
-            and "after%3A2026-09-13" in call["url"]
+            and "after%3A2026-08-30" in call["url"]
             and "before%3A2026-09-15" in call["url"]
             and call["check_robots"] is False
             for call in fetcher.calls

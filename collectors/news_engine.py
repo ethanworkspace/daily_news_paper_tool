@@ -166,11 +166,11 @@ def build_bing_news_url(query: dict) -> str:
     return f"{BING_NEWS_ENDPOINT}?{'&'.join(params)}"
 
 
-def build_google_news_history_url(query: dict, target: date) -> str:
-    """Google News RSS 支援 after:/before:，用來取得報告日當期（而非當下）新聞。"""
+def build_google_news_history_url(query: dict, target: date, max_age_days: int = 14) -> str:
+    """Google News RSS 用 after:/before: 取得報告日以前的回補新聞（不含未來）。"""
     base = str(query.get("query", "")).strip()
     before = target + timedelta(days=1)
-    after = target - timedelta(days=1)
+    after = target - timedelta(days=max_age_days + 1)
     dated = f"{base} after:{after.isoformat()} before:{before.isoformat()}"
     params = [
         f"q={quote_plus(dated)}",
@@ -314,7 +314,7 @@ class NewsEngine:
             target_day = reference.date()
             for query in self.queries:
                 name = f"google_history:{query.get('hint', 'general')}:{query.get('query', '')[:40]}"
-                url = build_google_news_history_url(query, target_day)
+                url = build_google_news_history_url(query, target_day, self.max_age_days)
                 raw_items.extend(
                     self._fetch_feed(name, url, query, sources, check_robots=False)
                 )
