@@ -16,7 +16,7 @@ from typing import Any
 from config import NEWS_MAX_AGE_DAYS, PAPER_MAX_AGE_DAYS, REPO_MAX_AGE_DAYS
 from core.dedupe import paper_identity_keys
 from core.security import UnsafeURLError, assert_public_http_url
-from core.timewin import end_of_day_utc, is_within_window, parse_datetime
+from core.timewin import end_of_day_utc, is_future, is_within_window, parse_datetime
 
 DOMAINS = ("maritime", "cybersecurity", "medical", "electronics", "robotics", "general")
 DOMAIN_LABELS = {
@@ -364,6 +364,14 @@ class DailyBundle:
                 self.tech.validate(min_application_chars=min_section_chars if require_sections else 0)
             except SchemaError as exc:
                 raise SchemaError(f"tech → {exc}") from exc
+
+        future_items = (
+            [f"news:{n.title}" for n in self.news if is_future(n.published_at, now=reference)]
+            + [f"papers:{p.title}" for p in self.papers if is_future(p.published_at, now=reference)]
+            + [f"repos:{r.full_name}" for r in self.repos if is_future(r.updated_at, now=reference)]
+        )
+        if future_items:
+            _fail("bundle.future", f"不得包含晚於報告日的資料：{future_items[:3]}")
 
         if require_counts:
             from config import DAILY_NEWS_COUNT, DAILY_PAPER_COUNT, DAILY_REPO_COUNT

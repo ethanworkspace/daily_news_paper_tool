@@ -26,7 +26,7 @@ from collectors.repo_parse import (
 from collectors.repo_sources import RepoSources
 from core.dedupe import Deduper, extract_arxiv_id, is_similar_title, make_keys, paper_identity_keys
 from core.models import RepoItem, SchemaError
-from core.timewin import is_within_window, now_utc, to_utc
+from core.timewin import is_future, is_within_window, now_utc, to_utc
 
 
 class RepoQuotaError(RuntimeError):
@@ -322,6 +322,7 @@ class RepoEngine:
     ) -> RepoSelection:
         reference = now or now_utc()
         pushed_after = (reference - timedelta(days=self.max_age_days)).date().isoformat()
+        pushed_before = (reference + timedelta(days=1)).date().isoformat()
         raw: list[RepoCandidate] = []
         source_stats: dict[str, dict] = {}
 
@@ -346,7 +347,9 @@ class RepoEngine:
             if not q:
                 continue
             min_stars = int(query.get("min_stars", 0) or 0)
-            repos, st = self.sources.search_repos(q, per_page=15, pushed_after=pushed_after, min_stars=min_stars)
+            repos, st = self.sources.search_repos(
+                q, per_page=15, pushed_after=pushed_after, pushed_before=pushed_before, min_stars=min_stars
+            )
             raw.extend(repos)
             entry = source_stats.setdefault("github_search", {"found": 0, "fetched": 0, "errors": 0})
             entry["found"] += st.found
@@ -658,6 +661,9 @@ class RepoEngine:
         item.quality_score = quality.score
         item.quality_flags = quality.flags
 
+        if item.updated_at and is_future(item.updated_at, now=reference):
+            rejected.append({"title": item.full_name, "reason": "future", "source": "github"})
+            return False
         if item.updated_at and not is_within_window(item.updated_at, self.max_age_days, now=reference):
             # stale seed: keep only when paired to a paper for P3↔P4 traceability
             if _is_paired(item):
@@ -729,6 +735,9 @@ class RepoEngine:
                 continue
             updated = to_utc(updated)
             cand.updated_at = updated
+            if is_future(updated, now=reference):
+                rejected.append({"title": cand.full_name, "reason": "future", "source": "github"})
+                continue
             is_seed = bool((cand.extra or {}).get("is_paper_seed"))
             if not self.allow_stale and not is_within_window(updated, self.max_age_days, now=reference):
                 if is_seed:

@@ -206,6 +206,12 @@ class TestDailyBundle(unittest.TestCase):
         self.assertEqual(quotas["paired_papers"], 1)
         self.assertEqual(quotas["paired_repos"], 2)
 
+    def test_future_item_rejected_even_in_backfill(self):
+        bundle = self.build_bundle()
+        bundle.news[0].published_at = NOW + timedelta(days=2)
+        with self.assertRaises(SchemaError):
+            bundle.validate(now=NOW, allow_stale=True)
+
     def test_counts_enforced(self):
         bundle = self.build_bundle()
         bundle.news = bundle.news[:9]

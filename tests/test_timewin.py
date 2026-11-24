@@ -4,6 +4,8 @@ from datetime import date, datetime, timedelta, timezone
 from core.timewin import (
     age_days,
     end_of_day_utc,
+    is_acceptable_when_stale,
+    is_future,
     is_within_window,
     local_today,
     parse_date,
@@ -74,6 +76,13 @@ class TestAgeAndWindow(unittest.TestCase):
 
     def test_unparseable_is_not_fresh(self):
         self.assertFalse(is_within_window("garbage", 14, now=NOW))
+
+    def test_future_is_strict_even_for_backfill(self):
+        self.assertTrue(is_future(NOW + timedelta(seconds=1), now=NOW))
+        self.assertFalse(is_future(NOW - timedelta(seconds=1), now=NOW))
+        self.assertFalse(is_future("garbage", now=NOW))
+        self.assertTrue(is_acceptable_when_stale(NOW - timedelta(days=100), now=NOW))
+        self.assertFalse(is_acceptable_when_stale(NOW + timedelta(seconds=1), now=NOW))
 
     def test_split_by_window(self):
         items = [

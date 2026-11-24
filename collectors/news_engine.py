@@ -2,6 +2,7 @@
 
 來源：
 - Bing News RSS（查詢式聚合，遵守 robots.txt；可關閉）
+- Google News RSS（回補模式用 after:/before: 取得報告日當期新聞；比照 news_collector 的公開 RSS 端點處理，不檢查 robots.txt）
 - 直接媒體 RSS（來源清單在 config.NEWS_FEEDS，可插拔）
 
 輸出：`NewsSelection`（含 10 篇 NewsItem、統計報告、被排除原因）。
@@ -12,7 +13,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Iterable
 from urllib.parse import quote_plus
 
@@ -27,11 +28,19 @@ from config import (
 )
 from core.dedupe import Deduper, is_similar_title, make_keys
 from core.models import CROSS_DOMAIN, DOMAINS, NewsItem, SchemaError
-from core.timewin import is_within_window, now_utc, parse_datetime, to_utc
+from core.timewin import (
+    is_acceptable_when_stale,
+    is_future,
+    is_within_window,
+    now_utc,
+    parse_datetime,
+    to_utc,
+)
 from collectors.news_http import FetchResult, SafeHttpFetcher
 from collectors.news_parse import RawNews, parse_feed, strip_html
 
 BING_NEWS_ENDPOINT = "https://www.bing.com/news/search"
+GOOGLE_NEWS_RSS_ENDPOINT = "https://news.google.com/rss/search"
 
 AI_TERMS = (
     "artificial intelligence", "machine learning", "deep learning", "neural network",
@@ -155,6 +164,21 @@ def build_bing_news_url(query: dict) -> str:
     if query.get("cc"):
         params.append(f"cc={quote_plus(str(query['cc']))}")
     return f"{BING_NEWS_ENDPOINT}?{'&'.join(params)}"
+
+
+def build_google_news_history_url(query: dict, target: date) -> str:
+    """Google News RSS 支援 after:/before:，用來取得報告日當期（而非當下）新聞。"""
+    base = str(query.get("query", "")).strip()
+    before = target + timedelta(days=1)
+    after = target - timedelta(days=1)
+    dated = f"{base} after:{after.isoformat()} before:{before.isoformat()}"
+    params = [
+        f"q={quote_plus(dated)}",
+        f"hl={quote_plus(str(query.get('lang') or 'zh-tw'))}",
+        f"gl={quote_plus(str(query.get('cc') or 'TW'))}",
+        f"ceid={quote_plus(str(query.get('ceid') or 'TW:zh-Hant'))}",
+    ]
+    return f"{GOOGLE_NEWS_RSS_ENDPOINT}?{'&'.join(params)}"
 
 
 def _is_cross_domain(item: NewsItem) -> bool:
@@ -285,15 +309,25 @@ class NewsEngine:
         raw_items: list[RawNews] = []
         sources: dict[str, dict[str, int]] = {}
 
-        if self.queries and self.bing_enabled:
+        if self.allow_stale:
+            # 回補：Bing/媒體 RSS 只有「當下」內容，改用 Google News 的日期限定查詢。
+            target_day = reference.date()
             for query in self.queries:
-                name = f"bing:{query.get('hint', 'general')}:{query.get('query', '')[:40]}"
-                url = build_bing_news_url(query)
-                raw_items.extend(self._fetch_feed(name, url, query, sources))
+                name = f"google_history:{query.get('hint', 'general')}:{query.get('query', '')[:40]}"
+                url = build_google_news_history_url(query, target_day)
+                raw_items.extend(
+                    self._fetch_feed(name, url, query, sources, check_robots=False)
+                )
+        else:
+            if self.queries and self.bing_enabled:
+                for query in self.queries:
+                    name = f"bing:{query.get('hint', 'general')}:{query.get('query', '')[:40]}"
+                    url = build_bing_news_url(query)
+                    raw_items.extend(self._fetch_feed(name, url, query, sources))
 
-        for feed in self.feeds:
-            name = f"rss:{feed.get('name', feed.get('url', ''))}"
-            raw_items.extend(self._fetch_feed(name, feed.get("url", ""), feed, sources))
+            for feed in self.feeds:
+                name = f"rss:{feed.get('name', feed.get('url', ''))}"
+                raw_items.extend(self._fetch_feed(name, feed.get("url", ""), feed, sources))
 
         items, rejected = self._filter(raw_items, reference)
         try:
@@ -316,12 +350,21 @@ class NewsEngine:
         return selection
 
     # ---------- 內部 ----------
-    def _fetch_feed(self, name: str, url: str, source_cfg: dict, stats: dict) -> list[RawNews]:
+    def _fetch_feed(
+        self,
+        name: str,
+        url: str,
+        source_cfg: dict,
+        stats: dict,
+        *,
+        check_robots: bool | None = None,
+    ) -> list[RawNews]:
         entry = stats.setdefault(name, {"found": 0, "errors": 0, "fetched": 0})
         if not url:
             entry["errors"] += 1
             return []
-        result: FetchResult = self.fetcher.fetch(url, check_robots=self.robots_check)
+        robots = self.robots_check if check_robots is None else check_robots
+        result: FetchResult = self.fetcher.fetch(url, check_robots=robots)
         if not result.ok:
             entry["errors"] += 1
             entry["error"] = result.error or f"http_{result.status}"
@@ -354,7 +397,14 @@ class NewsEngine:
                 rejected.append({"title": raw.title[:160], "reason": "no_date", "source": raw.source})
                 continue
             published = to_utc(published)
-            if not self.allow_stale and not is_within_window(published, self.max_age_days, now=reference):
+            if is_future(published, now=reference):
+                rejected.append({"title": raw.title[:160], "reason": "future", "source": raw.source})
+                continue
+            if self.allow_stale:
+                if not is_acceptable_when_stale(published, now=reference):
+                    rejected.append({"title": raw.title[:160], "reason": "future", "source": raw.source})
+                    continue
+            elif not is_within_window(published, self.max_age_days, now=reference):
                 rejected.append({"title": raw.title[:160], "reason": "stale", "source": raw.source})
                 continue
 

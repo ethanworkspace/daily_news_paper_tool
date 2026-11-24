@@ -37,8 +37,10 @@ def make_item(title: str, **kwargs) -> PaperItem:
 class FakeSources:
     def __init__(self, mapping=None):
         self.mapping = mapping or {}
+        self.calls = []
 
     def search_arxiv(self, query, **kwargs):
+        self.calls.append(("arxiv", query, kwargs))
         c = self.mapping.get(("arxiv", query), [])
         return c, type("S", (), {"name": "arxiv", "found": len(c), "fetched": 1, "errors": 0, "error": ""})()
 
@@ -158,6 +160,34 @@ class TestPaperEngine(unittest.TestCase):
         sel = engine.collect(5, now=NOW)
         self.assertTrue(any(item.parse_level == "fulltext" for item in sel.items))
         self.assertTrue(all(item.fulltext_excerpt for item in sel.items))
+
+    def test_backfill_rejects_future_and_passes_date_window_to_sources(self):
+        q = "large language model"
+        future = make_candidate("Future AI paper", arxiv_id="2601.99998")
+        future.published_at = NOW + timedelta(days=2)
+        mapping = {
+            ("arxiv", q): [future] + [
+                make_candidate(f"Good AI {i}", arxiv_id=f"2601.2000{i}", source=f"S{i}")
+                for i in range(6)
+            ]
+        }
+        sources = FakeSources(mapping)
+        engine = PaperEngine(
+            sources=sources,
+            queries=[{"query": q}],
+            allow_stale=True,
+            min_paired=0,
+            enrich_fulltext=False,
+        )
+
+        sel = engine.collect(5, now=NOW)
+
+        self.assertEqual(len(sel.items), 5)
+        self.assertTrue(all(item.published_at <= NOW for item in sel.items))
+        self.assertTrue(any(r["reason"] == "future" for r in sel.rejected))
+        arxiv_call = next(call for call in sources.calls if call[0] == "arxiv")
+        self.assertEqual(arxiv_call[2]["to_date"], "2026-11-21")
+        self.assertTrue(arxiv_call[2]["from_date"])
 
 
 if __name__ == "__main__":

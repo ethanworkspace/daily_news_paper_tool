@@ -157,10 +157,11 @@ class FakeSources:
             ),
         }
 
-    def search_repos(self, query, *, per_page=20, pushed_after="", min_stars=0, sort="updated", order="desc"):
+    def search_repos(self, query, *, per_page=20, pushed_after="", pushed_before="", min_stars=0, sort="updated", order="desc"):
         self.search_calls.append((query, {
             "per_page": per_page,
             "pushed_after": pushed_after,
+            "pushed_before": pushed_before,
             "min_stars": min_stars,
             "sort": sort,
             "order": order,
@@ -346,6 +347,36 @@ class RepoEngineTests(unittest.TestCase):
         self.assertEqual(sel.items[0].full_name, "org/paired")
         self.assertTrue(sel.items[0].extra.get("is_paper_seed"))
         self.assertIn("enrich_error", sel.items[0].extra)
+
+    def test_future_repo_rejected_and_search_is_bounded(self):
+        sources = FakeSources()
+        sources._repos["org/future"] = RepoCandidate(
+            full_name="org/future",
+            html_url="https://github.com/org/future",
+            description="Future AI repository",
+            stars=500,
+            language="Python",
+            topics=["ai"],
+            updated_at=datetime(2026, 11, 25, tzinfo=timezone.utc),
+            readme_text="# Future\n\n## Install\npip install future\n\n## Usage\npython -m future.run\n" + ("x " * 200),
+        )
+        engine = RepoEngine(
+            sources=sources,
+            queries=[{"query": "maritime ai", "hint": "maritime", "min_stars": 0}],
+            max_per_source=5,
+            max_age_days=30,
+            min_paired=0,
+            min_quality_score=2,
+            enrich_limit=5,
+            allow_stale=True,
+        )
+
+        sel = engine.collect(1, now=datetime(2026, 11, 21, tzinfo=timezone.utc))
+
+        self.assertEqual({item.full_name for item in sel.items}, {"org/maritime"})
+        self.assertIn("future", sel.report["rejected_counts"])
+        self.assertEqual(sel.report["rejected_counts"]["future"], 1)
+        self.assertEqual(sources.search_calls[0][1]["pushed_before"], "2026-11-22")
 
 
 if __name__ == "__main__":

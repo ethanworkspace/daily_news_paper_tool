@@ -126,6 +126,29 @@ def is_within_window(
     return age <= max_age_days and age >= -future_tolerance_days
 
 
+def is_future(
+    published: object,
+    *,
+    now: datetime | None = None,
+    future_tolerance_days: float = 0.0,
+) -> bool:
+    """是否晚於報告截止時間。回補模式也必須拒絕未來資料。"""
+    age = age_days(published, now=now)
+    return age is not None and age < -future_tolerance_days
+
+
+def is_acceptable_when_stale(
+    published: object,
+    *,
+    now: datetime | None = None,
+    future_tolerance_days: float = 0.0,
+) -> bool:
+    """回補模式：放寬舊資料下限，但仍拒絕未來資料。"""
+    return not is_future(
+        published, now=now, future_tolerance_days=future_tolerance_days
+    )
+
+
 def split_by_window(
     items: Iterable[T],
     get_published: Callable[[T], object],

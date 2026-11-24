@@ -18,7 +18,7 @@ from collectors.paper_parse import PaperCandidate, extract_github_urls, first_gi
 from collectors.paper_sources import PaperSources
 from core.dedupe import Deduper, is_similar_title, make_keys, normalize_doi
 from core.models import PaperItem, SchemaError
-from core.timewin import is_within_window, now_utc, to_utc
+from core.timewin import is_future, is_within_window, now_utc, to_utc
 
 
 class PaperQuotaError(RuntimeError):
@@ -175,6 +175,8 @@ class PaperEngine:
         from_date = (reference - timedelta(days=self.max_age_days)).date().isoformat()
         to_date = reference.date().isoformat()
         year_filter = f"{reference.year - 1}-{reference.year}"
+        pubmed_from = from_date.replace("-", "/")
+        pubmed_to = to_date.replace("-", "/")
 
         raw_candidates: list[PaperCandidate] = []
         source_stats: dict[str, dict] = {}
@@ -192,7 +194,9 @@ class PaperEngine:
             if not q:
                 continue
             # arXiv
-            papers, st = self.sources.search_arxiv(q, max_results=12)
+            papers, st = self.sources.search_arxiv(
+                q, max_results=12, from_date=from_date, to_date=to_date
+            )
             raw_candidates.extend(papers)
             add_stats("arxiv", st)
             # OpenAlex
@@ -200,7 +204,9 @@ class PaperEngine:
             raw_candidates.extend(papers)
             add_stats("openalex", st)
             # PubMed (對醫療/生醫查詢較有價值，但安全起見都跑；結果再篩)
-            papers, st = self.sources.search_pubmed(q, retmax=10)
+            papers, st = self.sources.search_pubmed(
+                q, retmax=10, mindate=pubmed_from, maxdate=pubmed_to
+            )
             raw_candidates.extend(papers)
             add_stats("pubmed", st)
             # Semantic Scholar（選用，429/不可用時不影響整體）
@@ -296,6 +302,9 @@ class PaperEngine:
                 rejected.append({"title": cand.title[:160], "reason": "no_date", "source": cand.source_name})
                 continue
             published = to_utc(published)
+            if is_future(published, now=reference):
+                rejected.append({"title": cand.title[:160], "reason": "future", "source": cand.source_name})
+                continue
             if not self.allow_stale and not is_within_window(published, self.max_age_days, now=reference):
                 rejected.append({"title": cand.title[:160], "reason": "stale", "source": cand.source_name})
                 continue

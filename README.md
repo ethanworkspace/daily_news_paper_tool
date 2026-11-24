@@ -69,7 +69,7 @@ python main.py --no-push                         # 不自動推送
 python main.py --backfill-from 2026-09-12 --backfill-to 2026-11-21 --allow-stale --force
 ```
 
-`--allow-stale` 僅放寬歷史回補的新聞/論文/專案新鮮度門檻；manifest 與警告會標記 `stale_backfill=true`。 GitHub 401/403 或種子抓取失敗會以 `seed_repo_fetch_failed`／`quota_shortfall` 警告記錄，不偽造配對或專案。
+`--allow-stale` 放寬歷史回補的新鮮度下限，但**仍拒絕任何晚於報告日的資料**；manifest 與警告會標記 `stale_backfill=true`。回補新聞改用 Google News RSS 的 `after:/before:` 日期限定查詢（比照既有 `news_collector.py` 的公開 RSS 端點處理），論文/專案來源也加上日期窗口；GitHub 401/403 或種子抓取失敗會以 `seed_repo_fetch_failed`／`quota_shortfall` 警告記錄，不偽造配對或專案。
 
 ---
 
@@ -82,7 +82,7 @@ python main.py --backfill-from 2026-09-12 --backfill-to 2026-11-21 --allow-stale
 
 ## ⚠️ 已知限制（歷史回補）
 
-- 回補模式以抓取/執行時間作為新聞時間依據，少數歷史日期的內容可能出現晚於報告日的時間戳；manifest 以 `stale_backfill=true` 標註。
+- 回補模式已改用日期限定區間抓取，並在收集與 `DailyBundle.validate()` 兩層阻擋未來資料；既有 71 天舊版輸出若仍含未來日期，需以 `--allow-stale --force` 重跑才能清除。
 - GitHub _search/種子抓取可能受 401/403 或速率限制影響，導致專案數不足 5 或配對數不足 3；此類情形會以 `seed_repo_fetch_failed`／`quota_shortfall`／`paired_repos_below_target` 警告記錄，不偽造資料。
 - `2026-11-20` 有一次模型重試失敗後成功（`model_usage.errors=1`、`errors=[]`），屬已回收事件；最終驗收僅將未回收的 pipeline 錯誤視為失敗。
 

@@ -102,6 +102,7 @@ class RepoSources:
         *,
         per_page: int = 20,
         pushed_after: str = "",
+        pushed_before: str = "",
         min_stars: int = 0,
         sort: str = "updated",
         order: str = "desc",
@@ -110,6 +111,8 @@ class RepoSources:
         q = query.strip()
         if pushed_after:
             q = f"{q} pushed:>{pushed_after}"
+        if pushed_before:
+            q = f"{q} pushed:<{pushed_before}"
         if min_stars > 0:
             q = f"{q} stars:>={min_stars}"
         url = (

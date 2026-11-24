@@ -91,10 +91,25 @@ class PaperSources:
         return result.content
 
     # ---------- arXiv ----------
-    def search_arxiv(self, query: str, *, max_results: int = 20, now: datetime | None = None) -> tuple[list[PaperCandidate], SourceStats]:
+    def search_arxiv(
+        self,
+        query: str,
+        *,
+        max_results: int = 20,
+        now: datetime | None = None,
+        from_date: str = "",
+        to_date: str = "",
+    ) -> tuple[list[PaperCandidate], SourceStats]:
         stats = SourceStats("arxiv")
-        encoded = quote_plus(query)
-        url = f"{ARXIV_API}?search_query=all:{encoded}&start=0&max_results={max_results}&sortBy=submittedDate&sortOrder=descending"
+        search_query = f"all:{query}"
+        if from_date and to_date:
+            start = from_date.replace("-", "") + "0000"
+            end = to_date.replace("-", "") + "2359"
+            search_query = f"{search_query} AND submittedDate:[{start} TO {end}]"
+        url = (
+            f"{ARXIV_API}?search_query={quote_plus(search_query)}"
+            f"&start=0&max_results={max_results}&sortBy=submittedDate&sortOrder=descending"
+        )
         # arXiv Atom API 為公開程式介面，robots 對爬蟲頁面限制不等同 API 使用政策；此處關閉 robots 以免誤擋。
         result = self.fetcher.fetch(url, check_robots=False)
         if not result.ok:
@@ -219,11 +234,24 @@ class PaperSources:
         return papers, stats
 
     # ---------- PubMed ----------
-    def search_pubmed(self, query: str, *, retmax: int = 20) -> tuple[list[PaperCandidate], SourceStats]:
+    def search_pubmed(
+        self,
+        query: str,
+        *,
+        retmax: int = 20,
+        mindate: str = "",
+        maxdate: str = "",
+    ) -> tuple[list[PaperCandidate], SourceStats]:
         stats = SourceStats("pubmed")
+        date_params = ""
+        if mindate and maxdate:
+            date_params = (
+                f"&datetype=pdat&mindate={quote(mindate, safe='/')}"
+                f"&maxdate={quote(maxdate, safe='/')}"
+            )
         esearch_url = (
             f"{PUBMED_ESEARCH}?db=pubmed&term={quote_plus(query)}&retmode=json&retmax={retmax}"
-            f"&sort=date&tool=DailyAIReport&email={quote(MAILTO_CONTACT)}"
+            f"&sort=date&tool=DailyAIReport&email={quote(MAILTO_CONTACT)}{date_params}"
         )
         result = self.fetcher.fetch(esearch_url, check_robots=False)
         if not result.ok:

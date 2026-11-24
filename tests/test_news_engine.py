@@ -1,11 +1,12 @@
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from email.utils import format_datetime
 
 from collectors.news_engine import (
     NewsEngine,
     NewsQuotaError,
     build_bing_news_url,
+    build_google_news_history_url,
     detect_ai_focus,
     detect_domains,
     is_ai_related,
@@ -257,6 +258,48 @@ class TestNewsEngine(unittest.TestCase):
         self.assertEqual(len(selection.items), 9)
         self.assertEqual(selection.report["sources"]["rss:Bad"]["errors"], 1)
         self.assertEqual(selection.report["sources"]["rss:Good"]["errors"], 0)
+
+    def test_allow_stale_uses_history_feed_and_rejects_future(self):
+        target = datetime(2026, 9, 14, 23, 59, 59, tzinfo=timezone.utc)
+        query = {"query": "人工智慧", "lang": "zh-tw", "cc": "TW", "hint": "general"}
+        url = build_google_news_history_url(query, target.date())
+        items = [
+            item_xml(f"AI 技術新聞 {i}", f"https://example.com/h/{i}",
+                     target - timedelta(hours=i + 2), source=f"S{i % 4}")
+            for i in range(8)
+        ]
+        items += [
+            item_xml("AI 海事船舶", "https://example.com/h/mar", target - timedelta(hours=3),
+                     source="Mar", desc="海事 船舶 AI"),
+            item_xml("AI 醫療診斷", "https://example.com/h/med", target - timedelta(hours=4),
+                     source="Med", desc="醫療 AI 醫院"),
+            item_xml("AI 資安防禦", "https://example.com/h/cyb", target - timedelta(hours=5),
+                     source="Cyb", desc="資安 AI 漏洞"),
+            item_xml("未來 AI 新聞", "https://example.com/h/future", target + timedelta(days=60),
+                     source="Future"),
+        ]
+        fetcher = FakeFetcher({url: rss(items)})
+        engine = NewsEngine(
+            fetcher=fetcher,
+            queries=[query],
+            feeds=[],
+            allow_stale=True,
+            bing_enabled=False,
+        )
+
+        selection = engine.collect(10, now=target)
+
+        titles = [item.title for item in selection.items]
+        self.assertEqual(len(titles), 10)
+        self.assertNotIn("未來 AI 新聞", titles)
+        self.assertTrue(all(item.published_at <= target for item in selection.items))
+        self.assertTrue(any(
+            "news.google.com/rss/search" in call["url"]
+            and "after%3A2026-09-13" in call["url"]
+            and "before%3A2026-09-15" in call["url"]
+            and call["check_robots"] is False
+            for call in fetcher.calls
+        ))
 
 
 if __name__ == "__main__":
