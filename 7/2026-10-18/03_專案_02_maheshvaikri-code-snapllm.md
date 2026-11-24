@@ -11,18 +11,13 @@
 - 品質分數：10/10 [paper_paired, implementation_signals, stale_seed]
 
 ## 在做什麼
-🔥 Alternative to Ollama — multi-model serving with sub-ms model switching · CPU-only 20B inference for Edge AI · llama.cpp + stablediffusion.cpp
-🔥 Alternative to Ollama — multi-model serving with sub-ms model switching · CPU-only 20B inference for Edge AI · llama.cpp + stablediffusion.cpp
-
-主要語言：C++；Topics：agentic-ai, cpu-inference, edge-ai, llm, llm-inference, llm-serving, llm-tools, local-llm；Stars：44；License：NOASSERTION
+SnapLLM 是一個基於 llama.cpp 與 stable-diffusion.cpp 的本地推理引擎，支援多模型常駐與毫秒級切換，提供 OpenAI 相容 API、React/Vite 桌面 UI 與 CLI，適用於需要在邊緣設備或工作站上同時運行多種 LLM、視覺與擴散模型的開發者與研究者，解決頻繁載入模型權重導致的延遲問題。
 
 ## 技術
-實作語言以 C++ 為主。
-從 topics 可見技術方向：agentic-ai, cpu-inference, edge-ai, llm, llm-inference, llm-serving, llm-tools, local-llm。
-專案描述：🔥 Alternative to Ollama — multi-model serving with sub-ms model switching · CPU-only 20B inference for Edge AI · llama.cpp + stablediffusion.cpp
+專案主要使用 C++ 實作，核心推理引擎整合 llama.cpp（支援 GGUF 量化 LLMs）與 stable-diffusion.cpp（支援 SD 1.5、SDXL、SD3、FLUX 等），透過 CMake 建構，提供 Node.js + React/Vite 桌面應用，API 完全相容 OpenAI 規格，支援 GPU/CPU 混合層分配、記憶體分層（HOT VRAM、WARM RAM、COLD SSD）、KV Cache 持久化與 vPID 架構，並可透過 Docker（CPU 與 -cuda 版）部署。
 
 ## 架構
-README 未明確提供架構章節；依描述推斷此專案聚焦於：🔥 Alternative to Ollama — multi-model serving with sub-ms model switching · CPU-only 20B inference for Edge AI · llama.cpp + stablediffusion.cpp
+SnapLLM 架構分為後端伺服器、模型管理與桌面應用三層。後端以 HTTP API 監聽 6930 端口，負責模型載入（POST /api/v1/models/load）、切換（POST /api/v1/models/switch）與生成（/v1/chat/completions、/api/v1/generate 等），採用 vPID（Virtual Processing‑In‑Disk）系統：L1 模型快取存放工作區與引擎管理資料，L2 內容快取持久化 KV Cache 並以雜尋索引快速查詢；記憶體分層將模型依可用資源放置於 HOT（GPU VRAM）、WARM（CPU RAM）或 COLD（SSD）。桌面應用由 React + Vite 構建，提供儀表板、聊天、圖像生成、視覺分析、模型管理與 A/B 比較等功能，透過 WebSocket 或 API 與後端溝通。README 中已明確說明 vPID 級別、記憶體層與工作區結構，若需更細微的執行緒或核心迴路細則則需參考原始碼。
 
 ## README 摘錄（節選）
 ```text
