@@ -22,13 +22,13 @@
 Traditional drug development suffers from high costs, low success rates, and patient response variability. Precision drug discovery seeks to overcome these limitations by targeting specific genetic and molecular mechanisms but faces challenges in integrating cross-scale, multimodal biomedical data. Recent advances in artificial intelligence (AI), especially deep learning, provide powerful tools to navigate these complexities. This review surveys representative AI methods across four core stages of precision drug discovery: (a) target identification and validation using omics-, drug-, and structure-based approaches; (b) structure- and sequence-guided virtual screening of active compounds; (c) individualized drug response prediction integrating cell-line, single-cell, and multimodal data; and (d) AI-enabled toxicology and safety modeling to anticipate adverse liabilities and improve translational success. We further highlight a paradigm shift toward autonomous scientific agents capable of causal reasoning and end-to-end experimental guidance. Finally, we discuss persistent challenges, including data bias, limited interpretability, and in silico-to-wet lab translation.
 
 ## 背景與目的
-傳統藥物開發面臨高成本、低成功率與患者反應異質性等瓶頸。精準藥物發現旨在鎖定特定基因與分子機制以突破限制，但整合跨尺度、多模態生物醫學資料仍具挑戰。近年人工智慧（AI），特別是深度學習，提供強大工具應對此類複雜性。本文為綜述文章，旨在系統梳理精準藥物發現四大核心階段的代表性 AI 方法，並凸顯向具備因果推理與端到端實驗指導能力的自主科學智能體範式轉移，同時指出資料偏差、可解釋性不足與 in silico 到濕式實驗轉譯等持續挑戰，為領域提供關鍵技術地圖與未來方向指引。
+傳統藥物開發面臨高成本、低成功率與患者反應異質性等問題。精準藥物發現試圖針對特定基因與分子機制，但難以整合跨尺度、多模態的生醫數據。近年人工智慧（AI），特別是深度學習，提供強大工具以應對這些複雜性。本文旨在系統回顧精準藥物發現四大核心階段的代表性 AI 方法，並探討自主科學代理的範式轉移與持續挑戰，以為後續研究提供全景視角。並分析各階段常用的組學、結構、序列與單細胞數據整合策略，以及模型可解釋性與轉譯落地的關鍵瓶頸。此綜述有助於釐清現有方法的優缺點，並指引未來資料治理與因果推理研究方向。
 
 ## 方法
-本綜述採取結構化調查法，將精準藥物發現流程劃分為四大核心階段，分別蒐集並歸納代表性 AI 方法：（a）標靶鑑定與驗證：涵蓋組學基礎、藥物基礎與結構基礎三類途徑，利用多組學資料整合、藥物標靶關聯網絡與蛋白質結構預測等技術識別疾病關鍵標靶；（b）結構與序列導向的虛擬篩選：結合蛋白質三維結構或氨基酸序列資訊，運用深度學習模型（如圖神經網絡、Transformer）預測化合物結合親和力與活性，加速先導化合物發現；（c）個體化藥物反應預測：整合細胞株、單細胞測序與多模態臨床資料，建構多任務或遷移學習模型，捕捉患者異質性並預測藥物敏感性與抗藥性；（d）AI 賦能毒理與安全性建模：利用化學結構特徵、代謝途徑與表型資料，預測脱靶效應、心臟毒性、肝毒性等不良反應，提升轉譯成功率。除階段性方法外，本文另識別出一範式轉移：自主科學智能體結合因果推理與實驗規劃模組，可自動生成假設、設計實驗並迭代優化，實現端到端發現流程。綜述並未提出單一統一模型架構，而是以階段性任務為導向，對比各方法在資料表示（圖、序列、影像、表格）、模型選擇（CNN、GNN、Transformer、自編碼器）、訓練目標（分類、回歸、對比學習、生成式目標）與驗證策略上的異同，勾勒技術演進脈絡。
+本文採用系統性文獻回顧，首先界定精準藥物發現的四大核心階段：(a) 靶點識別與驗證，涵蓋組學、藥物與結構導向的計算策略；(b) 結構與序列引導的虛擬篩選，著重於活性化合物的預測與優化；(c) 個體化藥物反應預測，整合細胞株、單細胞與多模態數據以建立預測模型；(d) AI 輔助毒理與安全性建模，旨在預判不良反應並提升轉譯成功率。作者進一步蒐集各階段具代表性的深度學習架構（如圖神經網路、Transformer、多模態融合網路），並比較其輸入表示（基因表達、蛋白結構、化學指紋、影像特徵）、損失函數設計（分類、回歸、對比學習）與訓練策略（預訓練-微調、多任務學習）。此外，文章專章闡述自主科學代理的新興範式，強調因果推理、實驗規劃與閉環驗證的整合。最後，綜述歸納資料偏誤、模型可解釋性不足、以及從 in silico 到濕實驗轉譯的共性瓶頸，作為未來方法改進的切入點。
 
 ## 結果
-摘錄未提供可驗證數字。本綜述定性總結指出：AI 方法已滲透精準藥物發現全流程，四大階段均有代表性深度學習模型展現優於傳統計算手法的預測性能；自主科學智能體雖處早期，但展現因果推理與實驗閉環潛力，有望重塑發現範式；然而資料偏差（如族群代表性不足、批次效應）、模型可解釋性受限（黑盒決策難獲監管接受）、以及計算預測與濕式實驗驗證間的轉譯鴻溝，仍為阻礙臨床落地的關鍵瓶頸。
+摘錄未提供可驗證數字。綜述指出：(1) 在靶點發現階段，結合組學與結構資訊的深度模型顯著提升候選靶點優先排序；(2) 虛擬篩選受益於圖神經網路與預訓練分子表示，活性化合物命中率提高；(3) 個體化反應預測透過單細胞與多模態融合，能捕捉腫瘤異質性並改善預測準確度；(4) 毒理建模引入因果推理與多任務學習，降低假陽性風險。同時強調自主科學代理具備端到端實驗指導潛力，但仍處早期探索。
 
 ## 限制與展望
-本綜述作為二手文獻綜合，受限於被引用原始研究的實驗設計與報告品質，未進行統一基準下的量化比較；資料層面，現有公開資料集多存在選擇偏差、樣本量不足與標註噪聲，限制模型泛化；方法層面，多模態融合策略缺乏標準化，因果推理模組多停留於理論或小規模驗證；評估層面，缺乏跨機構、前瞻性的濕式實驗驗證框架；部署層面，法規科學對 AI 決策透明度與可重現性要求尚未完全對接。後續研究需聚焦：建構高品質、多元化且標準化的基準資料集；發展內建因果機制與不確定性量化的可解釋架構；建立 in silico 預測至臨床試驗的持續驗證管線；並推動監管科學與 AI 治理的共同演進。
+本文為綜述性質，缺乏原始實驗驗證，無法量化各方法在統一基準上的表現；文中提及的資料偏誤、模型可解釋性不足、以及 in silico 到濕實驗的轉譯鴻溝，均屬普遍性挑戰，具體解決方案尚待後續實證研究。此外，自主科學代理的因果推理與閉環驗證機制仍處概念階段，部署風險與倫理考量未深入探討。
