@@ -38,6 +38,20 @@ def _published_key(item: PaperItem) -> datetime:
     return item.published_at or datetime.min.replace(tzinfo=timezone.utc)
 
 
+def _has_code(item: PaperItem) -> bool:
+    return bool(item.code_url or item.paired_repo)
+
+
+def _paper_priority_key(item: PaperItem) -> tuple:
+    """挑選優先序：頂會/期刊+GitHub > 頂會/期刊 > 一般論文+GitHub > 一般論文。"""
+    return (
+        1 if int(item.source_tier or 3) <= 2 else 0,
+        1 if _has_code(item) else 0,
+        _published_key(item),
+        int(item.cited_by_count or 0),
+    )
+
+
 def candidate_to_item(candidate: PaperCandidate) -> PaperItem:
     code_url = candidate.code_url or first_github_url(f"{candidate.abstract}\n{candidate.fulltext_excerpt}")
     paired_repo = ""
@@ -80,17 +94,11 @@ def select_papers(
     max_per_source: int = PAPER_MAX_PER_SOURCE,
     min_paired: int = 0,
 ) -> PaperSelection:
-    """依「配對優先 → 來源層級/新近度/引用數 → 來源分散」選文。"""
-    ordered = sorted(
-        items,
-        key=lambda item: (
-            1 if (item.code_url or item.paired_repo) else 0,
-            -int(item.source_tier or 3),
-            _published_key(item),
-            int(item.cited_by_count or 0),
-        ),
-        reverse=True,
-    )
+    """依「頂會/期刊+GitHub > 頂會/期刊 > 論文+GitHub > 論文 → 新近度/引用數 → 來源分散」選文。
+
+    配對（GitHub 專案）是加分項而非必要條件；min_paired 保留給需要強制取捨的舊呼叫。
+    """
+    ordered = sorted(items, key=_paper_priority_key, reverse=True)
     selected: list[PaperItem] = []
     remaining = list(ordered)
     per_source: Counter[str] = Counter()
@@ -118,9 +126,9 @@ def select_papers(
         return False
 
     while len(selected) < count:
-        paired = sum(1 for item in selected if item.code_url or item.paired_repo)
+        paired = sum(1 for item in selected if _has_code(item))
         # 先確保有配對候選（若池中存在）
-        if paired < min_paired and take(lambda item: bool(item.code_url or item.paired_repo)):
+        if paired < min_paired and take(_has_code):
             continue
         # 盡量優先 tier 1/2
         if take(lambda item: int(item.source_tier or 3) <= 2):
@@ -129,7 +137,7 @@ def select_papers(
             continue
         break
 
-    paired = sum(1 for item in selected if item.code_url or item.paired_repo)
+    paired = sum(1 for item in selected if _has_code(item))
     report = {
         "pool_size": len(ordered),
         "selected": len(selected),
@@ -218,14 +226,8 @@ class PaperEngine:
 
         # 內容抓取與 GitHub 偵測（優先處理排名前面的候選）
         if self.enrich_fulltext:
-            items.sort(
-                key=lambda item: (
-                    1 if (item.code_url or item.paired_repo) else 0,
-                    -int(item.source_tier or 3),
-                    _published_key(item),
-                ),
-                reverse=True,
-            )
+            # 全文抓取額度有限，優先給最符合優先序的論文
+            items.sort(key=_paper_priority_key, reverse=True)
             for item in items[: self.enrich_limit]:
                 try:
                     # 轉成 candidate-like enrich target

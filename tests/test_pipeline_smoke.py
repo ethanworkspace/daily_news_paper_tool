@@ -103,7 +103,40 @@ class PipelineSmokeTests(unittest.TestCase):
             self.assertIn("## 新聞（10）", digest)
             self.assertIn("## 論文（5）", digest)
             self.assertIn("## GitHub 專案（5）", digest)
-            self.assertGreaterEqual(report["pairing"]["papers_paired"], 3)
+            self.assertIn("papers_paired", report["pairing"])
+            self.assertIn("tier1_paper_with_github", report["selection_priority"])
+            self.assertNotIn(
+                "paired_repos_below_target=0/3 (seed_paired=0)", report["warnings"]
+            )
+
+    def test_unpaired_outputs_are_not_warnings(self):
+        class UnpairedPaperEngine(FakePaperEngine):
+            def collect(self, count, *, now=None):
+                selection = super().collect(count, now=now)
+                for item in selection.items:
+                    item.code_url = ""
+                    item.paired_repo = ""
+                return selection
+
+        class UnpairedRepoEngine(FakeRepoEngine):
+            def collect(self, count, *, now=None, paper_seeds=None):
+                selection = super().collect(count, now=now, paper_seeds=paper_seeds)
+                for item in selection.items:
+                    item.paper_url = ""
+                    item.paired_paper = ""
+                return selection
+
+        with TemporaryDirectory() as td:
+            pipe = DailyPipeline(
+                root=Path(td),
+                news_engine=FakeNewsEngine(),
+                paper_engine=UnpairedPaperEngine(),
+                repo_engine=UnpairedRepoEngine(),
+            )
+            report = pipe.run(target="2026-11-21", write=False, push=False, use_ai=False)
+            self.assertEqual(report["status"], "ok")
+            self.assertEqual(report["pairing"]["papers_paired"], 0)
+            self.assertFalse(any("paired" in warning for warning in report["warnings"]))
 
     def test_bundle_quota_warnings_are_surfaced(self):
         with TemporaryDirectory() as td:

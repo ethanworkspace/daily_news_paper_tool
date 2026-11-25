@@ -119,9 +119,7 @@ def main() -> int:
         print("=" * 90)
         print(f"[P3] 蒐集 {len(selection.items)} 篇，耗時 {elapsed:.1f}s")
         print(f"[P3] 原始 {report['raw_count']} 筆 → 去重/過濾後 {report['unique_items']} 筆")
-        print(f"[P3] 配對(有 GitHub/專案) {report['paired']} 篇（目標 ≥3）{' ✅' if report.get('paired_ok') else ' ⚠️'}")
-        if report.get("paired_warning"):
-            print(f"[P3] 警告：{report['paired_warning']}")
+        print(f"[P3] 配對(有 GitHub/專案) {report['paired']} 篇（加分項，非必要）")
         print(f"[P3] 來源層級分布：{report.get('tiers', {})}，解析層級：{report.get('parse_levels', {})}")
         print(f"[P3] 排除原因：{report.get('rejected_counts', {})}")
         print("[P3] 來源統計：")

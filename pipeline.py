@@ -168,10 +168,10 @@ class DailyPipeline:
             seed_paired = int(pairing.get("papers_paired", 0))
             report["paired_actual"] = actual_paired
             report["paired_seed"] = seed_paired
-            if actual_paired < 3:
-                msg = f"paired_repos_below_target={actual_paired}/3 (seed_paired={seed_paired})"
-                report["warnings"].append(msg)
-                manifest.warning(msg)
+            # 配對為加分項、非配額；不足時不視為警告或失敗。
+            report["selection_priority"] = (
+                "tier1_paper_with_github > tier1_paper > paper_with_github > paper > github_only_repo"
+            )
 
 
             writer = self.writer if (use_ai and self.writer.available) else None

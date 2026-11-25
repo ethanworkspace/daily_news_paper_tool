@@ -109,13 +109,11 @@ def main() -> int:
 
     paired = sum(1 for it in selection.items if it.paper_url or it.paired_paper)
     langs = Counter((it.language or "unknown") for it in selection.items)
-    paired_ok = paired >= 3
     report = {
         "status": "ok",
         "generated_at": now.isoformat(),
         "count": len(items),
         "paired": paired,
-        "paired_ok": paired_ok,
         "papers_paired": pairing["papers_paired"],
         "languages": dict(langs),
         "items": items,
@@ -133,16 +131,12 @@ def main() -> int:
         "rejected_counts": dict(Counter(r.get("reason", "unknown") for r in selection.rejected)),
         "rejected_sample": selection.rejected[:40],
     }
-    if not paired_ok:
-        report["paired_warning"] = f"配對專案不足目標：{paired}/3"
     out = _write_report(args.out, report)
     manifest = RunManifest(target_date=now.strftime("%Y-%m-%d"))
     manifest.notes["pipeline"] = "repo_smoke"
     manifest.source("github_search", found=selection.report.get("raw_count", 0), kept=len(items))
     for reason, count in Counter(r.get("reason", "unknown") for r in selection.rejected).items():
         manifest.warning(f"rejected:{reason}={count}")
-    if not paired_ok:
-        manifest.warning(f"paired_repos_below_target={paired}/3")
     manifest.add_file(out)
     manifest.finish("ok")
     manifest.save()

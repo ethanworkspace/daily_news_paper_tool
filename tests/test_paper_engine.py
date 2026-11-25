@@ -87,6 +87,20 @@ class TestSelection(unittest.TestCase):
         self.assertEqual(len(sel.items), 4)
         self.assertGreaterEqual(sel.report["paired"], 2)
 
+    def test_priority_tier_before_github_when_pairing_not_required(self):
+        items = [
+            make_item("Tier3 with code", source="arXiv", tier=3, code_url="https://github.com/x/y"),
+            make_item("Tier1 without code", source="Nature", tier=1),
+            make_item("Tier3 without code", source="arXiv", tier=3),
+            make_item("Tier1 with code", source="Science", tier=1, code_url="https://github.com/u/v"),
+        ]
+        sel = select_papers(items, 4, max_per_source=5, min_paired=0)
+        titles = [item.title for item in sel.items]
+        self.assertEqual(titles[0], "Tier1 with code")
+        self.assertEqual(titles[1], "Tier1 without code")
+        self.assertEqual(titles[2], "Tier3 with code")
+        self.assertEqual(titles[3], "Tier3 without code")
+
     def test_quota_error(self):
         items = [make_item("Only one")]
         with self.assertRaises(PaperQuotaError):

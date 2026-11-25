@@ -257,7 +257,7 @@ PAPER_HTTP_TIMEOUT = int(get_secure_env("PAPER_HTTP_TIMEOUT", "25"))
 PAPER_MAX_BYTES = int(get_secure_env("PAPER_MAX_BYTES", str(20 * 1024 * 1024)))
 PAPER_ROBOTS_CHECK = get_secure_env("PAPER_ROBOTS_CHECK", "true").lower() in {"1", "true", "yes"}
 PAPER_MAX_PER_SOURCE = int(get_secure_env("PAPER_MAX_PER_SOURCE", "3"))
-PAPER_MIN_PAIRED = int(get_secure_env("PAPER_MIN_PAIRED", "3"))  # 目標值，來源不足時記錄 warning
+PAPER_MIN_PAIRED = int(get_secure_env("PAPER_MIN_PAIRED", "0"))  # 配對非必要；僅保留舊設定的強制取捨能力
 PAPER_FULLTEXT_MAX_CHARS = int(get_secure_env("PAPER_FULLTEXT_MAX_CHARS", "300000"))  # 預設保留完整論文文字，不限頁數
 
 # OCR / 字型解析（掃描型 PDF 補救；缺少套件時自動停用）
@@ -298,7 +298,7 @@ REPO_HTTP_TIMEOUT = int(get_secure_env("REPO_HTTP_TIMEOUT", "25"))
 REPO_MAX_BYTES = int(get_secure_env("REPO_MAX_BYTES", str(6 * 1024 * 1024)))
 REPO_ROBOTS_CHECK = get_secure_env("REPO_ROBOTS_CHECK", "true").lower() in {"1", "true", "yes"}
 REPO_MAX_PER_SOURCE = int(get_secure_env("REPO_MAX_PER_SOURCE", "2"))
-REPO_MIN_PAIRED = int(get_secure_env("REPO_MIN_PAIRED", "3"))  # 目標值，來源不足時記錄 warning
+REPO_MIN_PAIRED = int(get_secure_env("REPO_MIN_PAIRED", "0"))  # 配對非必要；僅保留舊設定的強制取捨能力
 REPO_MIN_QUALITY_SCORE = int(get_secure_env("REPO_MIN_QUALITY_SCORE", "2"))  # 0–10，低於此值視為低訊號
 REPO_ENRICH_LIMIT = int(get_secure_env("REPO_ENRICH_LIMIT", "24"))  # 最多深入抓取幾個 README
 REPO_EXCLUDE_COLLECTIONS = get_secure_env("REPO_EXCLUDE_COLLECTIONS", "true").lower() in {"1", "true", "yes"}
