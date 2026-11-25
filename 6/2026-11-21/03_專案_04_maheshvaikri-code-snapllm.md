@@ -11,13 +11,13 @@
 - 品質分數：10/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-SnapLLM 是一個基於 llama.cpp 與 stable-diffusion.cpp 的本地多模型推理引擎，旨在讓使用者在同一台機器上同時載入多種 LLM、視覺語言模型與擴散模型，並能在已載入的模型間以毫秒級切換而不需重新載入權重。它提供 OpenAI 相容的 REST API、命令列介面以及 React/Vite 構建的桌面 UI，適用於需要在邊緣設備或桌面上進行低延遲多模型服務的開發者、研究員與 AI 愛好者。
+SnapLLM 是一個基於 llama.cpp 與 stable-diffusion.cpp 的本地多模型推理引擎，旨在提供 Ollama 的替代方案，支援同時載入多個 LLM、視覺語言模型與擴散模型，透過常駐模型選擇機制實現毫秒級模型切換，並提供 OpenAI 相容的 REST API、React/Vite 桌面 UI 與 CLI，適用於需要在邊緣設備或工作站上進行低延遲、多域 AI 服務的開發者與研究者。
 
 ## 技術
-SnapLLM 使用 C++ 實作，核心推理依賴 llama.cpp 與 stable-diffusion.cpp，透過 CMake 建置，支援 GCC 11+/Clang 14+ 或 Visual Studio 2022；桌面應用程式則以 Node.js 18+ 搭配 React 與 Vite 構建。它提供 OpenAI 相容的 HTTP API，內建 GPU/CPU 混合層分配（根據可用 VRAM 自動決策），並採用 vPID（Virtual Processing‑In‑Disk）架構實現模型快取（L1）與 KV 快取（L2），記憶體分層為 HOT（GPU VRAM）、WARM（CPU RAM）與 COLD（SSD）。支援 GGUF 格式的 Llama、Mistral、Mixtral、Qwen、Gemma、Phi、DeepSeek 等文字模型，Gemma 3 Vision、Qwen‑VL、LLaVA 等視覺模型，以及 Stable Diffusion 1.5、SDXL、SD3、FLUX 等擴散模型。
+SnapLLM 使用 C++ 實作核心推理引擎，依賴 llama.cpp 處理 GGUF 格式的文字模型與 stable-diffusion.cpp 處理 Stable Diffusion 系列模型；桌面應用採用 React 與 Vite 建構，Node.js 18+ 作為開發環境；透過 CMake 編譯，支援 GPU/CPU 混合層分配（需 CUDA 12.x），提供 OpenAI 相容的 API endpoints，實作 vPID（Virtual Processing‑In‑Disk）架構分為 L1 模型快取與 L2 KV 快取，並採用記憶體分層（HOT GPU VRAM、WARM CPU RAM、COLD SSD）管理模型與上下文，同時提供 Docker 镜像與健康檢查。
 
 ## 架構
-SnapLLM 的架構圍繞 vPID 系統展開：L1 層為模型快取，存放模型工作區資料與引擎管理的快取；L2 層為上下文快取，以哈希索引持久化 KV 快取，使得已載入模型間的切換僅需切換指標而不重新載入權重。記憶體分為三層：HOT（GPU VRAM）提供最高存取速度，受限於可用 VRAM；WARM（CPU RAM）為中介層，容量受系統記憶體限制；COLD（SSD）為最慢層，提供儲存空間。當收到載入請求時，模型會被映射到適當的記憶體層並註冊到模型快切；切換模型僅需更新當前活躍模型的指標；生成請求會先查詢 L2 KV 快取，若未命中則進行一般推理。桌面 UI 與 API 透過 localhost 分別在 9780 與 6930 端口通訊，Docker 版本則將 API 綁定到 0.0.0.0:6930 並僅開放給迴路介面，除非額外設定 SNAPLLM_API_KEY 與 CORS 允許來源。
+SnapLLM 的架構分為三層：伺服器核心（C++）負責模型載入、切換與推理；vPID 系統提供 L1 模型快取（模型工作區與引擎管理資料）與 L2 KV 快取（雜湊索引的上下文持久化），依據可用資源將模型層放置於 HOT（GPU VRAM）、WARM（CPU RAM）或 COLD（SSD）層；API 層 expose REST endpoints（/v1/chat/completions、/api/v1/models/* 等），內部流程為：客戶請求 → API 金鑰驗證 → 路由至對應 handler → 若需載入模型則透過 /api/v1/models/load 將模型檔案映射至工作區並放入適當記憶體層；切換已載入模型僅更新 vPID 指標，避免重新載入權重；文字生成走向 llama.cpp 推理管道，視覺或圖像生成則呼叫 stable-diffusion.cpp；桌面 UI 透過 Vite 在 localhost:9780 提供 React 應用，與 API 透過 WebSocket 或 fetch 交互；Docker 容器將服務綁定至 127.0.0.1:6930，僅開放 loopback 並可透過 SNAPLLM_API_KEY 與 CORS 設定控制對外存取。README 未提供詳細序列圖，以上說明基於文中描述的模組與流程推斷。
 
 ## README 摘錄（節選）
 ```text

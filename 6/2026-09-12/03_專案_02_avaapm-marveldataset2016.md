@@ -11,13 +11,13 @@
 - 品質分數：5/10 
 
 ## 在做什麼
-此專案提供 MARVEL 2016 資料集的下載腳本與說明，使研究者能取得大型海事船舶圖像資料，以進行船舶分類、驗證、檢索與辨識等電腦視覺任務。主要使用者為從事船舶圖像分析的學術研究者與開發者，核心問題在於取得統一格式、具備標註資訊的船舶圖像集以及相應的資料索引檔(.dat)，以便直接用於實驗。
+本專案提供一個 Python 腳本 MARVEL_Download.py，用於從網路上下載 MARVEL 2016 海船圖像資料集，並依照資料集的標註檔 (.dat) 產生對應的圖片路徑檔 FINAL.dat，方便研究者直接取得用於船舶分類、驗證、檢索與辨識等任務的圖像與中繼資料。目標使用者為需要大規模海船圖像資料進行電腦視覺或遙感研究的學術研究者與開發者，核心在於解決手動搜尋與組織該資料集的繁瑣過程。
 
 ## 技術
-專案以 Python 實作主要下載腳本 MARVEL_Download.py，使用標準函式庫進行網路請求、檔案 I/O 與多執行緒（NUMBER_OF_WORKERS 參數控制平行下載數量）。透過讀取 .dat 檔案（如 VesselClassification.dat、IMOTrainAndTest.dat 等）取得圖像 URL 與標籤，依設定的 IMAGE_HEIGHT、IMAGE_WIDTH、ORIGINAL_SIZE 等參數將圖像儲存至本機資料夾，並產生包含完整路徑的 FINAL.dat 檔案。未見額外的第三方框架或模型。
+該專案以 Python 3 為主要語言，核心腳本 MARVEL_Download.py 內建多執行緒下載機制（NUMBER_OF_WORKERS 控制平行執行緒數），透過 urllib 或 requests（依實際程式碼而定）從指定 URL 下載 JPEG 圖片，並依照設定的 IMAGE_HEIGHT、IMAGE_WIDTH 與 ORIGINAL_SIZE 參數決定是否保留原始尺寸。下載後，圖片會被放置在與腳本同目錄的資料夾中，形成類別或任務對應的子資料夾結構，最後產生 FINAL.dat 檔案，其格式與輸入的 .dat 相同，僅在每行最後加入完整的本地檔案路徑。未見使用特定深度學習框架或模型，僅為資料準備工具。
 
 ## 架構
-架構包含：(1) 輸入 .dat 檔案（描述船舶 ID、集合索引、類別標籤等）；(2) MARVEL_Download.py 讀取該檔案，以多執行緒方式下載對應圖像，依設定建立資料夾階層；(3) 下載完成後產出 FINAL.dat，在原始 .dat 每行末追加圖像完整路徑；(4) 依不同任務（船舶分類、驗證/檢索/辨識）使用對應的 .dat 檔案與 FINAL.dat 進行後續處理。資料流為：.dat → 下載腳本 → 圖像檔案 + FINAL.dat → 下游訓練/評估腳本。若 README 未明確說明腳本內部實作細節，則上述流程為基於可見內容的合理推斷。
+執行流程如下：使用者先編輯 MARVEL_Download.py，取消註解想要使用的 .dat 檔案（例如 VesselClassification.dat 或 IMOTrainAndTest.dat），設定下載參數（工作執行緒數、圖片尺寸、是否保留原始尺寸、是否只下載圖片）。腳本讀取選定的 .dat 檔，逐行解析出 vessel ID、set index、class label 等欄位，根據 ID 構造對應的下載 URL。接著啟動 NUMBER_OF_WORKERS 個工作執行緒，各執行緒負責從 URL 下載圖片並儲存至本地資料夾，資料夾命名依照資料集的 meta 結構（例如 W1_1/ 下的子資料夾）。所有圖片下載完成後，腳本在每行原始資料後附加本地圖片完整路徑，寫入 FINAL.dat 檔案。若後續任務（如船舶驗證、檢索或辨識）需要參考 IMOTrainAndTest.dat 的索引，則必須先產生該檔案的 FINAL.dat 版本，才能正確使用對應的 .dat 檔。由於 README 未提供詳細的程式碼或類別圖，以上架構說明僅基於文件中描述的參數與流程推斷。
 
 ## README 摘錄（節選）
 ```text

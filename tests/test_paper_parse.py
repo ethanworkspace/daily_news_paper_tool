@@ -173,6 +173,8 @@ class TestImpactFactor(unittest.TestCase):
         self.assertNotEqual(venue_tier(journal="Measurement Science and Technology"), 1)
         self.assertNotEqual(venue_tier(journal="Applied Sciences"), 1)
         self.assertEqual(venue_tier(journal="Science Advances"), 2)
+        self.assertEqual(venue_tier(journal="Neural Networks"), 3)
+        self.assertEqual(venue_tier(journal="JMIR Nursing"), 2)
 
 
 class TestParseArxiv(unittest.TestCase):

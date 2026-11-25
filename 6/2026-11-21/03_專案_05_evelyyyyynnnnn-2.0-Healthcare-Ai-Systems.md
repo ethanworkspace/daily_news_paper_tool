@@ -11,13 +11,13 @@
 - 品質分數：9/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-此專案提供醫療安全決策支援系統，透過臨床風險預測與醫療互動分析降低錯誤決策帶來的系統性後果。目標使用者為醫院臨床團隊、醫療資訊工程師與研究人員，核心問題是如何在真實病患資料上校準警報、量測主題群分割的代價、評估生理波形品質以及量化同理心表達，以提升決策的可靠性與安全性。
+本專案提供醫療安全決策支援系統，透過臨床風險預測與醫療互動分析，協助醫護人員降低錯誤決策帶來的系統性後果。目標使用者為醫院重症監護室、臨床研究者與醫療AI開發者，核心問題在於校正警報、避免主題洩漏、生理波形品質評估與同理心量測的缺失。該系統透過可量化的校準指標與真實第三方資料驗證，確保所報告的效能具備可重現性與臨床可用性。
 
 ## 技術
-主要使用 Python 實作，套用 scikit-learn 的 logistic regression 與梯度提升樹模型；透過 PyHealth/RHealth Extension 提供可安裝套件與 CLI，處理 PhysioNet MIMIC‑IV 與 BIDMC 數據集；資料流程包括特徵抽取、主題群分割校準、警報比較與生理波形品質檢測；評估指標以校準誤差、AUROC、中位數差異等呈現，並透過 GitHub Actions 自動執行測試與結果驗證。
+專案主要以 Python 實作，使用 scikit-learn 的邏輯斯蒂迴歸與梯度提升樹（Gradient Boosting）進行風險預測，並自行開發 PyHealth/RHealth Extension 套件（icuflow 0.1.0）提供主題分組切分、校準評估及警報比對功能。資料來源包括 PhysioNet MIMIC‑IV、BIDMC 以及 MTS‑Dialog 真實臨床 transcript，處理流程倚賴 pandas、numpy 與自訂腳本進行特徵工程與模型訓練。
 
 ## 架構
-每個子專案遵守相同的目錄結構：README.md 說明實驗，src/ 放置資料前處理、特徵工程與模型訓練腳本，data/ 存放原始與樣本資料，results/ 包含最新實驗的 latest-real.json 與對應的 README.md，tests/ 單元測試確保可重複性，website/ 提供靜態說明頁。執行流程為：讀取 PhysioNet 或 BIDMC 數據 → 特徵抽取 → 依實驗設計進行主題群分割、校準或波形品質檢測 → 模型訓練（如 logistic regression、梯度提升） → 計算評估指標 → 寫入 results/ 並更新 README.md；所有步驟在 GitHub Actions 中自動觸發，確保每個數字皆有對應運行紀錄。
+每個子專案遵循統一目錄結構：src/ 放置模型與處理腳本，data/ 存放真實或樣本資料，results/ 保存最新實驗指標（latest-real.json）與對應的 README.md，tests/ 包含單元與整合測試，website/ 用於文件展示。執行流程為：先從 data/ 讀取真實資料（如 MIMIC‑IV stays、BIDMC PPG、MTS‑Dialog transcript），進行前處理與特徵抽象，接著在 src/ 中訓練邏輯斯蒂迴歸或梯度提升模型，使用 PyHealth/RHealth Extension 進行主題分組切分與校準誤差計算，最後將評估結果寫入 results/ 並更新 README.md，所有數字必須對應可追蹤的運行日誌。
 
 ## README 摘錄（節選）
 ```text

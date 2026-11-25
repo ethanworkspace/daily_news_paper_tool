@@ -11,13 +11,13 @@
 - 品質分數：10/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-本專案利用 UNSW‑NB15 資料集，針對 IoT 場景下的網路入侵偵測問題，實作多種機器學習與深度學習模型（決策樹、K‑近鄰、線性回歸、線性 SVM、邏輯回歸、多層感知器）進行二元與多分類攻擊辨識，目標使用者為資安研究人員、IoT 系統開發者以及希望透過 Notebook 快速驗證入侵偵測演算法的學習者。核心在於透過資料前處理、特徵選擇與模型訓練流程，評估不同算法在 UNSW‑NB15 上的偵測效能，提供可重現的實驗基礎。
+此專案利用 UNSW‑NB15 資料集，針對物聯網環境的網路流量進行入侵偵測。透過多種機器學習與深度學習模型（決策樹、K‑鄰近、線性回歸、線性 SVM、邏輯回歸、多層感知器），實作二元與多類別攻擊分類，協助安全研究人員、IoT 系統開發者與教學人員快速評估不同演算法在真實攻擊場景下的偵測效能，解決 IoT 網路中異常流量辨識與攻擊類別預測的核心問題。
 
 ## 技術
-專案以 Python 為主要語言，以 Jupyter Notebook 形式呈現，依賴 scikit‑learn、pandas、numpy、matplotlib、pickle 等庫進行資料處理與模型訓練；實作的演算法包括決策樹、K‑近鄰、線性回歸、線性 SVM、邏輯回歸與多層感知器（MLPClassifier），資料流程經過一熱編碼、欄位正規化、標籤編碼、Pearson 相關特徵選擇，最後以 80/20 或 70/30 分割進行訓練與測試。
+專案以 Python 為主要語言，在 Jupyter Notebook 環境中實作。使用 scikit‑learn 提供的 DecisionTreeClassifier、KNeighborsClassifier、LinearRegression、SVC（linear kernel）、LogisticRegression、MLPClassifier 等模型；資料處理依賴 pandas、numpy 進行讀取與清理，透過 matplotlib 視覺化結果，使用 pickle 儲存模型。前置步驟包括缺失值刪除、資料型別轉換、對 proto、service、state 欄位進行 one‑hot 編碼、MinMax 標準化數值欄位、LabelEncoder 對標籤編碼，並以 Pearson 相關係數 (>0.3) 進行特徵選擇，得到 binary 資料集 15 個特徵與 multi 資料集 16 個特徵。
 
 ## 架構
-架構分為五個主要步驟：(1) 載入 UNSW‑NB15 原始 CSV 與特徵說明檔；(2) 資料前處理 – 移除空值、依特徵檔轉換資料型別、對 proto、service、state 進行 one‑hot 編碼、使用 MinMaxScaler 對 58 個數值欄位正規化；(3) 特徵抽取 – 計算 Pearson 相關係數，保留與目標 label 相關係數 >0.3 的欄位，產生 bin_data（15 特徵）與 multi_data（16 特徵）；(4) 資料切分 – 二元採 80% 訓練/20% 測試，多分類採 70%/30%；(5) 模型訓練與評估 – 分別對 bin_data 與 multi_data 訓練決策樹、K‑NN、線性回歸、線性 SVM、邏輯回歸與 MLP，計算準確率、MAE、MSE、RMSE、R2 等指標。整個流程在 Notebook 中依序執行，以確保結果可重現。
+資料流程先載入 UNSW_NB15.csv 與特徵說明檔，接著刪除空值、轉換資料型別，對三個類別欄位做 one‑hot 編碼後合併，得到 61 個特徵。接著對 58 個數值欄位使用 MinMaxScaler 正規化。根據任務建立二元標籤（normal/abnormal）與多類別標籤（9 種攻擊類別），分別產生 bin_data 與 multi_data，並以 LabelEncoder 編碼目標。利用 Pearson 相關係數篩選特徵，binary 保留 15 個、multi 保留 16 個特徵。隨機切分資料集（binary 80%/20%，multi 70%/30%），依序訓練 Decision Tree、K‑Nearest Neighbor、Linear Regression、Linear SVM、Logistic Regression、Multi‑Layer Perceptron 六種模型，並在測試集上計算 Accuracy、MAE、MSE、RMSE、R2 等評估指標。整個流程必須依照 Notebook 中給定的儲存格順序執行，以避免因變數未定義而產生錯誤。若 README 未明確說明某些細節（例如模型超參數調整依據），則以上描述為基於可見步驟的合理推斷。
 
 ## README 摘錄（節選）
 ```text

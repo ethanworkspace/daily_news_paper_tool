@@ -11,13 +11,13 @@
 - 品質分數：10/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-Foam-Agent 是一個基於大型語言模型的多智慧體框架，旨在自動化 OpenFOAM 計算流體動力學（CFD）工作流程。使用者僅需提供自然語言需求或現有案例，系統即可由規劃智慧體生成案例描述、網格與輸入檔案，經過靜態審查後在本機或 Slurm 叢集執行模擬，遇到錯誤時自動嘗試修復，並可選擇性地產出可視化結果與工作流程報告。目標使用者為需要快速原型或重複執行 CFD 模擬的研究者、工程師與教學人員，核心問題在於減少手動案例準備、參數調試與錯誤追蹤的重複勞動。
+Foam-Agent 是一個基於大型語言模型的多智能體框架，旨在自動化 OpenFOAM 計算流體動力學（CFD）工作流程。使用者只需提供自然語言需求或現有案例，系統的規劃、網格、輸入檔案、審查、執行、錯誤修復與可視化等智能體會依序協作，完成從案例概念到模擬結果的全程自動化。目標使用者為 CFD 工程師、研究人員及學生，他們希望減少手動設定網格與邊界條件的重複勞動，提高案例可重現性與實驗效率。核心問題在於傳統 OpenFOAM 工作流程需要專家逐步編寫網格與求解器設定檔，耗時且易出錯；Foam-Agent 透過 LLM 驅動的規劃與靜態審查，將這些步驟自動化，同時支援本地或 Slurm 叢集執行，並提供錯誤修復機制與工作流程報告。
 
 ## 技術
-技術上，Foam-Agent 以 Python 為主要實作語言，透過模組化的 LLM 客戶端支援多種後端，包括 OpenAI、Codex 訂閱、Anthropic、Bedrock、Ollama 與 DeepSeek。檢索增強生成（RAG）採用 FAISS 索引，對應選定的 OpenFOAM 教程庫（Foundation v10 或 ESI/OpenCFD v2006），嵌入模型預設為 Hugging Face 的 Qwen/Qwen3-Embedding-0.6B，亦可指定本地複製。工作流程由規劃、網格生成、輸入檔案撰寫、靜態審查、執行與錯誤修復等服務組成，透過環境變數（FOAMAGENT_MODEL_PROVIDER、FOAMAGENT_EMBEDDING_PROVIDER 等）切換後端與目標。Docker 镜像內建 Foundation OpenFOAM v10、Python 依賴、教程索引與預設嵌入權重，免除主機 Conda、OpenFOAM 或 GPU 需求。此外，透過 Model Context Protocol（MCP）提供給 Claude Code、Cursor 等客戶端的工具，使得語言模型能直接呼叫 Foam-Agent 的案例產生與執行功能。
+Foam-Agent 以 Python 實作，支援多種 LLM 後端，包括 OpenAI、Codex 訂閱、Anthropic、Bedrock、Ollama 與 DeepSeek，透過環境變數選擇模型與提供者。檢索教程採用 FAISS 索引，嵌入模型預設為 Hugging Face 的 Qwen/Qwen3-Embedding-0.6B，可選擇本地快取。框架隨 Docker 镜像捆綁 Foundation OpenFOAM v10（預設）與可選的 ESI/OpenCFD v2006 原生目標，提供 MCP 整合以供 Claude Code、Cursor 等客戶端呼叫工具。核心服務分別位於 src/ 中的工作流程、模型客戶端與 MCP 伺服器，教程語料與索引存放於 database/，範例案例放於 examples/，設定透過 src/config.py 與環境變數調整，支援 careful（靜態審查）與 fast（平行生成）兩種執行模式，並內建運行時錯誤迴圈與可選的結果視覺化步驟。
 
 ## 架構
-架構方面，專案採用模組化目錄結構：src/ 包含工作流程協調器、各類服務（案例規劃、網格準備、輸入檔案生成、靜態與運行審查、錯誤修復）、LLM 客戶端封裝以及 MCP 伺服器實作；database/ 儲存針對不同 OpenFOAM 目標的教程語料庫、對應的 FAISS 索引及其建構腳本；examples/ 提供範例需求檔案與網格，用於快速驗證；docs/ 存放使用手冊、MCP 指南與圖解；scripts/ 包含語料檢查與翻譯驗證工具；tests/ 放置自動化回歸測試；docker/ 則提供基礎映像與入腳本，支援本機 Docker 或自行建置的 ESI/OpenCFD v2006 目標。執行流程從使用者輸入（自然語言或現有案例）開始，經過規劃智慧體產出案例描述，接著網格與輸入檔案智慧體並行（依據執行模式）產生相應檔案，隨後靜態審查智慧體以 LLM 檢查並提出必要修正，經過修正後送至執行智慧體在本機或 Slurm 執行 OpenFOAM solver，運行失敗時觸發錯誤修復智慧體基於日誌嘗試修正，重複直至達到最大重試次數或成功，最後可選擇地產出可視化與工作流程報告（HTML）。整個過程受環境變數與設定檔（src/config.py）控制，支援 careful（預設，sequential 依賴順序＋靜態審查）與 fast（平行生成）兩種執行模式。
+Foam-Agent 的架構由多個專責智能體組成：規劃智能體根據自然語言或現有案例產生案例大綱；網格智能體呼叫 OpenFOAM 網格工具（如 snappyHexMesh）生成或修改 mesh 檔案；輸入檔案智能體產生 boundary、controlDict、transportProperties 等求解器所需設定；靜態審查智能體利用 LLM 對上述檔案進行必要的修正建議，最多執行十次重試；執行智能體在本機或透過 Slurm 叢集啟動 OpenFOAM 求解器；運行時檢測智能體捕捉求解器錯誤並觸發修復智能體進行迴圈修正，最多設定的運行時迴圈次數；可視化智能體於成功執行後產生後處理圖表或工作流程報告 HTML。資料流為：使用者提示 → 規劃 → 網格 → 輸入檔案 → 靜態審查 → 執行 → （若失敗）運行時檢測 → 修復 → 重複執行 → 成功後可視化與報告。在 careful 模式下，各階段依序依賴生成並進行靜態審查；fast 模式則允許平行產生檔案，但仍保留運行時錯誤修復。所有設定與重試上限均可透過環境變數或 src/config.py 調整。README 未提供詳細的類別圖或序列圖，因此上述流程說明基於文件中描述的智能體職責與執行模式推斷。
 
 ## README 摘錄（節選）
 ```text

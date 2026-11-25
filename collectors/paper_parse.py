@@ -314,7 +314,9 @@ def venue_tier(journal: str = "", venue: str = "", source_name: str = "") -> int
         return 2
     if "arxiv" in text or "biorxiv" in text or "medrxiv" in text or "preprint" in text:
         return 3
-    return 2
+    # 未列名於 TIER1/TIER2 的一般期刊不算「頂會/重要期刊」，避免普通期刊
+    # 在「頂會/期刊優先」時排擠掉有 GitHub 實作的論文。
+    return 3
 
 
 def canonical_venue(journal: str = "", venue: str = "", url: str = "") -> str:
