@@ -1,9 +1,9 @@
-# GitHub 專案 02：FastCrest/tether
+# GitHub 專案 05：FastCrest/tether
 
-- 日期：2026-11-04
+- 日期：2026-11-06
 - URL：https://github.com/FastCrest/tether
 - 描述：FastCrest Tether: the OSS edge-to-cloud AI deploy CLI. Optimize, verify, deploy across Jetson, RTX, Apple Silicon, AMD. Hybrid edge-cloud inference with parity certs.
-- Stars：86  |  Forks：21  |  Language：Python
+- Stars：86  |  Forks：20  |  Language：Python
 - License：NOASSERTION
 - Topics：cli, deployment, edge-ai, edge-cloud, fastcrest, groot, inference, jetson, onnx, pi0, python, robot-learning, robotics, smolvla, tensorrt, tether, vision-language-action, vla
 - 更新時間：2026-11-01T01:06:22+00:00
@@ -11,13 +11,13 @@
 - 品質分數：8/10 [implementation_signals]
 
 ## 在做什麼
-FastCrest Tether 是一個開源的邊緣到雲端 AI 部署 CLI，專注於驗證與最佳化視覺‑語言‑動作（VLA）機器人政策，提供跨 Jetson、RTX、Apple Silicon、AMD 平台的一致性檢查與混合邊緣‑雲端推理，確保政策在實際執行前能安全前進。
+FastCrest Tether 是一個開源的邊緣‑雲端 AI 部署命令列工具，專門針對視覺‑語言‑動作（VLA）機器人策略提供安全驗證與一致性認證。它支援在 Jetson、RTX、Apple Silicon 與 AMD 平台上最佳化、驗證並部署單體 ONNX 模型，並提供混合邊緣‑雲端推論路徑，讓使用者能確認策略在真實硬體上是否可以安全前進。目標使用者為機器學習工程師、機器人系統開發者以及需要在資源受限設備上執行高精度 VLA 模型的研究團隊。核心問題在於如何將參考 PyTorch VLA 政策無損轉換為可在異構硬體上運行的 ONNX 形式，同時保證數值奇偶校驗（cos = 1.000000）與效能，從而解決部署信心與跨平台一致性的挑戰。
 
 ## 技術
-該專案以 Python 實作 CLI，核心功能包括將 VLA Policy 匯出為單一 ONNX 模型、使用 ONNX Runtime（可選 TensorRT、CUDA 或 Triton 執行提供者）進行推理、支援 safetensors 直接載入權重、提供 ZMQ 低延遲傳輸、以及透過 BaseVLA 脊柱將不同 VLA 家族組合為約 100 行的組合類別。
+Tether 以 Python 3.10+ 為主要實作語言，透過 CLI（install、serve、go、connect、bench、chat）提供功能。它依賴 ONNX 進行模型匯出與推論，支援 ONNX Runtime 的 CUDA、TensorRT EP 以及可選的 Triton Fast Kernels（需額外安裝 fast‑kernels extra），在 Jetson 設備則使用 JetPack 提供的 TensorRT 庫。模型匯出階段採用單體 ONNX（含外部權重資料 .onnx_data）與權重融合 pass，並提供 safetensors 直接載入以減少記憶體開銷。Tokenizer 與前處理被抽離為獨立模組，以減少熱路徑開銷。此外，Tether 內建 ZMQ 傳輸（需 pyzmq、msgpack）用於低延遲機器人通訊，並提供 ROS2 適配器起始套件（Aloha、UR3）供真實硬體整合。其餘依賴包括 transformers（支援 5.x DynamicCache）、msgpack、requests 等。
 
 ## 架構
-Tether 的主要模組包括：CLI 入口（tether connect、tether serve、tether go、tether bench）、模型匯出器（exporters）負責 PyTorch → ONNX 的單一模型與外部資料處理、VLA 模型庫（models/vlas）實作 BaseVLA 脊柱的組合類別、推理服務（serve）載入 ONNX 並根據選擇的執行提供者執行前向傳播、基準測試（bench）測量延遲與精度、以及傳輸層（ZMQ）用於機器人即時通訊。資料流程為：使用者透過 CLI 指令觸發模型匯出或服務啟動 → 載入 ONNX 權重（可外部 .onnx_data） → 建立 ONNX Runtime Session（選擇 EP） → 接收輸入（影像、文字等） → 執行推理 → 輸出動作向量，若使用 ZMQ 則透過 msgpack 序列化傳輸。由於 README 未詳細說明內部模組間的依賴圖與錯誤處理，以上架構描述僅基於可見的 CLI 指令與說明。
+典型使用流程始於安裝階段，執行 `tether install`（或使用一鍵腳本）會偵測硬體與 Python 版本，自動選擇對應的 extra（例如 Jetson、GPU、serve、onnx 等）。安裝完成後，使用者可透過 `tether export`（或對應的 monolithic ONNX 匯出腳本）將參考 PyTorch VLA 政策轉換為單體 ONNX 模型，此步驟會驗證匯出後的輸出與原始 PyTorch 在相同種子輸入下的餘弦相似度達到 1.000000，並記錄最大絕對誤差。接著，`tether serve` 啟動推論服務，使用者可指定執行提供者（ORT‑CUDA、TensorRT EP、Triton Fast Kernels）以及傳輸方式（預設 HTTP 或 ZMQ）。服務接受圖像與語言輸入，經過內建的前處理（SigLIP 編碼器或其他視覺 backbone）後送入 ONNX 模型，得到動作向量，再經過後處理（如動作縮放、離散化）後透過所選傳輸回傳給客戶端。`tether connect` 提供狀態查詢與健康檢查，`tether bench` 則用於測量延遲與吞吐，`tether go` 與 `tether chat` 是包裝腳本，分別用於快速啟動服務與互動式查詢。整個資料流程因此為：輸入 → 前處理 → ONNX 推論（依硬體選擇的 EP） → 後處理 → 傳輸 → 消費者（機器人控制器或使用者）。若採用混合邊緣‑雲端模式，邊緣端僅運行輕量視覺編碼器，將特徵傳送至雲端端完成語言與動作解碼，雙端皆透過相同的 ONNX 權重與 parity 證明確保數值一致。
 
 ## README 摘錄（節選）
 ```text
