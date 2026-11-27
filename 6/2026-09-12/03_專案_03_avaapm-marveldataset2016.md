@@ -1,4 +1,4 @@
-# GitHub 專案 02：avaapm/marveldataset2016
+# GitHub 專案 03：avaapm/marveldataset2016
 
 - 日期：2026-09-12
 - URL：https://github.com/avaapm/marveldataset2016
@@ -11,13 +11,13 @@
 - 品質分數：5/10 
 
 ## 在做什麼
-本專案提供一個 Python 腳本 MARVEL_Download.py，用於從網路上下載 MARVEL 2016 海船圖像資料集，並依照資料集的標註檔 (.dat) 產生對應的圖片路徑檔 FINAL.dat，方便研究者直接取得用於船舶分類、驗證、檢索與辨識等任務的圖像與中繼資料。目標使用者為需要大規模海船圖像資料進行電腦視覺或遙感研究的學術研究者與開發者，核心在於解決手動搜尋與組織該資料集的繁瑣過程。
+此專案提供一個 Python 腳本 (MARVEL_Download.py) 用於從網路上下載 MARVEL 2016 海船圖像資料集，並依照資料集的 .dat 檔案結構將圖像組織成資料夾階層，產生含完整路徑的 FINAL.dat 檔案，以支援後續的船舶分類、驗證、檢索與辨識任務。目標使用者為電腦視覺與海洋資訊研究者，核心問題是取得及準備大規模標註海船影像以進行實驗。
 
 ## 技術
-該專案以 Python 3 為主要語言，核心腳本 MARVEL_Download.py 內建多執行緒下載機制（NUMBER_OF_WORKERS 控制平行執行緒數），透過 urllib 或 requests（依實際程式碼而定）從指定 URL 下載 JPEG 圖片，並依照設定的 IMAGE_HEIGHT、IMAGE_WIDTH 與 ORIGINAL_SIZE 參數決定是否保留原始尺寸。下載後，圖片會被放置在與腳本同目錄的資料夾中，形成類別或任務對應的子資料夾結構，最後產生 FINAL.dat 檔案，其格式與輸入的 .dat 相同，僅在每行最後加入完整的本地檔案路徑。未見使用特定深度學習框架或模型，僅為資料準備工具。
+專案主要使用 Python 3，核心為 MARVEL_Download.py 腳本。腳本透過多執行緒 (NUMBER_OF_WORKERS = 10) 並行下載圖像，可設定圖像尺寸 (IMAGE_WIDTH/HEIGHT)、是否保留原始尺寸 (ORIGINAL_SIZE)、每個資料夾最大檔案數 (MAX_NUM_OF_FILES_IN_FOLDER) 以及是否僅下載圖像 (JUST_IMAGE)。下載後依照輸入的 .dat 檔案 (如 VesselClassification.dat、IMOTrainAndTest.dat 等) 產生對應的 FINAL.dat，其中每行加入圖像完整路徑作為最後一欄。未見額外的第三方函式庫或模型，僅靠 Python 標準庫進行 HTTP 下載與檔案操作。
 
 ## 架構
-執行流程如下：使用者先編輯 MARVEL_Download.py，取消註解想要使用的 .dat 檔案（例如 VesselClassification.dat 或 IMOTrainAndTest.dat），設定下載參數（工作執行緒數、圖片尺寸、是否保留原始尺寸、是否只下載圖片）。腳本讀取選定的 .dat 檔，逐行解析出 vessel ID、set index、class label 等欄位，根據 ID 構造對應的下載 URL。接著啟動 NUMBER_OF_WORKERS 個工作執行緒，各執行緒負責從 URL 下載圖片並儲存至本地資料夾，資料夾命名依照資料集的 meta 結構（例如 W1_1/ 下的子資料夾）。所有圖片下載完成後，腳本在每行原始資料後附加本地圖片完整路徑，寫入 FINAL.dat 檔案。若後續任務（如船舶驗證、檢索或辨識）需要參考 IMOTrainAndTest.dat 的索引，則必須先產生該檔案的 FINAL.dat 版本，才能正確使用對應的 .dat 檔。由於 README 未提供詳細的程式碼或類別圖，以上架構說明僅基於文件中描述的參數與流程推斷。
+系統架構簡單：使用者先準備對應的 .dat 檔案（訓練/測試索引、類別標籤、IMO 編號等），執行 MARVEL_Download.py。腳本讀取 .dat 檔案，根據每列的 vessel ID 從預定義的 URL 下載圖像，利用多執行緒加速。下載的圖像被存放在腳本所在目錄下的 meta 資料夾結構中，並產生 FINAL.dat 檔案，其格式與輸入 .dat 相同，只是多了一欄路徑。此 FINAL.dat 可直接用於後續的船舶分類 (VesselClassification)、驗證/檢索/辨識 (IMO Train/Test 集及其衍生 .dat 檔案)。若需進行船舶辨識，則需先解壓 Recognition.zip，其中依船型分類的子資料夾提供各折的 train/test .dat 檔案。架構中未見明確的模型訓練或推論元件，僅為資料準備管線。
 
 ## README 摘錄（節選）
 ```text

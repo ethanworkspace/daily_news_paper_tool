@@ -1,4 +1,4 @@
-# GitHub 專案 03：tueimage/8dm50-machine-learning
+# GitHub 專案 04：tueimage/8dm50-machine-learning
 
 - 日期：2026-10-13
 - URL：https://github.com/tueimage/8dm50-machine-learning
@@ -11,13 +11,13 @@
 - 品質分數：5/10 
 
 ## 在做什麼
-本專案收錄荷蘭埃因霍芬理工大學 8DM50 課程《Medical Imaging and Biology 中的機器學習》的教學資源，包括講義投影片、Jupyter 筆記本與實作練習，目標使用者為修讀該課程的研究生與對醫學影像及計算生物學應用機器學習感興趣的學習者，旨在幫助他們理解機器學習基本概念、實作常見模型並評估實驗結果。
+此專案提供荷蘭 Eindhovens 理工大學 8DM50 課程的教學資源，包括講義投影片、Python Jupyter 筆記本實作練習、指定閱讀書籍與文章，目標對象為修讀該課程的研究生以及對醫學影像與計算生物學中機器學習感興趣的自學者，旨在幫助學生理解並應用機器學習方法解決醫學影像與生物領域的問題。
 
 ## 技術
-資料顯示課程主要使用 Python 進行實作，提供 Jupyter Notebook 練習檔案，部分作業在 Google Colab 環境完成；講義與投影片採用 TeX/LaTeX 撰寫並以 PDF 發布；環境設定說明與 Git 使用指南亦以 Markdown 提供；課程溝通與作業提交則透過 Canvas 平台進行。
+課程以 Python 為主要程式語言，實作練習以 Jupyter Notebook 形式提供，其中一項作業使用 Google Colab 進行；教材參考自由線上書籍《Deep Learning》、《Elements of Statistical Learning》與《Probabilistic Machine Learning》，並可能使用常見的機器學習函式庫（如 scikit‑learn、TensorFlow 或 PyTorch）來實作線性模型、支援向量機、隨機森林、深度學習與變換器等內容。
 
 ## 架構
-專案結構可分為講義資料夾（lectures/）存放週次投影片 PDF，實作資料夾（practicals/）放置對應週次的 Jupyter Notebook 練習，以及輔助檔案如環境設定指南（software.md）、Python 測驗說明與如何提問指南（how_to_ask_questions.md）。學生依課程表下載對應週次的筆記本，在本機或 Colab 中執行程式，完成後將結果或報告上傳至 Canvas 的 Assignments 區域，問題則在 Canvas Discussion 區發布；教師與助教則透過同一平台提供回饋與批改。若 README 未明確說明底層執行流程，以上描述乃根據檔案組織與說明推斷。
+資料流程方面，課程內容托管於 GitHub（講義、投影片、筆記本等），學生透過 Canvas 取得課程公告、討論區與作業提交管道；實作練習在本地 Python 環境或 Google Colab 中完成後，將結果上傳至 Canvas 的 Assignments 區域供教師與助教批改，討論問題則在 Canvas 的 Discussion 區發布。若需進一步細部模組劃分，README 未提供足夠資訊，僅能根據上述說明做出推斷。
 
 ## README 摘錄（節選）
 ```text

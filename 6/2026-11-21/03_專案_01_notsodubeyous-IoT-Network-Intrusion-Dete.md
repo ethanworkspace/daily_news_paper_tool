@@ -1,4 +1,4 @@
-# GitHub 專案 02：notsodubeyous/IoT-Network-Intrusion-Detection-System-UNSW-NB15
+# GitHub 專案 01：notsodubeyous/IoT-Network-Intrusion-Detection-System-UNSW-NB15
 
 - 日期：2026-11-21
 - URL：https://github.com/notsodubeyous/IoT-Network-Intrusion-Detection-System-UNSW-NB15
@@ -11,13 +11,13 @@
 - 品質分數：10/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-此專案利用 UNSW‑NB15 資料集，針對物聯網環境的網路流量進行入侵偵測。透過多種機器學習與深度學習模型（決策樹、K‑鄰近、線性回歸、線性 SVM、邏輯回歸、多層感知器），實作二元與多類別攻擊分類，協助安全研究人員、IoT 系統開發者與教學人員快速評估不同演算法在真實攻擊場景下的偵測效能，解決 IoT 網路中異常流量辨識與攻擊類別預測的核心問題。
+本專案利用 UNSW‑NB15 資料集，針對物聯網 (IoT) 網路流量進行入侵偵測。透過比較多種機器學習與深度學習模型（決策樹、K‑近鄰、線性回歸、SVM、邏輯回歸、多層感知器、隨機森林等），建構二元與多類別的攻擊分類器，協助安全研究人員、IoT 系統開發者及教學人員快速評估不同演算法在真實流量中的偵測效能，解決 IoT 環境中流量特徵高維、攻擊類別多樣且標註不平衡的核心問題。
 
 ## 技術
-專案以 Python 為主要語言，在 Jupyter Notebook 環境中實作。使用 scikit‑learn 提供的 DecisionTreeClassifier、KNeighborsClassifier、LinearRegression、SVC（linear kernel）、LogisticRegression、MLPClassifier 等模型；資料處理依賴 pandas、numpy 進行讀取與清理，透過 matplotlib 視覺化結果，使用 pickle 儲存模型。前置步驟包括缺失值刪除、資料型別轉換、對 proto、service、state 欄位進行 one‑hot 編碼、MinMax 標準化數值欄位、LabelEncoder 對標籤編碼，並以 Pearson 相關係數 (>0.3) 進行特徵選擇，得到 binary 資料集 15 個特徵與 multi 資料集 16 個特徵。
+專案以 Python 為主要語言，在 Jupyter Notebook 或 Google Colab 環境中執行。資料處理使用 pandas、numpy 進行讀取與清理，Matplotlib 繪圖，pickle 儲存模型。特徵工程包括對 proto、service、state 欄位進行 one‑hot 編碼，使用 MinMaxScaler 對 58 個數值欄位做正規化，並以 LabelEncoder 將標籤轉為數值。特徵選擇採用 Pearson 相關係數，保留與目標標籤相關係數大於 0.3 的欄位，使二元資料從 61 維降至 15 維，多類別資料從 69 維降至 16 維。模型方面，調用 scikit‑learn 提供的 DecisionTreeClassifier、KNeighborsClassifier、LinearRegression、SVC（線性核）、LogisticRegression、MLPClassifier 與 RandomForestClassifier，並在同一 Notebook 中依序訓練與評估。評估指標包括 Accuracy、MAE、MSE、RMSE 與 R2。
 
 ## 架構
-資料流程先載入 UNSW_NB15.csv 與特徵說明檔，接著刪除空值、轉換資料型別，對三個類別欄位做 one‑hot 編碼後合併，得到 61 個特徵。接著對 58 個數值欄位使用 MinMaxScaler 正規化。根據任務建立二元標籤（normal/abnormal）與多類別標籤（9 種攻擊類別），分別產生 bin_data 與 multi_data，並以 LabelEncoder 編碼目標。利用 Pearson 相關係數篩選特徵，binary 保留 15 個、multi 保留 16 個特徵。隨機切分資料集（binary 80%/20%，multi 70%/30%），依序訓練 Decision Tree、K‑Nearest Neighbor、Linear Regression、Linear SVM、Logistic Regression、Multi‑Layer Perceptron 六種模型，並在測試集上計算 Accuracy、MAE、MSE、RMSE、R2 等評估指標。整個流程必須依照 Notebook 中給定的儲存格順序執行，以避免因變數未定義而產生錯誤。若 README 未明確說明某些細節（例如模型超參數調整依據），則以上描述為基於可見步驟的合理推斷。
+資料流程始於讀取原始 UNSW_NB15.csv 與特徵說明檔，先刪除缺失值，將資料型態依據特徵檔轉換。接著對三個類別欄位 proto、service、state 進行 one‑hot 編碼，並移除原始欄位，使特徵數增加至 61。然後對全部 58 個數值欄位使用 MinMaxScaler 進行正規化。根據需求建立二元與多類別兩份資料副本：二元版將 label 欄位標準為 normal/abnormal 並以 LabelEncoder 編碼；多類別版則對 attack_cat 欄位進行九類標籤編碼，並同樣進行 one‑hot 編碼。特徵選擇階段，利用 Pearson 相關係數篩選與目標標籤相關係數 >0.3 的欄位，得到 bin_data（15 特徵）與 multi_data（16 特徵）。隨機切分資料集，二元採 80% 訓練 / 20% 測試，多類別採 70% 訓練 / 30% 測試。每個模型在對應的訓練集上進行 fit，接著在測試集上計算 Accuracy、MAE、MSE、RMSE、R2 等指標，結果直接在 Notebook 中輸出。整個流程依序執行，避免因資料洩漏或順序錯誤導致錯誤。
 
 ## README 摘錄（節選）
 ```text
