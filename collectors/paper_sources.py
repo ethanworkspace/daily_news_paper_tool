@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Iterable
-from urllib.parse import quote, quote_plus
+from urllib.parse import quote, quote_plus, urlsplit
 
 from config import (
     MAILTO_CONTACT,
@@ -20,7 +21,7 @@ from config import (
     PAPER_ROBOTS_CHECK,
     SEMANTIC_SCHOLAR_API_KEY,
 )
-from collectors.news_http import SafeHttpFetcher
+from collectors.news_http import FetchResult, SafeHttpFetcher
 from collectors.pdf_text import extract_pdf_document
 from collectors.paper_parse import (
     PaperCandidate,
@@ -63,10 +64,42 @@ class PaperSources:
         self.fetcher = fetcher or SafeHttpFetcher(timeout=PAPER_HTTP_TIMEOUT, max_bytes=PAPER_MAX_BYTES)
         self.robots_check = robots_check
         self._source_stats_cache: dict[str, dict] = {}
+        self._rate_limit_until: dict[str, float] = {}
 
     # ---------- helpers ----------
-    def _get_json(self, url: str, stats: SourceStats, *, headers: dict[str, str] | None = None) -> dict | None:
-        result = self.fetcher.fetch(url, check_robots=self.robots_check, headers=headers)
+    def _fetch_retry(
+        self,
+        url: str,
+        *,
+        headers: dict[str, str] | None = None,
+        check_robots: bool | None = None,
+        attempts: int = 3,
+    ):
+        """短暫 429 時重試；長時間 budget/rate limit 仍如實回報，不偽造資料。"""
+        robots = self.robots_check if check_robots is None else check_robots
+        host = urlsplit(url).netloc
+        cooldown_until = self._rate_limit_until.get(host, 0.0)
+        if time.monotonic() < cooldown_until:
+            return FetchResult(url=url, status=429, error="rate_limit_cooldown")
+        delays = (1, 2)
+        for attempt in range(max(1, attempts)):
+            result = self.fetcher.fetch(url, check_robots=robots, headers=headers)
+            if result.ok or result.status != 429 or attempt >= attempts - 1:
+                if result.status == 429:
+                    self._rate_limit_until[host] = time.monotonic() + 30
+                return result
+            time.sleep(delays[min(attempt, len(delays) - 1)])
+        return result
+
+    def _get_json(
+        self,
+        url: str,
+        stats: SourceStats,
+        *,
+        headers: dict[str, str] | None = None,
+        check_robots: bool | None = None,
+    ) -> dict | None:
+        result = self._fetch_retry(url, headers=headers, check_robots=check_robots)
         if not result.ok:
             stats.errors += 1
             stats.error = result.error or f"http_{result.status}"
@@ -79,8 +112,15 @@ class PaperSources:
             stats.error = "json_decode_error"
             return None
 
-    def _get_text(self, url: str, stats: SourceStats | None = None, *, headers: dict[str, str] | None = None) -> bytes | None:
-        result = self.fetcher.fetch(url, check_robots=self.robots_check, headers=headers)
+    def _get_text(
+        self,
+        url: str,
+        stats: SourceStats | None = None,
+        *,
+        headers: dict[str, str] | None = None,
+        check_robots: bool | None = None,
+    ) -> bytes | None:
+        result = self._fetch_retry(url, headers=headers, check_robots=check_robots)
         if not result.ok:
             if stats is not None:
                 stats.errors += 1
@@ -111,13 +151,10 @@ class PaperSources:
             f"&start=0&max_results={max_results}&sortBy=submittedDate&sortOrder=descending"
         )
         # arXiv Atom API 為公開程式介面，robots 對爬蟲頁面限制不等同 API 使用政策；此處關閉 robots 以免誤擋。
-        result = self.fetcher.fetch(url, check_robots=False)
-        if not result.ok:
-            stats.errors += 1
-            stats.error = result.error or f"http_{result.status}"
+        content = self._get_text(url, stats, check_robots=False)
+        if content is None:
             return [], stats
-        stats.fetched += 1
-        papers = parse_arxiv_atom(result.content)
+        papers = parse_arxiv_atom(content)
         stats.found = len(papers)
         return papers, stats
 
@@ -131,7 +168,7 @@ class PaperSources:
         if not sid:
             return {}
         url = f"{OPENALEX_SOURCES}/{sid}?select=id,display_name,issn_l,summary_stats,type"
-        result = self.fetcher.fetch(url, check_robots=False)
+        result = self._fetch_retry(url, check_robots=False)
         if not result.ok:
             self._source_stats_cache[source_id] = {}
             return {}
@@ -161,17 +198,8 @@ class PaperSources:
             f"mailto={quote(MAILTO_CONTACT)}",
         ]
         url = f"{OPENALEX_WORKS}?{'&'.join(params)}"
-        result = self.fetcher.fetch(url, check_robots=False)
-        if not result.ok:
-            stats.errors += 1
-            stats.error = result.error or f"http_{result.status}"
-            return [], stats
-        stats.fetched += 1
-        try:
-            data = json.loads(result.content.decode("utf-8", errors="replace"))
-        except Exception:  # noqa: BLE001
-            stats.errors += 1
-            stats.error = "json_decode_error"
+        data = self._get_json(url, stats, check_robots=False)
+        if data is None:
             return [], stats
         if not data:
             return [], stats
@@ -211,17 +239,8 @@ class PaperSources:
         headers = {"User-Agent": f"DailyAIReportBot/2.0 (mailto:{MAILTO_CONTACT})"}
         if SEMANTIC_SCHOLAR_API_KEY:
             headers["x-api-key"] = SEMANTIC_SCHOLAR_API_KEY
-        result = self.fetcher.fetch(url, check_robots=False, headers=headers)
-        if not result.ok:
-            stats.errors += 1
-            stats.error = result.error or f"http_{result.status}"
-            return [], stats
-        stats.fetched += 1
-        try:
-            data = json.loads(result.content.decode("utf-8", errors="replace"))
-        except Exception:  # noqa: BLE001
-            stats.errors += 1
-            stats.error = "json_decode_error"
+        data = self._get_json(url, stats, headers=headers, check_robots=False)
+        if data is None:
             return [], stats
         if not data:
             return [], stats
@@ -253,17 +272,8 @@ class PaperSources:
             f"{PUBMED_ESEARCH}?db=pubmed&term={quote_plus(query)}&retmode=json&retmax={retmax}"
             f"&sort=date&tool=DailyAIReport&email={quote(MAILTO_CONTACT)}{date_params}"
         )
-        result = self.fetcher.fetch(esearch_url, check_robots=False)
-        if not result.ok:
-            stats.errors += 1
-            stats.error = result.error or f"http_{result.status}"
-            return [], stats
-        stats.fetched += 1
-        try:
-            data = json.loads(result.content.decode("utf-8", errors="replace"))
-        except Exception:  # noqa: BLE001
-            stats.errors += 1
-            stats.error = "json_decode_error"
+        data = self._get_json(esearch_url, stats, check_robots=False)
+        if data is None:
             return [], stats
         id_list = ((data.get("esearchresult") or {}).get("idlist") or [])
         if not id_list:

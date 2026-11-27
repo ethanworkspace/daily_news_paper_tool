@@ -228,14 +228,17 @@ class PaperEngine:
             q = str(query.get("query", "")).strip()
             if not q:
                 continue
+            max_results = int(query.get("max_results", 12) or 12)
+            per_page = int(query.get("per_page", 15) or 15)
+            s2_limit = int(query.get("s2_limit", 10) or 10)
             # arXiv
             papers, st = self.sources.search_arxiv(
-                q, max_results=12, from_date=from_date, to_date=to_date
+                q, max_results=max_results, from_date=from_date, to_date=to_date
             )
             raw_candidates.extend(papers)
             add_stats("arxiv", st)
             # OpenAlex
-            papers, st = self.sources.search_openalex(q, per_page=15, from_date=from_date, to_date=to_date)
+            papers, st = self.sources.search_openalex(q, per_page=per_page, from_date=from_date, to_date=to_date)
             raw_candidates.extend(papers)
             add_stats("openalex", st)
             # PubMed (對醫療/生醫查詢較有價值，但安全起見都跑；結果再篩)
@@ -245,7 +248,7 @@ class PaperEngine:
             raw_candidates.extend(papers)
             add_stats("pubmed", st)
             # Semantic Scholar（選用，429/不可用時不影響整體）
-            papers, st = self.sources.search_semantic_scholar(q, limit=10, year=year_filter)
+            papers, st = self.sources.search_semantic_scholar(q, limit=s2_limit, year=year_filter)
             raw_candidates.extend(papers)
             add_stats("semantic_scholar", st)
 

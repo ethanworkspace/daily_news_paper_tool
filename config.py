@@ -268,12 +268,15 @@ PAPER_OCR_DPI = int(get_secure_env("PAPER_OCR_DPI", "200"))
 PAPER_OCR_MIN_CHARS = int(get_secure_env("PAPER_OCR_MIN_CHARS", "40"))  # 每頁文字低於此值視為掃描頁
 
 # 查詢詞（可擴充）；hint 對應領域偏好，實際仍以內容判斷
+# 海事查詢放在最前：OpenAlex/S2 容易发生 429，先確保海事硬配額有來源。
 PAPER_QUERIES = [
+    {"query": "maritime AI autonomous vessel", "hint": "maritime", "s2_limit": 50, "per_page": 25},
+    {"query": "shipping port artificial intelligence", "hint": "maritime", "s2_limit": 50, "per_page": 25},
+    {"query": "ocean engineering machine learning", "hint": "maritime", "s2_limit": 50, "per_page": 25},
+    {"query": "ship detection deep learning", "hint": "maritime", "s2_limit": 50, "per_page": 25},
     {"query": "large language model", "hint": "general"},
     {"query": "multimodal foundation model", "hint": "general"},
     {"query": "AI agent reasoning", "hint": "general"},
-    {"query": "maritime AI autonomous vessel", "hint": "maritime"},
-    {"query": "shipping port artificial intelligence", "hint": "maritime"},
     {"query": "medical AI clinical diagnosis", "hint": "medical"},
     {"query": "healthcare machine learning", "hint": "medical"},
     {"query": "cybersecurity machine learning intrusion detection", "hint": "cybersecurity"},

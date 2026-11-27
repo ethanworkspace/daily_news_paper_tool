@@ -1,6 +1,7 @@
 import unittest
 from datetime import datetime, timedelta, timezone
 
+from config import PAPER_QUERIES
 from collectors.paper_engine import PaperEngine, PaperQuotaError, candidate_to_item, select_papers
 from collectors.paper_parse import PaperCandidate
 from core.models import PaperItem
@@ -49,14 +50,17 @@ class FakeSources:
         return c, type("S", (), {"name": "arxiv", "found": len(c), "fetched": 1, "errors": 0, "error": ""})()
 
     def search_openalex(self, query, **kwargs):
+        self.calls.append(("openalex", query, kwargs))
         c = self.mapping.get(("openalex", query), [])
         return c, type("S", (), {"name": "openalex", "found": len(c), "fetched": 1, "errors": 0, "error": ""})()
 
     def search_pubmed(self, query, **kwargs):
+        self.calls.append(("pubmed", query, kwargs))
         c = self.mapping.get(("pubmed", query), [])
         return c, type("S", (), {"name": "pubmed", "found": len(c), "fetched": 1, "errors": 0, "error": ""})()
 
     def search_semantic_scholar(self, query, **kwargs):
+        self.calls.append(("s2", query, kwargs))
         c = self.mapping.get(("s2", query), [])
         return c, type("S", (), {"name": "semantic_scholar", "found": len(c), "fetched": 0, "errors": 1, "error": "http_429"})()
 
@@ -228,6 +232,42 @@ class TestPaperEngine(unittest.TestCase):
         arxiv_call = next(call for call in sources.calls if call[0] == "arxiv")
         self.assertEqual(arxiv_call[2]["to_date"], "2026-11-21")
         self.assertTrue(arxiv_call[2]["from_date"])
+
+
+class TestMaritimeSourcePriority(unittest.TestCase):
+    def test_maritime_queries_are_first_with_larger_caps(self):
+        self.assertEqual(PAPER_QUERIES[0]["hint"], "maritime")
+        self.assertEqual(PAPER_QUERIES[1]["hint"], "maritime")
+        for query in PAPER_QUERIES[:4]:
+            self.assertGreaterEqual(int(query.get("s2_limit", 10)), 50)
+            self.assertGreaterEqual(int(query.get("per_page", 15)), 25)
+
+    def test_query_specific_limits_are_passed_to_sources(self):
+        query = "maritime AI autonomous vessel"
+        candidate = make_candidate("Maritime LLM study", maritime=True)
+        sources = FakeSources({("arxiv", query): [candidate]})
+        engine = PaperEngine(
+            sources=sources,
+            queries=[{
+                "query": query,
+                "hint": "maritime",
+                "max_results": 22,
+                "per_page": 33,
+                "s2_limit": 42,
+            }],
+            min_paired=0,
+            min_maritime=0,
+            enrich_fulltext=False,
+        )
+
+        engine.collect(1, now=NOW)
+
+        arxiv_call = next(call for call in sources.calls if call[0] == "arxiv")
+        openalex_call = next(call for call in sources.calls if call[0] == "openalex")
+        s2_call = next(call for call in sources.calls if call[0] == "s2")
+        self.assertEqual(arxiv_call[2]["max_results"], 22)
+        self.assertEqual(openalex_call[2]["per_page"], 33)
+        self.assertEqual(s2_call[2]["limit"], 42)
 
 
 if __name__ == "__main__":
