@@ -7,6 +7,7 @@
 - License：NOASSERTION
 - Topics：cli, deployment, edge-ai, edge-cloud, fastcrest, groot, inference, jetson, onnx, pi0, python, robot-learning, robotics, smolvla, tensorrt, tether, vision-language-action, vla
 - 更新時間：2026-11-01T01:06:22+00:00
+- 論文層級：未對應論文
 - 配對論文：
 - 品質分數：8/10 [implementation_signals]
 

@@ -7,6 +7,7 @@
 - License：MIT
 - Topics：classification, cybersecurity, decision-tree-classifier, deep-learning, iot, iot-security, keras, knn, linear-regression, logistic-regression, machine-learning, mlp-classifier, multilayer-perceptron, network-intrusion-detection, network-security, random-forest, supervised-learning, svm-classifier, tensorflow, unsw-nb15
 - 更新時間：2026-11-11T17:45:53+00:00
+- 論文層級：未對應論文
 - 配對論文：https://doi.org/10.1109/milcis.2015.7348942
 - 品質分數：10/10 [paper_paired, implementation_signals]
 

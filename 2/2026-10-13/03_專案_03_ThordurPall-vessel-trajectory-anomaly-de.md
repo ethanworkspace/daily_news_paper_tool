@@ -7,6 +7,7 @@
 - License：
 - Topics：
 - 更新時間：2026-06-29T07:54:22+00:00
+- 論文層級：未對應論文（海事）
 - 配對論文：https://arxiv.org/abs/1912.00682
 - 品質分數：7/10 [paper_paired, stale_seed]
 

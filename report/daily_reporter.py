@@ -118,6 +118,8 @@ def render_repo_markdown(item: Any, index: int, bundle_date: str) -> str:
         f"- License：{item.license_name}",
         f"- Topics：{', '.join(item.topics)}",
         f"- 更新時間：{_dt(item.updated_at)}",
+        f"- 論文層級：{_tier_label(getattr(item, 'paper_tier', 0)) if getattr(item, 'paper_tier', 0) else '未對應論文'}"
+        f"{'（海事）' if getattr(item, 'is_maritime', False) else ''}",
         f"- 配對論文：{_link(item.paper_url) or item.paired_paper}",
         f"- 品質分數：{item.quality_score}/10 {'[' + ', '.join(item.quality_flags) + ']' if item.quality_flags else ''}",
         "",

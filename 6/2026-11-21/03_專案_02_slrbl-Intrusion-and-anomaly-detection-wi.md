@@ -7,6 +7,7 @@
 - License：MIT
 - Topics：agentic-ai, ai, artificial-intelligence, cybersecurity, detect-intrusions, infosec, intrusion-detection, llm, log-analysis, machine-learning
 - 更新時間：2026-10-29T17:26:10+00:00
+- 論文層級：未對應論文
 - 配對論文：https://doi.org/10.7910/dvn/3qbyb5
 - 品質分數：10/10 [paper_paired, implementation_signals]
 

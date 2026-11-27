@@ -7,6 +7,7 @@
 - License：MIT
 - Topics：computer-vision, deep-learning, geospatial, image-processing, maritime-surveillance, object-detection, oriented-bounding-box, pytorch, remote-sensing, satellite-imagery, ship-detection, speckle-noise, ssdd-dataset-processing, synthetic-aperture-radar, ultralytics, yolov8
 - 更新時間：2026-10-26T14:48:58+00:00
+- 論文層級：未對應論文（海事）
 - 配對論文：
 - 品質分數：8/10 [implementation_signals]
 
