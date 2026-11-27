@@ -791,8 +791,11 @@ class RepoEngine:
             rejected.append({"title": item.full_name, "reason": "future", "source": "github"})
             return False
         if item.updated_at and not is_within_window(item.updated_at, self.max_age_days, now=reference):
+            # 歷史回補放寬新鮮度下限，但 future 已在上游拒絕；此處只標記，不放寬其他閘門。
+            if self.allow_stale:
+                item.quality_flags = list(dict.fromkeys((item.quality_flags or []) + ["stale_backfill"]))
             # stale seed: keep only when paired to a paper for P3↔P4 traceability
-            if _is_paired(item):
+            elif _is_paired(item):
                 item.quality_flags = list(dict.fromkeys((item.quality_flags or []) + ["stale_seed"]))
             else:
                 rejected.append({"title": item.full_name, "reason": "stale_after_enrich", "source": "github"})

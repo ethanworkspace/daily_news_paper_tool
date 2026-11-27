@@ -228,6 +228,43 @@ class RepoEngineTests(unittest.TestCase):
         self.assertGreaterEqual(sel.items[0].quality_score, 5)
         self.assertGreaterEqual(sel.report.get("collections_excluded", 0), 1)
 
+    def test_allow_stale_keeps_old_maritime_repo_after_enrich(self):
+        sources = FakeSources()
+        sources._repos = {
+            "org/old-maritime": RepoCandidate(
+                full_name="org/old-maritime",
+                html_url="https://github.com/org/old-maritime",
+                description="Maritime vessel detection with deep learning",
+                stars=120,
+                language="Python",
+                topics=["maritime", "ai", "pytorch"],
+                updated_at=datetime(2026, 8, 1, tzinfo=timezone.utc),
+                readme_text=(
+                    "# Maritime AI\n\n## Overview\nAutonomous vessel detection.\n\n"
+                    "## Installation\npip install maritime-ai\n\n"
+                    "## Architecture\nSensor -> model -> alert\n\n"
+                    "## Usage\npython -m old_maritime.run\n"
+                ) + ("Details. " * 80),
+            )
+        }
+        engine = RepoEngine(
+            sources=sources,
+            queries=[{"query": "maritime ai", "hint": "maritime", "min_stars": 0}],
+            max_per_source=5,
+            max_age_days=30,
+            min_paired=0,
+            min_maritime=1,
+            min_quality_score=2,
+            enrich_limit=5,
+            allow_stale=True,
+        )
+
+        sel = engine.collect(1, now=datetime(2026, 9, 30, tzinfo=timezone.utc))
+
+        self.assertEqual([item.full_name for item in sel.items], ["org/old-maritime"])
+        self.assertNotIn("stale_after_enrich", sel.report["rejected_counts"])
+        self.assertIn("stale_backfill", sel.items[0].quality_flags)
+
     def test_collect_uses_paper_seed(self):
         sources = FakeSources()
         sources._repos["org/paired"] = RepoCandidate(
