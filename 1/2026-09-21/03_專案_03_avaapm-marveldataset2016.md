@@ -1,23 +1,24 @@
-# GitHub 專案 02：avaapm/marveldataset2016
+# GitHub 專案 03：avaapm/marveldataset2016
 
-- 日期：2026-09-24
+- 日期：2026-09-21
 - URL：https://github.com/avaapm/marveldataset2016
 - 描述：This repository is to download the MARVEL dataset 2016 for the publication "Gundogdu E., Solmaz B, Yucesoy V., Koc A., Marvel: A Large-Scale Image Dataset for Maritime Vessels, Asian Conference on Computer Vision (ACCV), 2016".
 - Stars：64  |  Forks：23  |  Language：Python
 - License：
 - Topics：
 - 更新時間：2026-08-29T14:08:52+00:00
+- 論文層級：未對應論文（海事）
 - 配對論文：
 - 品質分數：5/10 
 
 ## 在做什麼
-本專案提供一個 Python 腳本 MARVEL_Download.py，用於從網路下載 MARVEL 2016 海船圖像資料集，並依照不同任務（船舶分類、驗證、檢索、辨識）所需的 .dat 檔案產生對應的 FINAL.dat，其中每行包含圖像路徑與標籤。目標使用者為電腦視覺與海運領域的研究者，他們需要大規模標註的船舶圖像來訓練與評估深度學習模型。核心問題在於取得且組織好此資料集的下載與中繼檔案，以便直接用於後續的實驗。
+This project provides a Python utility to download and organize the MARVEL 2016 maritime vessel image dataset. It enables researchers to obtain images and metadata for vessel classification, verification, retrieval, and recognition tasks as described in the ACCV 2016 paper.
 
 ## 技術
-專案主要使用 Python 3，核心為 MARVEL_Download.py 腳本。該腳本透過可設定的 NUMBER_OF_WORKERS 參數啟用多執行緒下載，支援自訂圖片尺寸（IMAGE_HEIGHT、IMAGE_WIDTH）與是否保留原始大小（ORIGINAL_SIZE）。下載後，圖像會依照 meta 資料夾結構儲存，並產生 FINAL.dat 檔案，其中每行將原始 .dat 資料附加上對應的本地檔案路徑。腳本同時讀取 VesselClassification.dat、IMOTrainAndTest.dat 等任務特定的 .dat 檔案，以產生對應的訓練/測試清單。
+MARVEL_Download.py is a pure‑Python script that reads input .dat files, spawns a configurable number of worker threads (default 10) to fetch vessel images from the web, resizes or keeps original size based on flags, stores images in a folder hierarchy mirroring the dataset split, and writes a FINAL.dat file that appends the local path to each record. It uses only the Python standard library for networking, file I/O, and threading.
 
 ## 架構
-架構方面，專案包含以下主要元素：(1) MARVEL_Download.py 下載腳本，負責讀取輸入的 .dat 檔案、透過多執行緒從指定 URL 下載圖像並建立資料夾結構；(2) 各種任務的 .dat 檔案（VesselClassification.dat、IMOTrainAndTest.dat、VesselVerificationTrain/Test.dat、Chi*/Euc* 檔案、Recognition 子資料夾中的 trainSplit_X 檔案），它們定義了圖像的 ID、所屬集合（訓練/測試）、類別標籤及 IMO 編號等資訊；(3) 下載完成後，腳本會在每個圖像對應的資料夾中產生 FINAL.dat，其中最後一欄為本地路徑，使得後續的訓練或評估程式可以直接讀取此檔案以取得圖像與標籤。由於 README 僅說明下載與檔案格式，未提供模型訓練或推論的程式碼，因此架構描述僅基於可見的下載流程與資料組織。
+The script consists of a configuration section (NUMBER_OF_WORKERS, MAX_NUM_OF_FILES_IN_FOLDER, IMAGE_HEIGHT/WIDTH, ORIGINAL_SIZE, JUST_IMAGE), a parser that reads the selected .dat file line‑by‑line, a download worker that pulls each image URL, saves it to a subfolder named after its split (e.g., W1_1) and writes the local path to FINAL.dat. The main loop distributes lines across threads, waits for completion, then outputs the enriched file. Downstream task files (classification, verification, retrieval, recognition) are separate .dat files that reference indices into the IMOTrainAndTest.dat list; they are used by users after download to load labels or pairs. No explicit module separation is described in the README, so the architecture is inferred from the documented parameters and workflow.
 
 ## README 摘錄（節選）
 ```text
