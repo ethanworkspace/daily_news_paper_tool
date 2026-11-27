@@ -1,23 +1,24 @@
-# GitHub 專案 02：avaapm/marveldataset2016
+# GitHub 專案 03：avaapm/marveldataset2016
 
-- 日期：2026-09-20
+- 日期：2026-09-17
 - URL：https://github.com/avaapm/marveldataset2016
 - 描述：This repository is to download the MARVEL dataset 2016 for the publication "Gundogdu E., Solmaz B, Yucesoy V., Koc A., Marvel: A Large-Scale Image Dataset for Maritime Vessels, Asian Conference on Computer Vision (ACCV), 2016".
 - Stars：64  |  Forks：23  |  Language：Python
 - License：
 - Topics：
 - 更新時間：2026-08-29T14:08:52+00:00
+- 論文層級：未對應論文（海事）
 - 配對論文：
 - 品質分數：5/10 
 
 ## 在做什麼
-本專案提供一個 Python 腳本 MARVEL_Download.py，用於從網路下載 MARVEL 2016 海船圖像資料集，並依照不同任務（船舶分類、驗證、檢索、辨識）所需的 .dat 檔案產生對應的 FINAL.dat，其中每行包含圖像路徑與標籤。目標使用者為電腦視覺與海運領域的研究者，他們需要大規模標註的船舶圖像來訓練與評估深度學習模型。核心問題在於取得且組織好此資料集的下載與中繼檔案，以便直接用於後續的實驗。
+此專案提供一個 Python 腳本，用於從網路下載 MARVEL 2016 船舶影像資料集，並產生對應的中繼檔案（.dat），以支援船舶分類、驗證、檢索與辨識等五種任務。目標使用者為需要大規模船舶影像進行電腦視覺研究的學者與開發者，核心問題在於取得標註完整且結構化的船舶資料，以便進行模型訓練與評估。
 
 ## 技術
-專案主要使用 Python 3，核心為 MARVEL_Download.py 腳本。該腳本透過可設定的 NUMBER_OF_WORKERS 參數啟用多執行緒下載，支援自訂圖片尺寸（IMAGE_HEIGHT、IMAGE_WIDTH）與是否保留原始大小（ORIGINAL_SIZE）。下載後，圖像會依照 meta 資料夾結構儲存，並產生 FINAL.dat 檔案，其中每行將原始 .dat 資料附加上對應的本地檔案路徑。腳本同時讀取 VesselClassification.dat、IMOTrainAndTest.dat 等任務特定的 .dat 檔案，以產生對應的訓練/測試清單。
+專案主要使用 Python 3，核心腳本 MARVEL_Download.py 透過標準庫（urllib、os、threading）實作多執行緒下載，參數包括工作執行緒數、圖片尺寸、是否保留原始大小等。下載後會依照輸入的 .dat 檔案（如 VesselClassification.dat、IMOTrainAndTest.dat 等）在每行末附加本地檔案路徑，產生 FINAL.dat。資料流程僅涉及 HTTP 下載與本地檔案寫入，未使用額外框架或深度學習模型。
 
 ## 架構
-架構方面，專案包含以下主要元素：(1) MARVEL_Download.py 下載腳本，負責讀取輸入的 .dat 檔案、透過多執行緒從指定 URL 下載圖像並建立資料夾結構；(2) 各種任務的 .dat 檔案（VesselClassification.dat、IMOTrainAndTest.dat、VesselVerificationTrain/Test.dat、Chi*/Euc* 檔案、Recognition 子資料夾中的 trainSplit_X 檔案），它們定義了圖像的 ID、所屬集合（訓練/測試）、類別標籤及 IMO 編號等資訊；(3) 下載完成後，腳本會在每個圖像對應的資料夾中產生 FINAL.dat，其中最後一欄為本地路徑，使得後續的訓練或評估程式可以直接讀取此檔案以取得圖像與標籤。由於 README 僅說明下載與檔案格式，未提供模型訓練或推論的程式碼，因此架構描述僅基於可見的下載流程與資料組織。
+執行流程為：使用者先選取對應的 .dat 檔案並取消註解，接著執行 MARVEL_Download.py；腳本讀取 .dat 檔案的每一行，解析船舶 ID、集合索引、類別標籤等欄位，根據 ID 從預定義的 URL 下載對應影像，利用 NUMBER_OF_WORKERS 設定的執行緒平行進行下載，下載完成後將影像存放於與腳本同目錄的資料夾中，並建立 meta 資料夾結構；最後在每行原始資料後附加本地路徑，寫入至 FINAL.dat。後續任務（分類、驗證、檢索、辨識）則直接讀取該 FINAL.dat 或原始 .dat 檔案，依照所需的索引與標籤進行資料載入與模型訓練。由於 README 未提供更詳細的模組圖或非同步訊息流，以上架構說明僅基於腳本說明與檔案結構的推斷。
 
 ## README 摘錄（節選）
 ```text
