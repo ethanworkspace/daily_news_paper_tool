@@ -1,7 +1,7 @@
 # 論文 01：Aligning Perception, Reasoning, Modeling and Interaction: A Survey on Physical AI.
 
 - 日期：2026-10-01
-- 來源層級：Tier 1
+- 來源層級：Tier 1（頂級期刊）
 - 期刊/會議/來源：IEEE transactions on pattern analysis and machine intelligence
 - Venue：IEEE transactions on pattern analysis and machine intelligence
 - 發布時間：2026-10-01T00:00:00+00:00
@@ -22,13 +22,13 @@
 The convergence of embodied intelligence and world models has catalyzed growing interest in integrating physical laws into AI systems. While prior surveys have examined world models and embodied intelligence separately, we focus on the progression that connects these capabilities as a unified developmental pathway from passive observation to active physical comprehension. This survey provides a systematic framework revealing how physical AI advances through four interconnected stages: perception transforms sensory data into structured physical representations, reasoning derives explanations from observed phenomena, modeling enables predictive simulation grounded in physical principles, and embodied interaction closes the loop through physical manipulation and environmental feedback. Each stage enables and enhances the next: perceptual grounding supports causal reasoning, reasoning unlocks predictive capabilities, and robust models drive genuine physical interaction. Through analysis of developments spanning architectural innovations, training methodologies, causal inference, and embodied systems, we synthesize how physical understanding emerges through cumulative integration across this progression. Our framework reveals the evolution from isolated, task-specific solutions toward integrated architectures that advance from pattern recognition toward causal reasoning and counterfactual prediction. This perspective provides foundations for next-generation physical AI systems with direct implications for safe, generalizable, and interpretable deployment across robotics, scientific discovery, and autonomous systems.
 
 ## 背景與目的
-本文旨在解決將物理定律整合進 AI 系統的問題，指出既有調查分別探討世界模型與具身智能，缺乏統一的發展路徑。作者提出一個系統性框架，將 Physical AI 劃分為四個相互關聯的階段：感知將感測資料轉為結構化物理表徵、推理從觀察現象導出解釋、建模基於物理原理實現預測模擬、具身互動透過物理操作與環境回饋閉環。各階段層層遞進：感知奠基支撐因果推理、推理釋放預測能力、穩健模型驅動真實物理互動。目標在於綜合架構創新、訓練方法、因果推論與具身系統，闡明物理理解如何透過累積整合浮現，為機器人、科學發現與自主系統提供安全、可泛化、可解釋的部署基礎。
+本文旨在解決物理 AI 領域中，感知、推理、建模與具身互動長期被分別探討的缺口。現有研究多針對世界模型或具身智能單一面向，缺乏將四者串聯為統一發展路徑的系統性框架。此缺口導致從被動觀察到主動物理理解的關鍵機制不明，影響機器人、科學發現與自主系統的安全部署。本文目標為提出四階段整合框架，闡明各階段如何相互支撐，並為下一代物理 AI 提供理論基礎。
 
 ## 方法
-本文為綜述論文，其核心方法在於建構一個系統性框架，將物理 AI 的發展劃分為四個相互關聯的階段：感知、推理、建模與具身互動，並分析其累積整合機制。問題設定為探討如何將物理定律整合進 AI 系統，解決既有研究將世界模型與具身智能分離探討的缺失，提出從被動觀察到主動物理理解的統一發展路徑。輸入為跨領域文獻（架構創新、訓練方法、因果推斷、具身系統），輸出為統整的發展框架與演進趨勢。整體架構以四階段串聯：感知將感測數據轉為結構化物理表徵；推理從現象導出解釋；建模實現基於物理原理的預測模擬；具身互動透過操作與環境回饋閉環。核心機制在於階段間的遞進賦能：感知奠基支撐因果推理，推理解鎖預測能力，穩健模型驅動真實互動。資料處理層面為文獻系統性歸納與分類。分析目標為綜合物理理解如何透過跨階段整合涌現，揭示從孤立任務導向方案向整合架構演進、從模式識別邁向因果推理與反事實預測的軌跡。推論流程為框架建構 -> 文獻映射 -> 跨階段綜合 -> 趨勢歸納。關鍵設計理由在於提供下一代物理 AI 系統的基石，支援機器人、科學發現與自主系統的安全部署、泛化與可解釋性。
+本調查將物理 AI 定義為從感知到具身互動的四階段發展路徑。問題設定為：輸入為多模態感測資料，輸出為可執行的物理操作策略。整體架構包含四個相互銜接的模組：(1) 感知階段，將原始感測訊號轉換為結構化物理表示（如物體屬性、空間關係）；(2) 推理階段，基於感知輸出進行因果推斷與現象解釋；(3) 建模階段，構建以物理定律為基礎的預測性世界模型，支援反事實模擬；(4) 具身互動階段，透過實際操作與環境回饋閉環驗證並修正模型。調查涵蓋架構創新（如階層式編碼器、圖神經網絡）、訓練方法（自監督、模仿學習、強化學習）、因果推斷技術（干預式學習、結構因果模型）以及具身系統整合（模擬到實體轉移、安全約束）。關鍵差異在於將四階段視為累積整合而非獨立任務，強調感知奠基因果推理、推理解鎖預測、模型驅動真實互動的遞進關係。
 
 ## 結果
-摘錄聲稱框架揭示了從孤立的任務導向解決方案向整合架構演進，並從模式識別邁向因果推理與反事實預測。然而，文中未提供任何可驗證的量化實驗數字、基準測試分數、消融研究指標或案例研究度量。僅能觀察到定性結論：調查綜合了感知、推理、建模與互動的遞進關係，並指出其對下一代 Physical AI 系統的啟示。摘錄未提供可驗證數字。
+調查綜合指出，物理 AI 正從孤立的任務導向方案演進為整合感知、推理、建模與互動的統一架構。四階段框架揭示了感知奠基因果推理、推理解鎖預測能力、穩健模型驅動真實具身互動的遞進機制。作者總結此整合路徑可支援反事實預測與可解釋決策，為機器人、科學發現與自主系統的安全、泛化與可解釋部署提供理論基礎。摘錄未提供可驗證數字。
 
 ## 限制與展望
-摘錄未討論調查方法論的局限、覆蓋範圍缺口、評估準則或部署風險。調查類論文固有的選擇偏誤、時效性衰減、缺乏實證驗證等潛在限制均未提及，後續研究方向亦未明確說明。依目前可取得資料，無法確認具體限制與展望。
+作為綜述，本文缺乏原始實驗與量化基準，結論主要基於文獻歸納，可能受選文範圍與作者視角影響。框架雖具啟發性，但各階段具體整合介面、跨模態對齊機制與實際部署的安全驗證仍待實證研究補充。後續研究需建立統一評估協議、探討大規模真實環境下的端到端訓練，並解決模型可解釋性與實時性之間的權衡。
