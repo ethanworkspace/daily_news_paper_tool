@@ -139,6 +139,31 @@ def detect_domains(text: str) -> list[str]:
     return matched
 
 
+# 論文/專案用的海事關鍵字：刻意不使用新聞的泛稱 "vessel"/"port"，
+# 避免把 medical blood vessel、資料埠 port 等誤判為海洋事務。
+MARITIME_TEXT_TERMS = (
+    "maritime", "ocean", "marine", "underwater", "subsea", "submarine",
+    "ship", "ships", "shipping", "harbor", "harbour", "seaport",
+    "coastal", "fishery", "fisheries", "offshore", "naval", "shipyard",
+    "auv", "usv", "unmanned surface vehicle", "autonomous underwater vehicle",
+    "underwater robot", "vessel traffic", "vessel trajectory", "vessel detection",
+    "vessel tracking", "autonomous vessel", "ship detection", "sea route",
+    "ais data", "vts", "port logistics", "maritime logistics", "smart port",
+    "ocean observation", "oceanographic", "naval architecture",
+    "海事", "航運", "海運", "船舶", "港口", "海洋", "離岸", "漁業", "海巡",
+    "貨櫃", "船隊", "造船", "水下", "藍色經濟", "碼頭", "船員", "海運業",
+)
+
+
+def is_maritime_text(*parts: object) -> bool:
+    """判斷論文/專案是否為海洋事務相關 AI（較新聞關鍵字嚴格）。"""
+    text = " ".join(str(part or "") for part in parts).strip()
+    if not text:
+        return False
+    lowered = text.lower()
+    return any(_contains(lowered, term) for term in MARITIME_TEXT_TERMS)
+
+
 def detect_ai_focus(text: str) -> str:
     lowered = (text or "").lower()
     focus = [

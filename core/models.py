@@ -13,7 +13,13 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
 
-from config import NEWS_MAX_AGE_DAYS, PAPER_MAX_AGE_DAYS, REPO_MAX_AGE_DAYS
+from config import (
+    NEWS_MAX_AGE_DAYS,
+    PAPER_MAX_AGE_DAYS,
+    PAPER_MIN_MARITIME,
+    REPO_MAX_AGE_DAYS,
+    REPO_MIN_MARITIME,
+)
 from core.dedupe import paper_identity_keys
 from core.security import UnsafeURLError, assert_public_http_url
 from core.timewin import end_of_day_utc, is_future, is_within_window, parse_datetime
@@ -28,7 +34,7 @@ DOMAIN_LABELS = {
     "general": "通用 AI",
 }
 CROSS_DOMAIN = tuple(d for d in DOMAINS if d != "general")
-SOURCE_TIERS = (1, 2, 3)
+SOURCE_TIERS = (1, 2, 3, 4, 5)
 PARSE_LEVELS = ("fulltext", "abstract", "metadata")
 NEWS_DOMAINS_MIN = 3
 MARITIME_MIN = 1
@@ -159,6 +165,7 @@ class PaperItem:
     parse_level: str = "metadata"
     paired_repo: str = ""
     sections: dict[str, str] = field(default_factory=dict)
+    is_maritime: bool = False
 
     def validate(self, *, require_sections: bool = False, min_section_chars: int = 0) -> "PaperItem":
         self.title = _text("paper.title", self.title, max_len=500)
@@ -191,6 +198,7 @@ class PaperItem:
         if self.parse_level not in PARSE_LEVELS:
             _fail("paper.parse_level", f"必須是 {PARSE_LEVELS}")
         self.paired_repo = _text("paper.paired_repo", self.paired_repo, required=False, max_len=200)
+        self.is_maritime = bool(self.is_maritime)
         self.sections = _validate_sections(
             "paper.sections", self.sections, ("background", "method", "results", "limitations"),
             require_sections=require_sections, min_chars=min_section_chars,
@@ -217,6 +225,8 @@ class RepoItem:
     quality_score: int = 0
     quality_flags: list[str] = field(default_factory=list)
     sections: dict[str, str] = field(default_factory=dict)
+    paper_tier: int = 0  # 對應論文層級（1–5）；0=無明確論文連結
+    is_maritime: bool = False
 
     def validate(self, *, require_sections: bool = False, min_section_chars: int = 0) -> "RepoItem":
         self.full_name = _text("repo.full_name", self.full_name, max_len=200)
@@ -243,6 +253,10 @@ class RepoItem:
         if not isinstance(self.quality_flags, list):
             _fail("repo.quality_flags", "必須是字串陣列")
         self.quality_flags = [_text(f"repo.quality_flags[{i}]", f, max_len=32) for i, f in enumerate(self.quality_flags)]
+        self.paper_tier = _int("repo.paper_tier", self.paper_tier)
+        if self.paper_tier > 5:
+            _fail("repo.paper_tier", "必須為 0–5")
+        self.is_maritime = bool(self.is_maritime)
         self.sections = _validate_sections(
             "repo.sections", self.sections, ("what", "tech", "architecture"),
             require_sections=require_sections, min_chars=min_section_chars,
@@ -416,6 +430,8 @@ class DailyBundle:
             1 for n in self.news if any(d in CROSS_DOMAIN for d in n.domains)
         )
         maritime = sum(1 for n in self.news if n.is_maritime or "maritime" in n.domains)
+        maritime_papers = sum(1 for p in self.papers if getattr(p, "is_maritime", False))
+        maritime_repos = sum(1 for r in self.repos if getattr(r, "is_maritime", False))
         paired_seed = sum(1 for p in self.papers if p.code_url or p.paired_repo)
         paper_keys = [
             paper_identity_keys(str(p.url))
@@ -436,6 +452,10 @@ class DailyBundle:
             "news_total": len(self.news),
             "cross_domain": cross_domain,
             "maritime": maritime,
+            "maritime_papers": maritime_papers,
+            "maritime_repos": maritime_repos,
+            "maritime_papers_ok": maritime_papers >= PAPER_MIN_MARITIME,
+            "maritime_repos_ok": maritime_repos >= REPO_MIN_MARITIME,
             "paired_papers": paired_actual,
             "paired_papers_seed": paired_seed,
             "paired_repos": repo_paired_actual,
@@ -449,6 +469,16 @@ class DailyBundle:
                 _fail("bundle.quotas", f"跨域新聞需 ≥{NEWS_DOMAINS_MIN}，目前 {cross_domain}")
             if not quotas["maritime_ok"]:
                 _fail("bundle.quotas", f"海事新聞需 ≥{MARITIME_MIN}，目前 {maritime}")
+            if not quotas["maritime_papers_ok"]:
+                _fail(
+                    "bundle.quotas",
+                    f"海事論文需 ≥{PAPER_MIN_MARITIME}，目前 {maritime_papers}",
+                )
+            if not quotas["maritime_repos_ok"]:
+                _fail(
+                    "bundle.quotas",
+                    f"海事 GitHub 專案需 ≥{REPO_MIN_MARITIME}，目前 {maritime_repos}",
+                )
         return quotas
 
 

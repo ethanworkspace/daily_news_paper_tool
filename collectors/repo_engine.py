@@ -12,11 +12,12 @@ from config import (
     REPO_EXCLUDE_COLLECTIONS,
     REPO_MAX_AGE_DAYS,
     REPO_MAX_PER_SOURCE,
+    REPO_MIN_MARITIME,
     REPO_MIN_PAIRED,
     REPO_MIN_QUALITY_SCORE,
     REPO_QUERIES,
 )
-from collectors.news_engine import is_ai_related
+from collectors.news_engine import is_ai_related, is_maritime_text
 from collectors.repo_parse import (
     RepoCandidate,
     build_repo_sections,
@@ -46,13 +47,66 @@ def _updated_key(item: RepoItem) -> datetime:
     return item.updated_at or datetime.min.replace(tzinfo=timezone.utc)
 
 
+def _as_bool(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return str(value or "").strip().lower() in {"1", "true", "yes", "y"}
+
+
+REPO_AI_TERMS = (
+    "machine learning", "deep learning", "neural network", "computer vision",
+    "object detection", "ship detection", "vessel detection", "image detection",
+    "anomaly detection", "trajectory prediction", "trajectory forecasting",
+    "time series forecasting", "data fusion", "multimodal", "transformer",
+    "yolo", "sar imaging", "sar image", "reinforcement learning",
+    "autonomous navigation", "collision avoidance", "semantic segmentation",
+    "slam", "forecasting", "predictive maintenance", "diffusion model",
+)
+
+
+def _is_ai_repo_text(text: str) -> bool:
+    if is_ai_related(text or ""):
+        return True
+    lowered = (text or "").lower()
+    return any(term in lowered for term in REPO_AI_TERMS)
+
+
 def _is_paired(item: RepoItem) -> bool:
     return bool(item.paper_url or item.paired_paper)
 
 
+def _is_maritime_repo(item: RepoItem) -> bool:
+    if getattr(item, "is_maritime", False):
+        return True
+    return is_maritime_text(
+        item.full_name,
+        item.description,
+        " ".join(item.topics or []),
+        (item.readme_excerpt or "")[:2000],
+        item.paper_url,
+        item.paired_paper,
+    )
+
+
+def _paper_tier_from_url(url: str) -> int:
+    """只從明確的預印本 URL 推斷層級；DOI 等無法可靠判定者給 0（備援）。"""
+    lowered = (url or "").lower()
+    if any(token in lowered for token in ("arxiv.org", "biorxiv", "medrxiv", "techrxiv", "researchsquare", "ssrn")):
+        return 5
+    return 0
+
+
+def _tier_rank(tier: int) -> int:
+    return 6 - tier if 1 <= tier <= 5 else 0
+
+
 def _priority_key(item: RepoItem, seed_names: set[str]) -> tuple:
-    """種子／已配對優先，其次品質分數，再來才看星數，避免高星清單型專案霸榜。"""
+    """依對應論文層級排序，其次種子/配對、品質、語言、星數；無明確論文者最後。"""
+    tier = int(getattr(item, "paper_tier", 0) or 0)
     return (
+        _tier_rank(tier),
         1 if (_is_paired(item) or item.full_name.lower() in seed_names) else 0,
         int(item.quality_score or 0),
         1 if item.language else 0,
@@ -65,6 +119,28 @@ def candidate_to_item(candidate: RepoCandidate) -> RepoItem:
     sections = candidate.sections or build_repo_sections(candidate)
     paper_url = candidate.paper_url or (candidate.paper_urls[0] if candidate.paper_urls else "")
     paired_paper = candidate.paired_paper or paper_url
+    extra = dict(getattr(candidate, "extra", {}) or {})
+    seed = extra.get("seed_paper") or {}
+    seed_tier = 0
+    if isinstance(seed, dict):
+        for key in ("source_tier", "paper_tier"):
+            try:
+                seed_tier = int(seed.get(key) or 0)
+            except (TypeError, ValueError):
+                seed_tier = 0
+            if seed_tier:
+                break
+    paper_tier = seed_tier or _paper_tier_from_url(paper_url or paired_paper)
+    seed_maritime = _as_bool(seed.get("is_maritime")) if isinstance(seed, dict) else False
+    maritime = seed_maritime or is_maritime_text(
+        candidate.full_name,
+        candidate.description,
+        " ".join(candidate.topics or []),
+        (candidate.readme_excerpt or candidate.readme_text or "")[:2000],
+        paper_url,
+        paired_paper,
+        seed.get("paper_title", "") if isinstance(seed, dict) else "",
+    )
     item = RepoItem(
         full_name=candidate.full_name,
         html_url=candidate.html_url,
@@ -83,10 +159,12 @@ def candidate_to_item(candidate: RepoCandidate) -> RepoItem:
         quality_score=int(candidate.quality_score or 0),
         quality_flags=list(candidate.quality_flags or []),
         sections=sections,
+        paper_tier=paper_tier,
+        is_maritime=maritime,
     )
     # RepoCandidate 帶有 seed/discovery 中繼資料；RepoItem 資料模型不必宣告該欄位，
     # 但下游品質閘門與重試需要保留它（dynamic attribute）。
-    item.extra = dict(getattr(candidate, "extra", {}) or {})
+    item.extra = extra
     return item
 
 
@@ -96,21 +174,13 @@ def select_repos(
     *,
     max_per_source: int = REPO_MAX_PER_SOURCE,
     min_paired: int = 0,
+    min_maritime: int = REPO_MIN_MARITIME,
     seed_names: set[str] | None = None,
     allow_stale: bool = False,
 ) -> RepoSelection:
+    """repo 依據對應論文層級排序，並先滿足海事 repo 配額。"""
     seed_set = {str(s).lower() for s in (seed_names or set())}
-    ordered = sorted(
-        items,
-        key=lambda item: (
-            1 if item.full_name.lower() in seed_set else 0,
-            1 if _is_paired(item) else 0,
-            int(item.quality_score or 0),
-            min(int(item.stars or 0), 200000),
-            _updated_key(item),
-        ),
-        reverse=True,
-    )
+    ordered = sorted(items, key=lambda item: _priority_key(item, seed_set), reverse=True)
     selected: list[RepoItem] = []
     remaining = list(ordered)
     per_source: Counter[str] = Counter()
@@ -140,8 +210,10 @@ def select_repos(
         return False
 
     while len(selected) < count:
+        maritime = sum(1 for item in selected if _is_maritime_repo(item))
+        if maritime < min_maritime and take(_is_maritime_repo):
+            continue
         paired = sum(1 for item in selected if _is_paired(item))
-        seed_paired = sum(1 for item in selected if item.full_name.lower() in seed_set and _is_paired(item))
         if paired < min_paired and take(lambda i: i.full_name.lower() in seed_set and _is_paired(i)):
             continue
         if paired < min_paired and take(_is_paired):
@@ -150,17 +222,30 @@ def select_repos(
             continue
         break
 
+    # 配額只決定「選誰」；最終呈現仍照對應論文層級排序。
+    selected.sort(key=lambda item: _priority_key(item, seed_set), reverse=True)
     paired = sum(1 for item in selected if _is_paired(item))
+    maritime = sum(1 for item in selected if _is_maritime_repo(item))
     report = {
         "pool_size": len(ordered),
         "selected": len(selected),
         "target": count,
         "paired": paired,
         "paired_ok": paired >= min_paired,
+        "maritime": maritime,
+        "maritime_target": min_maritime,
+        "maritime_ok": maritime >= min_maritime,
+        "maritime_repos": [item.full_name for item in selected if _is_maritime_repo(item)],
+        "paper_tiers": dict(Counter(str(int(getattr(item, "paper_tier", 0) or 0)) for item in selected)),
         "per_owner": dict(per_source),
         "relaxed_caps": relaxed,
         "quality_scores": {item.full_name: int(item.quality_score or 0) for item in selected},
     }
+    if not report["maritime_ok"]:
+        report["maritime_shortfall"] = f"repos:{maritime}/{min_maritime}"
+        raise RepoQuotaError(
+            f"海事 GitHub 專案配額不足：{maritime}/{min_maritime}", report
+        )
     if len(selected) < count:
         report["quota_shortfall"] = f"repos:{len(selected)}/{count}"
         if not allow_stale:
@@ -181,6 +266,13 @@ def _set_value(obj: Any, name: str, value: str) -> None:
         obj[name] = value
     else:
         setattr(obj, name, value)
+
+
+def _as_int(value: object) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def paper_seed_entries(papers: Iterable[Any]) -> list[dict]:
@@ -205,6 +297,8 @@ def paper_seed_entries(papers: Iterable[Any]) -> list[dict]:
             "doi": doi,
             "arxiv_id": arxiv_id,
             "source": _value(paper, "source"),
+            "source_tier": _as_int(_value(paper, "source_tier")),
+            "is_maritime": _as_bool(_value(paper, "is_maritime")),
         })
     return entries
 
@@ -276,6 +370,11 @@ def link_papers_to_repos(papers: Iterable[Any], repos: Iterable[RepoItem]) -> di
             repo.paper_url = _value(paper, "url")
         if not repo.paired_paper:
             repo.paired_paper = _value(paper, "url")
+        paper_tier = _as_int(_value(paper, "source_tier"))
+        if 1 <= paper_tier <= 5 and (not repo.paper_tier or repo.paper_tier == 5):
+            repo.paper_tier = paper_tier
+        if _as_bool(_value(paper, "is_maritime")):
+            repo.is_maritime = True
         matched.append({**entry, "repo": repo.full_name})
 
     return {
@@ -297,6 +396,7 @@ class RepoEngine:
         max_per_source: int = REPO_MAX_PER_SOURCE,
         max_age_days: int = REPO_MAX_AGE_DAYS,
         min_paired: int = REPO_MIN_PAIRED,
+        min_maritime: int = REPO_MIN_MARITIME,
         allow_stale: bool = False,
         min_quality_score: int = REPO_MIN_QUALITY_SCORE,
         exclude_collections: bool = REPO_EXCLUDE_COLLECTIONS,
@@ -307,6 +407,7 @@ class RepoEngine:
         self.max_per_source = max_per_source
         self.max_age_days = max_age_days
         self.min_paired = min_paired
+        self.min_maritime = min_maritime
         self.allow_stale = allow_stale
         self.min_quality_score = min_quality_score
         self.exclude_collections = exclude_collections
@@ -347,8 +448,9 @@ class RepoEngine:
             if not q:
                 continue
             min_stars = int(query.get("min_stars", 0) or 0)
+            per_page = int(query.get("per_page", 15) or 15)
             repos, st = self.sources.search_repos(
-                q, per_page=15, pushed_after=pushed_after, pushed_before=pushed_before, min_stars=min_stars
+                q, per_page=per_page, pushed_after=pushed_after, pushed_before=pushed_before, min_stars=min_stars
             )
             raw.extend(repos)
             entry = source_stats.setdefault("github_search", {"found": 0, "fetched": 0, "errors": 0})
@@ -445,11 +547,18 @@ class RepoEngine:
 
         seed_names = {name.lower() for name in seed_order}
         ordered = sorted(items, key=lambda item: _priority_key(item, seed_names), reverse=True)
+        # README 抓取名額先留給海事候選：它們多半沒有論文層級，若照最終排序會永遠排在後面，
+        # 導致僅憑 metadata 被低品質閘門淘汰，海事硬配額因而無法達成。
+        enrichment_order = sorted(
+            items,
+            key=lambda item: (1 if _is_maritime_repo(item) else 0, _priority_key(item, seed_names)),
+            reverse=True,
+        )
 
         # 4) 依優先序深入抓 README，邊抓邊做品質閘門
         qualified: list[RepoItem] = []
         enriched_count = 0
-        for item in ordered:
+        for item in enrichment_order:
             if enriched_count < self.enrich_limit:
                 if self._enrich_item(item, rejected):
                     enriched_count += 1
@@ -462,7 +571,13 @@ class RepoEngine:
 
         try:
             selection = select_repos(
-                qualified, count, max_per_source=self.max_per_source, min_paired=self.min_paired, seed_names=seed_names, allow_stale=self.allow_stale
+                qualified,
+                count,
+                max_per_source=self.max_per_source,
+                min_paired=self.min_paired,
+                min_maritime=self.min_maritime,
+                seed_names=seed_names,
+                allow_stale=self.allow_stale,
             )
         except RepoQuotaError as exc:
             exc.report.setdefault("sources", source_stats)
@@ -649,6 +764,17 @@ class RepoEngine:
             rejected.append({"title": item.full_name, "reason": "no_content", "source": "github"})
             return False
 
+        extra = item.extra if isinstance(getattr(item, "extra", None), dict) else {}
+        seed = extra.get("seed_paper") or {}
+        seed_text = f"{seed.get('paper_title', '')} {seed.get('paper_url', '')}".strip()
+        repo_text = (
+            f"{item.full_name} {item.description} {' '.join(item.topics or [])} "
+            f"{item.readme_excerpt or ''}"
+        )
+        if not _is_ai_repo_text(repo_text) and not _is_ai_repo_text(seed_text):
+            rejected.append({"title": item.full_name, "reason": "not_ai_after_enrich", "source": "github"})
+            return False
+
         quality = evaluate_repo_quality(
             item.full_name,
             item.description,
@@ -755,10 +881,16 @@ class RepoEngine:
             text = f"{cand.full_name} {cand.description} {' '.join(cand.topics)} {cand.readme_excerpt[:500]}"
             seed = (cand.extra or {}).get("seed_paper") or {}
             seed_text = f"{seed.get('paper_title','')} {seed.get('paper_url','')}".strip()
-            ai_related = is_ai_related(text) or (bool(seed_text) and is_ai_related(seed_text))
+            maritime = is_maritime_text(text)
+            if maritime:
+                cand.extra["maritime_candidate"] = True
+            ai_related = _is_ai_repo_text(text) or (bool(seed_text) and is_ai_related(seed_text))
             if not ai_related:
                 if bool(seed_text):
                     cand.extra["seed_ai_override"] = True
+                elif maritime:
+                    # 海事候選先保留，等 README 補充後在品質閘門複核 AI 訊號。
+                    cand.extra["maritime_ai_pending"] = True
                 else:
                     rejected.append({"title": cand.full_name, "reason": "not_ai", "source": "github"})
                     continue

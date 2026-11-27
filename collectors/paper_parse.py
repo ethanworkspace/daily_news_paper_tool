@@ -305,18 +305,27 @@ def _venue_has(text: str, token: str) -> bool:
 
 
 def venue_tier(journal: str = "", venue: str = "", source_name: str = "") -> int:
-    from config import TIER1_VENUES, TIER2_VENUES
+    from config import (
+        GENERAL_JOURNAL_VENUES,
+        MARITIME_TOP_JOURNAL_VENUES,
+        PREPRINT_VENUES,
+        TOP_CONFERENCE_VENUES,
+        TOP_JOURNAL_VENUES,
+    )
 
     text = f"{journal} {venue} {source_name}".lower()
-    if any(_venue_has(text, token) for token in TIER1_VENUES):
+    if any(_venue_has(text, token) for token in TOP_JOURNAL_VENUES):
         return 1
-    if any(_venue_has(text, token) for token in TIER2_VENUES):
+    if any(_venue_has(text, token) for token in TOP_CONFERENCE_VENUES):
         return 2
-    if "arxiv" in text or "biorxiv" in text or "medrxiv" in text or "preprint" in text:
+    if any(_venue_has(text, token) for token in MARITIME_TOP_JOURNAL_VENUES):
         return 3
-    # 未列名於 TIER1/TIER2 的一般期刊不算「頂會/重要期刊」，避免普通期刊
-    # 在「頂會/期刊優先」時排擠掉有 GitHub 實作的論文。
-    return 3
+    if any(_venue_has(text, token) for token in PREPRINT_VENUES):
+        return 5
+    if any(_venue_has(text, token) for token in GENERAL_JOURNAL_VENUES):
+        return 4
+    # 未列名的同儕審查期刊視為一般期刊；頂刊/頂會/海事頂刊仍優先。
+    return 4
 
 
 def canonical_venue(journal: str = "", venue: str = "", url: str = "") -> str:
@@ -393,7 +402,7 @@ def parse_arxiv_atom(content: bytes) -> list[PaperCandidate]:
                 title=title,
                 url=abs_url or (f"https://arxiv.org/abs/{arxiv_id}" if arxiv_id else ""),
                 source_name="arXiv",
-                source_tier=3,
+                source_tier=5,
                 published_at=published,
                 authors=authors,
                 abstract=abstract,
@@ -500,7 +509,7 @@ def parse_openalex_work(work: dict, *, source_stats_cache: dict[str, dict] | Non
             or "medrxiv" in journal_text
         )
         if is_preprint_source or not journal:
-            candidate.source_tier = 3
+            candidate.source_tier = 5
             if not candidate.venue or "arxiv" in candidate.venue.lower():
                 candidate.venue = "arXiv preprint"
             if candidate.impact_factor in ("", "N/A"):
@@ -553,7 +562,7 @@ def parse_semantic_scholar_paper(paper: dict) -> PaperCandidate | None:
         title=title,
         url=url,
         source_name=(journal if peer_reviewed and journal else display_venue) or "Semantic Scholar",
-        source_tier=venue_tier(journal=journal, venue=display_venue) if peer_reviewed else 3,
+        source_tier=venue_tier(journal=journal, venue=display_venue) if peer_reviewed else 5,
         published_at=published,
         authors=authors,
         abstract=abstract,

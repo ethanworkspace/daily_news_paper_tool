@@ -8,7 +8,11 @@ from core.models import PaperItem
 NOW = datetime(2026, 11, 21, 12, 0, tzinfo=timezone.utc)
 
 
-def make_candidate(title: str, *, hours=2, source="arXiv", tier=3, code_url="", doi="", arxiv_id="", impact="N/A (preprint)"):
+def make_candidate(title: str, *, hours=2, source="arXiv", tier=5, code_url="", doi="", arxiv_id="", impact="N/A (preprint)", maritime=False):
+    abstract = (
+        "Maritime shipping vessel port AI large language model study."
+        if maritime else "This paper studies a large language model for medical diagnosis."
+    )
     return PaperCandidate(
         title=title,
         url=f"https://example.com/{abs(hash(title)) % 100000}",
@@ -16,7 +20,7 @@ def make_candidate(title: str, *, hours=2, source="arXiv", tier=3, code_url="", 
         source_tier=tier,
         published_at=NOW - timedelta(hours=hours),
         authors=["A"],
-        abstract="This paper studies a large language model for medical diagnosis.",
+        abstract=abstract,
         pdf_url="",
         code_url=code_url,
         doi=doi,
@@ -76,35 +80,50 @@ class TestCandidateToItem(unittest.TestCase):
 class TestSelection(unittest.TestCase):
     def test_prefers_paired_and_tier(self):
         items = [
-            make_item("P1", source="arXiv", tier=3),
+            make_item("P1", source="arXiv", tier=5),
             make_item("P2", source="Nature", tier=1, impact="2yr_mean_citedness=50 (OpenAlex)"),
-            make_item("P3", source="arXiv", tier=3, code_url="https://github.com/x/y"),
+            make_item("P3", source="arXiv", tier=5, code_url="https://github.com/x/y"),
             make_item("P4", source="JMLR", tier=2, impact="h_index=100 (OpenAlex)"),
-            make_item("P5", source="arXiv", tier=3),
-            make_item("P6", source="arXiv", tier=3, code_url="https://github.com/u/v"),
+            make_item("P5", source="arXiv", tier=5),
+            make_item("P6", source="arXiv", tier=5, code_url="https://github.com/u/v"),
         ]
-        sel = select_papers(items, 4, max_per_source=3, min_paired=2)
+        sel = select_papers(items, 4, max_per_source=3, min_paired=2, min_maritime=0)
         self.assertEqual(len(sel.items), 4)
         self.assertGreaterEqual(sel.report["paired"], 2)
 
     def test_priority_tier_before_github_when_pairing_not_required(self):
         items = [
-            make_item("Tier3 with code", source="arXiv", tier=3, code_url="https://github.com/x/y"),
+            make_item("Tier5 with code", source="arXiv", tier=5, code_url="https://github.com/x/y"),
             make_item("Tier1 without code", source="Nature", tier=1),
-            make_item("Tier3 without code", source="arXiv", tier=3),
+            make_item("Tier5 without code", source="arXiv", tier=5),
             make_item("Tier1 with code", source="Science", tier=1, code_url="https://github.com/u/v"),
         ]
-        sel = select_papers(items, 4, max_per_source=5, min_paired=0)
+        sel = select_papers(items, 4, max_per_source=5, min_paired=0, min_maritime=0)
         titles = [item.title for item in sel.items]
         self.assertEqual(titles[0], "Tier1 with code")
         self.assertEqual(titles[1], "Tier1 without code")
-        self.assertEqual(titles[2], "Tier3 with code")
-        self.assertEqual(titles[3], "Tier3 without code")
+        self.assertEqual(titles[2], "Tier5 with code")
+        self.assertEqual(titles[3], "Tier5 without code")
 
     def test_quota_error(self):
         items = [make_item("Only one")]
         with self.assertRaises(PaperQuotaError):
-            select_papers(items, 5, max_per_source=5, min_paired=0)
+            select_papers(items, 5, max_per_source=5, min_paired=0, min_maritime=0)
+
+    def test_maritime_quota_with_tier_order(self):
+        items = [
+            make_item("General Nature", source="Nature", tier=1),
+            make_item("General Science", source="Science", tier=1),
+            make_item("General JMLR", source="JMLR", tier=1),
+            make_item("Maritime preprint", source="arXiv", tier=5, maritime=True),
+            make_item("Maritime top journal", source="Ocean Engineering", tier=3, maritime=True),
+        ]
+        sel = select_papers(items, 5, max_per_source=5, min_paired=0)
+        self.assertTrue(sel.report["maritime_ok"])
+        self.assertEqual(sel.report["maritime"], 2)
+        titles = [item.title for item in sel.items]
+        self.assertEqual(titles[:3], ["General Nature", "General Science", "General JMLR"])
+        self.assertEqual(titles[3:], ["Maritime top journal", "Maritime preprint"])
 
 
 class TestPaperEngine(unittest.TestCase):
@@ -115,6 +134,9 @@ class TestPaperEngine(unittest.TestCase):
         mapping[("arxiv", q)] = [
             make_candidate(f"LLM paper {i}", arxiv_id=f"2601.0000{i}", code_url=("https://github.com/o/r" if i < 3 else ""))
             for i in range(4)
+        ] + [
+            make_candidate("Autonomous vessel route planning with LLM", arxiv_id="2601.90001", maritime=True),
+            make_candidate("Port logistics digital twin with LLM", arxiv_id="2601.90002", maritime=True),
         ]
         mapping[("openalex", q)] = [
             make_candidate(f"OA paper {i}", source="Nature AI", tier=1, doi=f"10.1/{i}", impact="2yr_mean_citedness=10 (OpenAlex)")
@@ -131,6 +153,7 @@ class TestPaperEngine(unittest.TestCase):
         sel = engine.collect(5, now=NOW)
         self.assertEqual(len(sel.items), 5)
         self.assertGreaterEqual(sel.report["paired"], 2)
+        self.assertGreaterEqual(sel.report["maritime"], 2)
         self.assertIn("arxiv", sel.report["sources"])
         self.assertIn("semantic_scholar", sel.report["sources"])  # queried (error)
         self.assertTrue(all(item.impact_factor for item in sel.items))
@@ -152,6 +175,7 @@ class TestPaperEngine(unittest.TestCase):
             sources=FakeSources(mapping),
             queries=[{"query": q, "hint": "general"}],
             min_paired=0,
+            min_maritime=0,
             enrich_fulltext=False,
         )
         with self.assertRaises(PaperQuotaError) as ctx:
@@ -168,6 +192,7 @@ class TestPaperEngine(unittest.TestCase):
             sources=FakeSources(mapping),
             queries=[{"query": "large language model"}],
             min_paired=0,
+            min_maritime=0,
             enrich_fulltext=True,
             enrich_limit=5,
         )
@@ -191,6 +216,7 @@ class TestPaperEngine(unittest.TestCase):
             queries=[{"query": q}],
             allow_stale=True,
             min_paired=0,
+            min_maritime=0,
             enrich_fulltext=False,
         )
 

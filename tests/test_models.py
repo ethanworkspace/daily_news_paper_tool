@@ -35,7 +35,7 @@ def make_paper(**overrides) -> PaperItem:
         title="A Paper on Maritime AI",
         url="https://arxiv.org/abs/2601.01234",
         source_name="arXiv",
-        source_tier=3,
+        source_tier=4,
         published_at=days_ago(5),
         parse_level="abstract",
         abstract="abstract",
@@ -108,8 +108,9 @@ class TestPaperItem(unittest.TestCase):
         self.assertEqual(paper.code_url, "https://github.com/owner/repo")
 
     def test_tier_validation(self):
+        make_paper(source_tier=5).validate()
         with self.assertRaises(SchemaError):
-            make_paper(source_tier=4).validate()
+            make_paper(source_tier=6).validate()
 
     def test_parse_level(self):
         with self.assertRaises(SchemaError):
@@ -177,12 +178,21 @@ class TestDailyBundle(unittest.TestCase):
         news.append(make_news(url="https://example.com/n/med", domains=["medical"]))
         news.append(make_news(url="https://example.com/n/sec", domains=["cybersecurity"]))
         papers = [
-            make_paper(url=f"https://arxiv.org/abs/2601.0123{i}", code_url=("https://github.com/o/r" if i < 3 else ""))
+            make_paper(
+                url=f"https://arxiv.org/abs/2601.0123{i}",
+                code_url=("https://github.com/o/r" if i < 3 else ""),
+                is_maritime=(i < 2),
+            )
             for i in range(5)
         ]
         repos = [
-            make_repo(full_name=f"owner/repo{i}", html_url=f"https://github.com/owner/repo{i}",
-                      paper_url=("https://arxiv.org/abs/2601.01230" if i < 2 else ""))
+            make_repo(
+                full_name=f"owner/repo{i}",
+                html_url=f"https://github.com/owner/repo{i}",
+                paper_url=("https://arxiv.org/abs/2601.01230" if i < 2 else ""),
+                is_maritime=(i < 2),
+                paper_tier=(4 if i < 2 else 0),
+            )
             for i in range(5)
         ]
         data = dict(
@@ -239,6 +249,22 @@ class TestDailyBundle(unittest.TestCase):
         with self.assertRaises(SchemaError) as ctx:
             self.build_bundle(news=news).validate(now=NOW)
         self.assertIn("海事", str(ctx.exception))
+
+    def test_maritime_papers_failure_even_in_backfill(self):
+        bundle = self.build_bundle()
+        for paper in bundle.papers:
+            paper.is_maritime = False
+        with self.assertRaises(SchemaError) as ctx:
+            bundle.validate(now=NOW, allow_stale=True)
+        self.assertIn("海事論文", str(ctx.exception))
+
+    def test_maritime_repos_failure_even_in_backfill(self):
+        bundle = self.build_bundle()
+        for repo in bundle.repos:
+            repo.is_maritime = False
+        with self.assertRaises(SchemaError) as ctx:
+            bundle.validate(now=NOW, allow_stale=True)
+        self.assertIn("海事 GitHub", str(ctx.exception))
 
     def test_stale_news_rejected(self):
         bundle = self.build_bundle()

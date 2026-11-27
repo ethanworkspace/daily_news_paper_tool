@@ -5,6 +5,8 @@ import unittest
 from datetime import datetime, timezone
 
 from collectors.repo_engine import (
+    _is_ai_repo_text,
+    _is_maritime_repo,
     RepoEngine,
     RepoQuotaError,
     link_papers_to_repos,
@@ -25,6 +27,8 @@ def _item(
     updated: str = "2026-11-20T00:00:00Z",
     quality: int = 6,
     language: str = "Python",
+    maritime: bool = False,
+    tier: int = 0,
 ) -> RepoItem:
     return RepoItem(
         full_name=full_name,
@@ -39,6 +43,8 @@ def _item(
         quality_score=quality,
         quality_flags=["implementation_signals"] if quality >= 5 else [],
         sections={"what": "what" * 20, "tech": "tech" * 20, "architecture": "arch" * 20},
+        paper_tier=tier,
+        is_maritime=maritime,
     ).validate()
 
 
@@ -52,13 +58,13 @@ class RepoSelectionTests(unittest.TestCase):
             _item("e/five", stars=200),
             _item("f/six", stars=100),
         ]
-        sel = select_repos(items, 5, max_per_source=2, min_paired=2)
+        sel = select_repos(items, 5, max_per_source=2, min_paired=2, min_maritime=0)
         self.assertEqual(len(sel.items), 5)
         self.assertGreaterEqual(sel.report["paired"], 2)
 
     def test_select_quota_error(self):
         with self.assertRaises(RepoQuotaError):
-            select_repos([_item("a/one")], 2, min_paired=0)
+            select_repos([_item("a/one")], 2, min_paired=0, min_maritime=0)
 
     def test_select_prefers_quality_over_raw_stars(self):
         items = [
@@ -66,11 +72,33 @@ class RepoSelectionTests(unittest.TestCase):
             _item("b/real-impl", stars=200, quality=7),
             _item("c/another-impl", stars=150, quality=6),
         ]
-        sel = select_repos(items, 2, max_per_source=5, min_paired=0)
+        sel = select_repos(items, 2, max_per_source=5, min_paired=0, min_maritime=0)
         names = {item.full_name for item in sel.items}
         self.assertIn("b/real-impl", names)
         self.assertIn("c/another-impl", names)
         self.assertNotIn("a/awesome-list", names)
+
+    def test_maritime_quota_with_paper_tier_order(self):
+        items = [
+            _item("a/top", paper="https://doi.org/10.1/top", tier=1),
+            _item("b/conf", paper="https://doi.org/10.1/conf", tier=2),
+            _item("c/general", tier=4),
+            _item("d/maritime-arxiv", tier=5, maritime=True),
+            _item("e/maritime-top", tier=3, maritime=True),
+        ]
+        sel = select_repos(items, 5, max_per_source=5, min_paired=0)
+        self.assertTrue(sel.report["maritime_ok"])
+        self.assertEqual(sel.report["maritime"], 2)
+        self.assertEqual(
+            [item.full_name for item in sel.items],
+            ["a/top", "b/conf", "e/maritime-top", "c/general", "d/maritime-arxiv"],
+        )
+
+    def test_repo_ai_and_maritime_signals(self):
+        self.assertTrue(_is_ai_repo_text("vessel detection with yolov8"))
+        self.assertTrue(_is_ai_repo_text("multimodal maritime data fusion"))
+        self.assertTrue(_is_maritime_repo(_item("org/ship-detection")))
+        self.assertFalse(_is_maritime_repo(_item("org/blood-vessel-seg")))
 
 
 class PairingTests(unittest.TestCase):
@@ -189,6 +217,7 @@ class RepoEngineTests(unittest.TestCase):
             max_per_source=5,
             max_age_days=30,
             min_paired=0,
+            min_maritime=1,
             min_quality_score=2,
             exclude_collections=True,
             enrich_limit=5,
@@ -217,16 +246,24 @@ class RepoEngineTests(unittest.TestCase):
             max_per_source=5,
             max_age_days=30,
             min_paired=1,
+            min_maritime=0,
             min_quality_score=2,
             enrich_limit=5,
         )
         sel = engine.collect(
             1,
             now=datetime(2026, 11, 21, tzinfo=timezone.utc),
-            paper_seeds=[{"repo": "org/paired", "paper_url": "https://arxiv.org/abs/2601.01234", "paper_title": "P"}],
+            paper_seeds=[{
+                "repo": "org/paired",
+                "paper_url": "https://arxiv.org/abs/2601.01234",
+                "paper_title": "P",
+                "source_tier": 1,
+                "is_maritime": False,
+            }],
         )
         self.assertEqual(sel.items[0].full_name, "org/paired")
         self.assertEqual(sel.items[0].paper_url, "https://arxiv.org/abs/2601.01234")
+        self.assertEqual(sel.items[0].paper_tier, 1)
 
     def test_collect_insufficient_raises(self):
         engine = RepoEngine(
@@ -235,6 +272,7 @@ class RepoEngineTests(unittest.TestCase):
             max_per_source=5,
             max_age_days=30,
             min_paired=0,
+            min_maritime=0,
             min_quality_score=2,
             enrich_limit=5,
         )
@@ -330,6 +368,7 @@ class RepoEngineTests(unittest.TestCase):
             sources=sources,
             queries=[],
             min_paired=1,
+            min_maritime=0,
             min_quality_score=2,
             enrich_limit=5,
             allow_stale=True,
@@ -367,6 +406,7 @@ class RepoEngineTests(unittest.TestCase):
             max_per_source=5,
             max_age_days=30,
             min_paired=0,
+            min_maritime=1,
             min_quality_score=2,
             enrich_limit=5,
             allow_stale=True,
@@ -398,6 +438,7 @@ class RepoEngineTests(unittest.TestCase):
             max_per_source=5,
             max_age_days=30,
             min_paired=0,
+            min_maritime=0,
             min_quality_score=2,
             enrich_limit=5,
         )

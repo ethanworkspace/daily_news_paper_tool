@@ -281,17 +281,47 @@ PAPER_QUERIES = [
     {"query": "edge AI semiconductor chip", "hint": "electronics"},
 ]
 
-# 來源優先層級（1=頂級期刊/會議，2=重要OA/會議，3=預印本）
-TIER1_VENUES = (
-    "nature", "science", "cell", "lancet", "jama", "nejm",
-    "neurips", "nips", "iclr", "icml", "aaai", "cvpr", "iccv", "eccv", "acl", "emnlp", "naacl",
-    "siggraph", "kdd", "www", "icra", "iros", "rss", "ijcai",
-    "ieee transactions", "acm transactions",
+# 來源優先層級：1=頂級期刊, 2=頂級國際會議, 3=海事頂刊, 4=一般期刊, 5=arXiv/預印本
+TOP_JOURNAL_VENUES = (
+    "nature", "science", "cell", "lancet", "nejm", "jama",
+    "nature medicine", "nature machine intelligence",
+    "ieee transactions on pattern analysis and machine intelligence", "tpami",
+    "journal of machine learning research", "jmlr",
+    "artificial intelligence",
 )
-TIER2_VENUES = (
+TOP_CONFERENCE_VENUES = (
+    "neurips", "nips", "iclr", "icml", "aaai", "ijcai",
+    "cvpr", "iccv", "eccv", "acl", "emnlp", "naacl",
+    "siggraph", "kdd", "www", "icra", "iros", "rss",
+)
+MARITIME_TOP_JOURNAL_VENUES = (
+    "ieee journal of oceanic engineering", "ocean engineering",
+    "applied ocean research", "ocean modelling", "ocean modeling",
+    "journal of navigation", "marine policy",
+    "maritime policy & management", "maritime policy and management",
+    "ocean & coastal management", "ocean and coastal management",
+)
+GENERAL_JOURNAL_VENUES = (
     "plos", "science advances", "scientific reports", "jmir", "frontiers",
-    "bioinformatics", "jmlr", "pmlr", "openreview", "tmlr", "aistats", "uai", "coling",
+    "bioinformatics", "pmlr", "openreview", "tmlr", "aistats", "uai", "coling",
+    "ieee transactions", "acm transactions",
+    "journal of marine science and engineering", "remote sensing", "sensors", "ieee access",
 )
+PREPRINT_VENUES = (
+    "arxiv", "biorxiv", "medrxiv", "techrxiv", "research square", "ssrn", "preprint",
+)
+TIER_LABELS = {
+    1: "頂級期刊",
+    2: "頂級國際會議",
+    3: "海事頂刊",
+    4: "一般期刊",
+    5: "arXiv／預印本",
+}
+# 向後相容舊模組的匯入；新的 tier 判定請用上面五個清單。
+TIER1_VENUES = TOP_JOURNAL_VENUES + TOP_CONFERENCE_VENUES
+TIER2_VENUES = MARITIME_TOP_JOURNAL_VENUES + GENERAL_JOURNAL_VENUES
+PAPER_MIN_MARITIME = int(get_secure_env("PAPER_MIN_MARITIME", "2"))
+REPO_MIN_MARITIME = int(get_secure_env("REPO_MIN_MARITIME", "2"))
 
 # ===== P4：GitHub 專案蒐集設定 =====
 REPO_HTTP_TIMEOUT = int(get_secure_env("REPO_HTTP_TIMEOUT", "25"))
@@ -306,7 +336,12 @@ REPO_EXCLUDE_COLLECTIONS = get_secure_env("REPO_EXCLUDE_COLLECTIONS", "true").lo
 REPO_QUERIES = [
     {"query": "large language model OR llm agent", "hint": "general", "min_stars": 50},
     {"query": "multimodal AI OR vision language model", "hint": "general", "min_stars": 50},
-    {"query": "maritime AI OR autonomous vessel", "hint": "maritime", "min_stars": 10},
+    {"query": "maritime AI OR autonomous vessel", "hint": "maritime", "min_stars": 10, "per_page": 20},
+    {"query": "maritime machine learning OR maritime deep learning", "hint": "maritime", "min_stars": 5, "per_page": 20},
+    {"query": "vessel detection OR ship detection deep learning", "hint": "maritime", "min_stars": 5, "per_page": 20},
+    {"query": "ocean forecasting machine learning OR ocean observation AI", "hint": "maritime", "min_stars": 5, "per_page": 20},
+    {"query": "smart port AI OR port logistics deep learning", "hint": "maritime", "min_stars": 5, "per_page": 20},
+    {"query": "AUV underwater robot deep learning OR USV", "hint": "maritime", "min_stars": 5, "per_page": 20},
     {"query": "medical AI OR healthcare machine learning", "hint": "medical", "min_stars": 20},
     {"query": "cybersecurity AI OR intrusion detection machine learning", "hint": "cybersecurity", "min_stars": 30},
     {"query": "embodied AI OR humanoid robot learning", "hint": "robotics", "min_stars": 30},

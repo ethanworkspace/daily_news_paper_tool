@@ -107,7 +107,7 @@ class TestExtractors(unittest.TestCase):
         )
         self.assertIsNotNone(preprint)
         assert preprint is not None
-        self.assertEqual(preprint.source_tier, 3)
+        self.assertEqual(preprint.source_tier, 5)
         self.assertIn("preprint", preprint.impact_factor.lower())
 
         journal = parse_semantic_scholar_paper(
@@ -167,14 +167,18 @@ class TestImpactFactor(unittest.TestCase):
 
     def test_venue_tier(self):
         self.assertEqual(venue_tier(journal="Nature Medicine"), 1)
-        self.assertEqual(venue_tier(journal="PLOS ONE"), 2)
-        self.assertEqual(venue_tier(journal="arXiv"), 3)
+        self.assertEqual(venue_tier(journal="IEEE TPAMI"), 1)
+        self.assertEqual(venue_tier(journal="JMLR"), 1)
+        self.assertEqual(venue_tier(journal="NeurIPS"), 2)
+        self.assertEqual(venue_tier(journal="Ocean Engineering"), 3)
+        self.assertEqual(venue_tier(journal="PLOS ONE"), 4)
+        self.assertEqual(venue_tier(journal="arXiv"), 5)
         # 避免被泛稱誤判為頂刊
         self.assertNotEqual(venue_tier(journal="Measurement Science and Technology"), 1)
         self.assertNotEqual(venue_tier(journal="Applied Sciences"), 1)
-        self.assertEqual(venue_tier(journal="Science Advances"), 2)
-        self.assertEqual(venue_tier(journal="Neural Networks"), 3)
-        self.assertEqual(venue_tier(journal="JMIR Nursing"), 2)
+        self.assertEqual(venue_tier(journal="Science Advances"), 4)
+        self.assertEqual(venue_tier(journal="Neural Networks"), 4)
+        self.assertEqual(venue_tier(journal="JMIR Nursing"), 4)
 
 
 class TestParseArxiv(unittest.TestCase):
@@ -187,7 +191,7 @@ class TestParseArxiv(unittest.TestCase):
         self.assertEqual(p.doi, "10.1000/test.doi")
         self.assertEqual(p.code_url, "https://github.com/owner/repo")
         self.assertTrue(p.pdf_url.endswith(".pdf"))
-        self.assertEqual(p.source_tier, 3)
+        self.assertEqual(p.source_tier, 5)
         self.assertIn("preprint", p.impact_factor.lower())
         self.assertIsNotNone(p.published_at)
 
@@ -251,7 +255,7 @@ class TestParseOpenAlex(unittest.TestCase):
         p = parse_openalex_work(work)
         self.assertIsNotNone(p)
         self.assertEqual(p.arxiv_id, "2601.00001")
-        self.assertEqual(p.source_tier, 2)  # JMLR tier2, not forced to preprint
+        self.assertEqual(p.source_tier, 1)  # JMLR 為頂級期刊，不被 arXiv 連結降級
         self.assertIn("2yr_mean_citedness", p.impact_factor)
 
 

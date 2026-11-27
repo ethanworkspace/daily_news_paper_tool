@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from config import TIER_LABELS
 from core.models import DailyBundle
 from core.paths import (
     assets_dir,
@@ -24,6 +25,14 @@ from core.security import redact_secrets
 
 def _dt(value: datetime | None) -> str:
     return value.isoformat() if value else ""
+
+
+def _tier_label(tier: object) -> str:
+    try:
+        value = int(tier or 0)
+    except (TypeError, ValueError):
+        value = 0
+    return f"Tier {value}（{TIER_LABELS.get(value, '未分類')}）"
 
 
 def _md_escape(text: object) -> str:
@@ -62,7 +71,7 @@ def render_paper_markdown(item: Any, index: int, bundle_date: str) -> str:
         f"# 論文 {index:02d}：{item.title}",
         "",
         f"- 日期：{bundle_date}",
-        f"- 來源層級：Tier {item.source_tier}",
+        f"- 來源層級：{_tier_label(item.source_tier)}" + ("（海事）" if getattr(item, "is_maritime", False) else ""),
         f"- 期刊/會議/來源：{item.journal or item.venue or item.source_name}",
         f"- Venue：{item.venue or item.journal or item.source_name}",
         f"- 發布時間：{_dt(item.published_at)}",
@@ -182,7 +191,11 @@ def render_digest_markdown(bundle: DailyBundle, report: dict[str, Any]) -> str:
         s = p.sections or {}
         venue = p.journal or p.venue or p.source_name
         lines.append(f"### {i}. {p.title}")
-        lines.append(f"- 來源/發表：{venue}｜{_dt(p.published_at)}｜IF/Impact: {p.impact_factor}")
+        lines.append(
+            f"- 來源/發表：{venue}（{_tier_label(p.source_tier)}"
+            f"{'／海事' if getattr(p, 'is_maritime', False) else ''}）"
+            f"｜{_dt(p.published_at)}｜IF/Impact: {p.impact_factor}"
+        )
         lines.append(f"- 摘要：{_short(s.get('background') or p.abstract, 220)}")
         lines.append(f"- 方法重點：{_short(s.get('method'), 180)}")
         lines.append(f"- 結果重點：{_short(s.get('results'), 140)}")
@@ -195,7 +208,13 @@ def render_digest_markdown(bundle: DailyBundle, report: dict[str, Any]) -> str:
     for i, r in enumerate(bundle.repos, 1):
         s = r.sections or {}
         lines.append(f"### {i}. {r.full_name}")
-        lines.append(f"- 資訊：★{r.stars}｜{r.language or 'unknown'}｜更新 {_dt(r.updated_at)}")
+        tier_text = _tier_label(getattr(r, "paper_tier", 0))
+        if not getattr(r, "paper_tier", 0):
+            tier_text = "未對應論文"
+        lines.append(
+            f"- 資訊：★{r.stars}｜{r.language or 'unknown'}｜論文層級：{tier_text}"
+            f"{'／海事' if getattr(r, 'is_maritime', False) else ''}｜更新 {_dt(r.updated_at)}"
+        )
         lines.append(f"- 在做什麼：{_short(s.get('what') or r.description, 160)}")
         lines.append(f"- 技術/架構：{_short(s.get('tech'), 90)} / {_short(s.get('architecture'), 90)}")
         lines.append(f"- 連結：{_link(r.html_url)}")
@@ -221,7 +240,9 @@ def render_digest_markdown(bundle: DailyBundle, report: dict[str, Any]) -> str:
     q = report.get("quotas", {})
     lines.append(f"- 跨域新聞：{q.get('cross_domain', 0)}（需 >=3）")
     lines.append(f"- 海事新聞：{q.get('maritime', 0)}（需 >=1）")
-    lines.append(f"- 實際配對論文：{q.get('paired_papers', 0)}（目標 >=3）；seed/code_url配對：{q.get('paired_papers_seed', 0)}")
+    lines.append(f"- 海事論文：{q.get('maritime_papers', 0)}（需 >=2）")
+    lines.append(f"- 海事 GitHub 專案：{q.get('maritime_repos', 0)}（需 >=2）")
+    lines.append(f"- 實際配對論文：{q.get('paired_papers', 0)}（加分項）；seed/code_url配對：{q.get('paired_papers_seed', 0)}")
     lines.append(f"- 實際配對repo：{q.get('paired_repos', 0)}；seed配對：{q.get('paired_repos_seed', 0)}")
     if q.get("stale_backfill") or report.get("allow_stale"):
         lines.append("- stale_backfill：true（回補模式，已放寬時效窗；需人工/後續補驗證）")

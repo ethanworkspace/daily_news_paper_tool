@@ -10,7 +10,14 @@ from typing import Any
 from collectors.news_engine import NewsEngine
 from collectors.paper_engine import PaperEngine
 from collectors.repo_engine import RepoEngine, link_papers_to_repos, paper_seed_entries
-from config import BASE_DIR, DAILY_NEWS_COUNT, DAILY_PAPER_COUNT, DAILY_REPO_COUNT
+from config import (
+    BASE_DIR,
+    DAILY_NEWS_COUNT,
+    DAILY_PAPER_COUNT,
+    DAILY_REPO_COUNT,
+    PAPER_MIN_MARITIME,
+    REPO_MIN_MARITIME,
+)
 from core.logging_utils import setup_logger
 from core.manifest import RunManifest
 from core.models import DailyBundle, SchemaError, TechArchItem
@@ -119,6 +126,12 @@ class DailyPipeline:
             manifest.counts["papers_raw"] = int(paper_sel.report.get("raw_count", 0))
             manifest.counts["papers_selected"] = len(paper_sel.items)
             manifest.source("papers", found=manifest.counts["papers_raw"], kept=len(paper_sel.items))
+            report["paper_selection"] = {
+                "tiers": paper_sel.report.get("tiers", {}),
+                "maritime": paper_sel.report.get("maritime", 0),
+                "maritime_target": paper_sel.report.get("maritime_target", PAPER_MIN_MARITIME),
+                "maritime_ok": paper_sel.report.get("maritime_ok", False),
+            }
 
             with manifest.stage("collect_repos"):
                 seeds = paper_seed_entries(paper_sel.items)
@@ -135,6 +148,10 @@ class DailyPipeline:
                 "seed_warning": repo_sel.report.get("seed_warning"),
                 "collections_excluded": repo_sel.report.get("collections_excluded"),
                 "rejected_counts": repo_sel.report.get("rejected_counts", {}),
+                "paper_tiers": repo_sel.report.get("paper_tiers", {}),
+                "maritime": repo_sel.report.get("maritime", 0),
+                "maritime_target": repo_sel.report.get("maritime_target", REPO_MIN_MARITIME),
+                "maritime_ok": repo_sel.report.get("maritime_ok", False),
             }
             seed_status = repo_sel.report.get("seed_status", []) or []
             seed_fetch_errors = [s for s in seed_status if not s.get("fetched")]
@@ -170,7 +187,10 @@ class DailyPipeline:
             report["paired_seed"] = seed_paired
             # 配對為加分項、非配額；不足時不視為警告或失敗。
             report["selection_priority"] = (
-                "tier1_paper_with_github > tier1_paper > paper_with_github > paper > github_only_repo"
+                "top_journal_paper > top_conference_paper > maritime_top_journal_paper "
+                "> general_journal_paper > arxiv_paper; "
+                "repo_follows_paper_tier_then_unpaired_fallback; "
+                f"maritime_papers>={PAPER_MIN_MARITIME}; maritime_repos>={REPO_MIN_MARITIME}"
             )
 
 
@@ -301,6 +321,9 @@ class DailyPipeline:
             msg = redact_secrets(exc)
             report["status"] = "error"
             report["errors"].append(msg)
+            quota_report = getattr(exc, "report", None)
+            if isinstance(quota_report, dict):
+                report["quota_report"] = quota_report
             manifest.error("pipeline", msg)
             manifest.finish("error")
             logger.exception("pipeline failed: %s", msg)

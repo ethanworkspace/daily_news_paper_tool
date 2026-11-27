@@ -10,10 +10,11 @@ from config import (
     PAPER_FULLTEXT_MAX_CHARS,
     PAPER_MAX_AGE_DAYS,
     PAPER_MAX_PER_SOURCE,
+    PAPER_MIN_MARITIME,
     PAPER_MIN_PAIRED,
     PAPER_QUERIES,
 )
-from collectors.news_engine import is_ai_related
+from collectors.news_engine import is_ai_related, is_maritime_text
 from collectors.paper_parse import PaperCandidate, extract_github_urls, first_github_url
 from collectors.paper_sources import PaperSources
 from core.dedupe import Deduper, is_similar_title, make_keys, normalize_doi
@@ -42,10 +43,17 @@ def _has_code(item: PaperItem) -> bool:
     return bool(item.code_url or item.paired_repo)
 
 
+def _is_maritime_paper(item: PaperItem) -> bool:
+    if getattr(item, "is_maritime", False):
+        return True
+    return is_maritime_text(item.title, item.abstract, item.journal, item.venue)
+
+
 def _paper_priority_key(item: PaperItem) -> tuple:
-    """挑選優先序：頂會/期刊+GitHub > 頂會/期刊 > 一般論文+GitHub > 一般論文。"""
+    """優先序：頂級期刊 > 頂級國際會議 > 海事頂刊 > 一般期刊 > arXiv；同層以 GitHub/新近度排序。"""
+    tier = int(item.source_tier or 5)
     return (
-        1 if int(item.source_tier or 3) <= 2 else 0,
+        6 - tier if 1 <= tier <= 5 else 0,
         1 if _has_code(item) else 0,
         _published_key(item),
         int(item.cited_by_count or 0),
@@ -60,11 +68,15 @@ def candidate_to_item(candidate: PaperCandidate) -> PaperItem:
         if m:
             paired_repo = m.group(1).rstrip(".")
     extra = candidate.extra if isinstance(candidate.extra, dict) else {}
+    maritime = is_maritime_text(
+        candidate.title, candidate.abstract, candidate.journal, candidate.venue,
+        candidate.source_name, (candidate.fulltext_excerpt or "")[:2000],
+    )
     return PaperItem(
         title=candidate.title,
         url=candidate.url,
         source_name=candidate.source_name or candidate.journal or candidate.venue or "unknown",
-        source_tier=int(candidate.source_tier or 3),
+        source_tier=int(candidate.source_tier or 5),
         published_at=candidate.published_at,
         authors=list(candidate.authors or []),
         abstract=candidate.abstract or "",
@@ -84,6 +96,7 @@ def candidate_to_item(candidate: PaperCandidate) -> PaperItem:
         ocr_pages=int(extra.get("ocr_pages") or 0),
         parse_level=candidate.parse_level or ("abstract" if candidate.abstract else "metadata"),
         paired_repo=paired_repo,
+        is_maritime=maritime,
     )
 
 
@@ -93,9 +106,11 @@ def select_papers(
     *,
     max_per_source: int = PAPER_MAX_PER_SOURCE,
     min_paired: int = 0,
+    min_maritime: int = PAPER_MIN_MARITIME,
 ) -> PaperSelection:
-    """依「頂會/期刊+GitHub > 頂會/期刊 > 論文+GitHub > 論文 → 新近度/引用數 → 來源分散」選文。
+    """依五層來源排序選文，並先滿足海事論文配額。
 
+    層級：頂級期刊 > 頂級國際會議 > 海事頂刊 > 一般期刊 > arXiv／預印本。
     配對（GitHub 專案）是加分項而非必要條件；min_paired 保留給需要強制取捨的舊呼叫。
     """
     ordered = sorted(items, key=_paper_priority_key, reverse=True)
@@ -126,31 +141,41 @@ def select_papers(
         return False
 
     while len(selected) < count:
-        paired = sum(1 for item in selected if _has_code(item))
-        # 先確保有配對候選（若池中存在）
-        if paired < min_paired and take(_has_code):
+        maritime = sum(1 for item in selected if _is_maritime_paper(item))
+        if maritime < min_maritime and take(_is_maritime_paper):
             continue
-        # 盡量優先 tier 1/2
-        if take(lambda item: int(item.source_tier or 3) <= 2):
+        paired = sum(1 for item in selected if _has_code(item))
+        if paired < min_paired and take(_has_code):
             continue
         if take(lambda _item: True):
             continue
         break
 
+    # 配額只決定「選誰」；最終呈現仍照全域來源層級排序。
+    selected.sort(key=_paper_priority_key, reverse=True)
     paired = sum(1 for item in selected if _has_code(item))
+    maritime = sum(1 for item in selected if _is_maritime_paper(item))
     report = {
         "pool_size": len(ordered),
         "selected": len(selected),
         "target": count,
         "paired": paired,
         "paired_ok": paired >= min_paired,
+        "maritime": maritime,
+        "maritime_target": min_maritime,
+        "maritime_ok": maritime >= min_maritime,
         "per_source": dict(per_source),
         "tiers": dict(Counter(str(item.source_tier) for item in selected)),
         "parse_levels": dict(Counter(item.parse_level for item in selected)),
         "relaxed_caps": relaxed,
     }
-    if len(selected) < count:
-        raise PaperQuotaError(f"論文數量不足：{len(selected)}/{count}", report)
+    if len(selected) < count or not report["maritime_ok"]:
+        if not report["maritime_ok"]:
+            report["maritime_shortfall"] = f"papers:{maritime}/{min_maritime}"
+        raise PaperQuotaError(
+            f"論文配額不足：數量 {len(selected)}/{count}，海事 {maritime}/{min_maritime}",
+            report,
+        )
     return PaperSelection(items=selected, report=report)
 
 
@@ -163,6 +188,7 @@ class PaperEngine:
         max_per_source: int = PAPER_MAX_PER_SOURCE,
         max_age_days: int = PAPER_MAX_AGE_DAYS,
         min_paired: int = PAPER_MIN_PAIRED,
+        min_maritime: int = PAPER_MIN_MARITIME,
         enrich_fulltext: bool = True,
         enrich_limit: int = 8,
         fulltext_max_chars: int = PAPER_FULLTEXT_MAX_CHARS,
@@ -173,6 +199,7 @@ class PaperEngine:
         self.max_per_source = max_per_source
         self.max_age_days = max_age_days
         self.min_paired = min_paired
+        self.min_maritime = min_maritime
         self.enrich_fulltext = enrich_fulltext
         self.enrich_limit = enrich_limit
         self.fulltext_max_chars = fulltext_max_chars
@@ -267,7 +294,13 @@ class PaperEngine:
 
         # 最終以 min_paired=目標值嘗試選取；不足則放寬並記錄 warning
         try:
-            selection = select_papers(items, count, max_per_source=self.max_per_source, min_paired=self.min_paired)
+            selection = select_papers(
+                items,
+                count,
+                max_per_source=self.max_per_source,
+                min_paired=self.min_paired,
+                min_maritime=self.min_maritime,
+            )
         except PaperQuotaError as exc:
             # 若是配對不足但數量夠，select_papers 不會因配對丟錯；此處主要是數量不足
             exc.report.setdefault("sources", source_stats)

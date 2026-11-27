@@ -49,6 +49,7 @@ class FakePaperEngine:
                 parse_level="fulltext",
                 fulltext_kind="html",
                 code_url=f"https://github.com/org/repo{i+1}" if i < 3 else "",
+                is_maritime=(i < 2),
             ).validate())
         return PaperSelection(items=items, report={"raw_count": count})
 
@@ -70,6 +71,8 @@ class FakeRepoEngine:
                 updated_at=now,
                 paper_url=seed.get("paper_url", ""),
                 paired_paper=seed.get("paper_url", ""),
+                paper_tier=int(seed.get("source_tier", 0) or 0),
+                is_maritime=bool(seed.get("is_maritime", False)),
                 readme_excerpt="readme " * 30,
                 quality_score=8,
                 sections={"what": "what " * 20, "tech": "tech " * 20, "architecture": "arch " * 20},
@@ -104,7 +107,8 @@ class PipelineSmokeTests(unittest.TestCase):
             self.assertIn("## 論文（5）", digest)
             self.assertIn("## GitHub 專案（5）", digest)
             self.assertIn("papers_paired", report["pairing"])
-            self.assertIn("tier1_paper_with_github", report["selection_priority"])
+            self.assertIn("top_journal_paper", report["selection_priority"])
+            self.assertIn("maritime_papers>=2", report["selection_priority"])
             self.assertNotIn(
                 "paired_repos_below_target=0/3 (seed_paired=0)", report["warnings"]
             )

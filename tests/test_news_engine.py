@@ -10,6 +10,7 @@ from collectors.news_engine import (
     detect_ai_focus,
     detect_domains,
     is_ai_related,
+    is_maritime_text,
     select_news,
 )
 from collectors.news_http import FetchResult
@@ -91,6 +92,12 @@ class TestTagging(unittest.TestCase):
         self.assertNotIn("maritime", detect_domains("tasting notes: nutty, peachy, marine"))
         self.assertNotIn("maritime", detect_domains("AI logistics for warehouse fleets"))
         self.assertNotIn("maritime", detect_domains("Nvidia stops shipping AI chips to China"))
+
+    def test_paper_maritime_text_uses_strict_terms(self):
+        self.assertTrue(is_maritime_text("AI ship detection from SAR imagery"))
+        self.assertTrue(is_maritime_text("船舶軌跡預測與港口調度"))
+        self.assertFalse(is_maritime_text("Deep learning for blood vessel segmentation"))
+        self.assertFalse(is_maritime_text("Microservice deployment port configuration"))
 
     def test_ai_focus(self):
         self.assertEqual(detect_ai_focus("large language model release"), "llm")
