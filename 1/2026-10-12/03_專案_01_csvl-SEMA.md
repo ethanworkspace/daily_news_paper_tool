@@ -1,4 +1,4 @@
-# GitHub 專案 02：csvl/SEMA
+# GitHub 專案 01：csvl/SEMA
 
 - 日期：2026-10-12
 - URL：https://github.com/csvl/SEMA
@@ -7,17 +7,18 @@
 - License：BSD-2-Clause
 - Topics：angr, binary-analysis, classification, concolic-execution, ctf, cybersecurity, detection, linux, malware, malware-analysis, malware-detection, malware-research, python, reverse, reverse-engineering, sema, static-analysis, symbolic, symbolic-execution, windows
 - 更新時間：2026-10-08T12:54:10+00:00
+- 論文層級：未對應論文
 - 配對論文：https://doi.org/10.1007/978-3-031-31108-6
 - 品質分數：9/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-SEMA 是一個基於 angr 符號執行引擎的惡意程式分析工具鏈，目標使用者為惡意程式研究者、安全分析師與 CTF 參賽者。它從標註好的惡意程式二進位檔中提取系統呼叫依賴圖（SCDG），利用圖挖掘與機器學習（SVM 與圖核）建構族群特徵簽名，進而對未知樣本進行相似度比較以完成惡意程式家族分類與偵測。
+SEMA 是一個基於 angr 符號執行引擎的惡意程式分析工具鏈，目標使用者為惡意程式分析師、安全研究員與逆向工程師。它從標記好的惡意程式二進位檔中提取 API 呼叫及其參數，構建系統呼叫依賴圖（SCDG），利用圖挖掘與機器學習（SVM + 圖核）產生族群特徵簽名，以進行惡意程式的分類與偵測。
 
 ## 技術
-專案主要使用 Python 實作，核心依賴 angr 框架進行符號執行以擷取系統呼叫及其參數；透過自訂啟發式優化縮減符號執行路徑爆炸，將多條執行追蹤合併為系統呼叫依賴圖（SCDG），節點為系統呼叫，邊代表共享參數。接著使用 gspan 演算法提取最大公共子圖，計算相似度分數；同時提供 SVM 分類器，搭配 INRIA 圖核或 Weisfeiler‑Lehman 圖核進行特徵映射。此外，還包含 SemaWebApp 網頁應用，負責實驗啟動與結果視覺化，並透過 Makefile、pre‑commit 以及 GitHub Actions 完成程式碼格式化與持續整合。
+該專案主要使用 Python 實作，核心依賴 angr 進行符號執行以擷取系統呼叫及其參數；透過啟發式圖構建方法產生 SCDG；使用 gspan 挖掘最大公共子圖，計算相似度；分類階段採用支援向量機（SVM）搭配 INRIA 圖核或 Weisfeiler‑Lehman 圖核；此外提供 SemaWebApp 網頁介面來管理實驗與視覺化結果，並透過 pre‑commit、Makefile 與 GitHub Actions 確保程式碼品質與自動化測試。
 
 ## 架構
-根據 README，SEMA 工具鏈分為四個主要階段：首先，收集具標籤的惡意程式二進位檔作為輸入；其次，使用 angr 進行符號執行，並套用啟發式規則以提取系統呼叫及其參數的執行追蹤；第三階段，將多條追蹤透過圖啟發式合併構建系統呼叫依賴圖（SCDG），節點為系統呼叫，邊表示參數共享；最後，將產生的 SCDG 送入圖挖掘（gspan）提取最大公共子圖，或交給 SVM 與圖核（INRIA、Weisfeiler‑Lehman）進行分類；若需評估未知樣本，則重複前兩個階段產生其 SCDG，再與已知族群的簽名圖進行相似度比較以決定家族歸屬。整個流程可透過 Makefile 指令或 SemaWebApp 網頁介面觸發。由於 README 未提供細部模組劃分或類別關係圖，以上架構描述僅基於所述步驟的推斷。
+工作流程如下：首先收集標記好的惡意程式二進位檔作為輸入；使用 angr 對每個二進位檔進行符號執行，在符號執行過程中記錄所有系統呼叫及其參數；根據預設的停止條件結束符號執行後，以系統呼叫為節點、共享參數為邊構建 SCDG；對同一家族的多個 SCDG 進行圖挖掘（gspan）提取最大公共子圖作為族群簽名；當需分類新樣本時，先為其產生 SCDG，然後利用相似度計算（子圖佔比）或 SVM + 圖核進行分類；整個流程可透過 SemaWebApp 網頁應用啟動與監控，並提供 Makefile 指令簡化操作。
 
 ## README 摘錄（節選）
 ```text
