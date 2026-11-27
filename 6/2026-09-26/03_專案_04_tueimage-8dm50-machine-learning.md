@@ -1,23 +1,24 @@
-# GitHub 專案 03：tueimage/8dm50-machine-learning
+# GitHub 專案 04：tueimage/8dm50-machine-learning
 
-- 日期：2026-09-25
+- 日期：2026-09-26
 - URL：https://github.com/tueimage/8dm50-machine-learning
 - 描述：TU/e 8DM50 Machine Learning in Medical Imaging and Biology course materials.
 - Stars：42  |  Forks：101  |  Language：TeX
 - License：MIT
 - Topics：
 - 更新時間：2026-09-15T08:53:50+00:00
+- 論文層級：未對應論文
 - 配對論文：
 - 品質分數：5/10 
 
 ## 在做什麼
-此專案提供荷蘭埃因霍芬理工大學 8DM50 課程《Medical Imaging and Biology 中的機器學習》的完整教學資源，包括講義投影片、實作 Jupyter Notebook、環境設置指南與 Python 自評測驗，目標使用者為修讀該課程的研究生與對醫學影像及計算生物學機器學習感興趣的自學者，核心在於統一公開內容與課程溝通平台，減少設定障礙並促進實作練習。
+本專案為 Eindhovens 工業大學 8DM50《醫學影像與生物機器學習》課程的教學資源庫，主要面向修讀該課程的研究生與高年級本科生。課程目標是讓學生理解機器學習基本概念，掌握常見算法（如線性模型、支撐向量機、隨機森林、深度學習與 Transformer），並能在醫學影像與計算生物學領域設計實驗、執行模型訓練與評估。透過講義、實作筆記與課堂討論，幫助學生將理論知識應用於真實醫學數據問題。
 
 ## 技術
-教材主要以 TeX 撰寫講義並匯出為 PDF，實作部分使用 Python 3、Jupyter Notebook 與 Google Colab（第五次實作），環境設置說明於 software.md，課程參考書目包括《Deep Learning》、《Elements of Statistical Learning》與《Probabilistic Machine Learning》，此外利用 GitHub 托管內容、Canvas 進行通訊、作業提交與討論區，以及提供 Markdown 形式的提問指南。
+資料庫主要使用 TeX 編寫說明文件與講義，課程實作採用 Python 進行，以 Jupyter Notebook 形式提供練習題，其中一次作業在 Google Colab 環境完成。環境設定說明位於 software.md，建議使用 Git 管理程式碼與版本。課程資訊與作業提交則透過 TU/e 的 Canvas 平台進行，學生可在 Canvas 討論區提問。此外，參考書籍採用線上免費 PDF 形式，如《Deep Learning》與《Elements of Statistical Learning》。
 
 ## 架構
-資料流程始於學生從 GitHub 下載 repo，依照 software.md 建立 Python 虛擬環境；接著依週次開啟對應的講義 PDF（TeX 編譯）與實作 Notebook，在 guided self-study 時段進行 coding，完成後將作業上傳至 Canvas Assignments；問題則張貼在 Canvas Discussion 或遵照 how_to_ask_questions.md；若使用大型語言模型，需繳交一頁反思報告。整體架構可視為三層：內容層（TeX/Notebook）、環境層（Python setup）、互動層（Canvas + GitHub）。README 未詳細說明 TeX 編譯流程與自動化測試，因此架構描述僅基於可見檔案與說明推斷。
+課程結構分為講義、實作與評量三部分。講義以 PDF 形式放在 lectures/ 目錄，對應每週主題；實作練習則放在 practicals/ 目錄，以 Jupyter Notebook (.ipynb) 形式呈現，學生在 guided self‑study 時段完成並可於 Canvas 上傳作業。課程資訊（時間表、指引、常見問題）存放於根目錄的 README 與各種 .md 檔案，Canvas 用於發布非公開連結、收作業及討論區。評量包括實作佔 25%、閱讀報告 10%、期末考 65%，成績由助教在 Canvas 中給出。若需推斷資料流，則為：教師上傳講義與筆記 → 學生下載 → 完成 Jupyter 練習 → 透過 Canvas 提交 → 助教批分。
 
 ## README 摘錄（節選）
 ```text

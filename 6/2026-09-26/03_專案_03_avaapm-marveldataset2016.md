@@ -1,4 +1,4 @@
-# GitHub 專案 02：avaapm/marveldataset2016
+# GitHub 專案 03：avaapm/marveldataset2016
 
 - 日期：2026-09-26
 - URL：https://github.com/avaapm/marveldataset2016
@@ -7,17 +7,18 @@
 - License：
 - Topics：
 - 更新時間：2026-08-29T14:08:52+00:00
+- 論文層級：未對應論文（海事）
 - 配對論文：
 - 品質分數：5/10 
 
 ## 在做什麼
-此專案提供一個 Python 腳本，用於從網路下載 MARVEL 2016 海船圖像資料集，並依照資料集的 .dat 索引檔案自動建立對應的資料夾結構與 FINAL.dat 路徑檔案，方便研究人員進行船舶分類、驗證、檢索與辨識等任務。
+此專案提供一個 Python 腳本 (MARVEL_Download.py)，用於從網路上下載 MARVEL 2016 海船圖像資料庫，並產生對應的中繼檔案，以支援船舶分類、驗證、檢索與辨識等四種常見電腦視覺任務。目標使用者為從事船舶圖像研究的學術研究者與開發者，核心在解決取得大規模標註海船影像與任務劃分的門檻。
 
 ## 技術
-主要使用 Python 3 標準庫，透過 MARVEL_Download.py 腳本實作多執行緒下載（NUMBER_OF_WORKERS 可設），支援自訂圖片尺寸、每個資料夾最大檔案數，並根據 VesselClassification.dat、IMOTrainAndTest.dat 等索引檔案產生對應的圖片與中繼資料。未見額外框架或模型。
+專案主要使用 Python 3 撰寫，核心腳本 MARVEL_Download.py 透過內建的 threading 模組實現多執行緒平行下載（NUMBER_OF_WORKERS 可設），利用 urllib 或 requests 進行 HTTP GET 取得圖像，依設定的 IMAGE_HEIGHT、IMAGE_WIDTH 與 ORIGINAL_SIZE 進行尺寸調整（或保留原始大小），將下載的圖片依照 meta 資料夾結構儲存，最後產生 FINAL.dat 檔案，其中每行補充了對應的本地路徑。資料流僅涉及檔案讀寫與網路 I/O，未顯示依賴第三方深度學習框架。
 
 ## 架構
-腳本首先讀取使用者指定的 .dat 檔案，解析每列的船舶 ID、集合索引、類別標籤等資訊；接著啟動多個工作執行緒，根據 URL 規則下載對應的船舶圖片，並將圖片儲存於以類別或任務為基礎的層級資料夾中；下載完成後，在每列後附加實際檔案路徑，產生 FINAL.dat 檔案，使後續訓練或評估腳本能直接讀取圖片路徑與標籤。資料流為：.dat → 下載 → 圖片檔案 + FINAL.dat。若需更細部模型訓練則需自行搭配其他程式。
+使用流程為：使用者先選擇對應的 .dat 檔案（如 VesselClassification.dat 或 IMOTrainAndTest.dat），在 MARVEL_Download.py 中取消註解該檔案的引用，執行腳本。腳本讀取 .dat 每一行，解析 vessel ID、set index 等欄位，根據 ID 組合下載 URL，利用 NUMBER_OF_WORKERS 執行緒平行下載圖像，將圖片存放於腳本所在目錄下的 meta 資料夾（例如 W1_1/993293.jpg），並在記憶體中累積路徑。下載完成後，腳本將原始 .dat 的每行追加對應的圖片路徑，輸出為 FINAL.dat，供後續任務使用。分類、驗證、檢索與辨識等任務則分別讀取各自的 .dat 檔案（如 VesselVerificationTest.dat、ChiTrain.dat 等）以及必要的 IMOTrainAndTest.dat，根據其中的索引進行特徵 extraction、距離計算或模型訓練。若 README 未明確說明特定模型或訓練流程，則此部分為基於檔案說明的合理推斷。
 
 ## README 摘錄（節選）
 ```text

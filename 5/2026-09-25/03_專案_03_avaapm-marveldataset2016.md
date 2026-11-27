@@ -1,4 +1,4 @@
-# GitHub 專案 02：avaapm/marveldataset2016
+# GitHub 專案 03：avaapm/marveldataset2016
 
 - 日期：2026-09-25
 - URL：https://github.com/avaapm/marveldataset2016
@@ -7,17 +7,18 @@
 - License：
 - Topics：
 - 更新時間：2026-08-29T14:08:52+00:00
+- 論文層級：未對應論文（海事）
 - 配對論文：
 - 品質分數：5/10 
 
 ## 在做什麼
-本專案提供一個 Python 腳本 MARVEL_Download.py，用於從網路下載 MARVEL 2016 海船圖像資料集，並依照不同任務（船舶分類、驗證、檢索、辨識）所需的 .dat 檔案產生對應的 FINAL.dat，其中每行包含圖像路徑與標籤。目標使用者為電腦視覺與海運領域的研究者，他們需要大規模標註的船舶圖像來訓練與評估深度學習模型。核心問題在於取得且組織好此資料集的下載與中繼檔案，以便直接用於後續的實驗。
+此專案提供一個 Python 腳本 (MARVEL_Download.py)，用於從網路上下載 MARVEL 2016 海船圖像資料庫，並產生對應的中繼檔案，以支援船舶分類、驗證、檢索與辨識等四種常見電腦視覺任務。目標使用者為從事船舶圖像研究的學術研究者與開發者，核心在解決取得大規模標註海船影像與任務劃分的門檻。
 
 ## 技術
-專案主要使用 Python 3，核心為 MARVEL_Download.py 腳本。該腳本透過可設定的 NUMBER_OF_WORKERS 參數啟用多執行緒下載，支援自訂圖片尺寸（IMAGE_HEIGHT、IMAGE_WIDTH）與是否保留原始大小（ORIGINAL_SIZE）。下載後，圖像會依照 meta 資料夾結構儲存，並產生 FINAL.dat 檔案，其中每行將原始 .dat 資料附加上對應的本地檔案路徑。腳本同時讀取 VesselClassification.dat、IMOTrainAndTest.dat 等任務特定的 .dat 檔案，以產生對應的訓練/測試清單。
+專案主要使用 Python 3 撰寫，核心腳本 MARVEL_Download.py 透過內建的 threading 模組實現多執行緒平行下載（NUMBER_OF_WORKERS 可設），利用 urllib 或 requests 進行 HTTP GET 取得圖像，依設定的 IMAGE_HEIGHT、IMAGE_WIDTH 與 ORIGINAL_SIZE 進行尺寸調整（或保留原始大小），將下載的圖片依照 meta 資料夾結構儲存，最後產生 FINAL.dat 檔案，其中每行補充了對應的本地路徑。資料流僅涉及檔案讀寫與網路 I/O，未顯示依賴第三方深度學習框架。
 
 ## 架構
-架構方面，專案包含以下主要元素：(1) MARVEL_Download.py 下載腳本，負責讀取輸入的 .dat 檔案、透過多執行緒從指定 URL 下載圖像並建立資料夾結構；(2) 各種任務的 .dat 檔案（VesselClassification.dat、IMOTrainAndTest.dat、VesselVerificationTrain/Test.dat、Chi*/Euc* 檔案、Recognition 子資料夾中的 trainSplit_X 檔案），它們定義了圖像的 ID、所屬集合（訓練/測試）、類別標籤及 IMO 編號等資訊；(3) 下載完成後，腳本會在每個圖像對應的資料夾中產生 FINAL.dat，其中最後一欄為本地路徑，使得後續的訓練或評估程式可以直接讀取此檔案以取得圖像與標籤。由於 README 僅說明下載與檔案格式，未提供模型訓練或推論的程式碼，因此架構描述僅基於可見的下載流程與資料組織。
+使用流程為：使用者先選擇對應的 .dat 檔案（如 VesselClassification.dat 或 IMOTrainAndTest.dat），在 MARVEL_Download.py 中取消註解該檔案的引用，執行腳本。腳本讀取 .dat 每一行，解析 vessel ID、set index 等欄位，根據 ID 組合下載 URL，利用 NUMBER_OF_WORKERS 執行緒平行下載圖像，將圖片存放於腳本所在目錄下的 meta 資料夾（例如 W1_1/993293.jpg），並在記憶體中累積路徑。下載完成後，腳本將原始 .dat 的每行追加對應的圖片路徑，輸出為 FINAL.dat，供後續任務使用。分類、驗證、檢索與辨識等任務則分別讀取各自的 .dat 檔案（如 VesselVerificationTest.dat、ChiTrain.dat 等）以及必要的 IMOTrainAndTest.dat，根據其中的索引進行特徵 extraction、距離計算或模型訓練。若 README 未明確說明特定模型或訓練流程，則此部分為基於檔案說明的合理推斷。
 
 ## README 摘錄（節選）
 ```text
