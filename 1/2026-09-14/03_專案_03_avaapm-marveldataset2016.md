@@ -1,23 +1,24 @@
-# GitHub 專案 02：avaapm/marveldataset2016
+# GitHub 專案 03：avaapm/marveldataset2016
 
-- 日期：2026-09-13
+- 日期：2026-09-14
 - URL：https://github.com/avaapm/marveldataset2016
 - 描述：This repository is to download the MARVEL dataset 2016 for the publication "Gundogdu E., Solmaz B, Yucesoy V., Koc A., Marvel: A Large-Scale Image Dataset for Maritime Vessels, Asian Conference on Computer Vision (ACCV), 2016".
 - Stars：64  |  Forks：23  |  Language：Python
 - License：
 - Topics：
 - 更新時間：2026-08-29T14:08:52+00:00
+- 論文層級：未對應論文（海事）
 - 配對論文：
 - 品質分數：5/10 
 
 ## 在做什麼
-本專案提供一個 Python 腳本 MARVEL_Download.py，用於從網路下載 MARVEL 2016 海船圖像資料集，並自動建立資料夾結構與對應的標註檔（FINAL.dat），使研究者能直接取得用於船舶分類、驗證、檢索與辨識等任務的圖像與中繼資料，解決資料取得與組織的門檻問題。
+此專案提供一個 Python 腳本 (MARVEL_Download.py) 用於從網路上下載 MARVEL 2016 資料集，該資料集包含大量船舶圖像，適用於船舶分類、驗證、檢索與識別等電腦視覺研究。目標使用者為需要此資料集進行實驗的學術研究者與開發者，核心問題在於取得並組織資料集的過程較為繁瑣，透過該腳本可自動化下載、依照 .dat 檔案的說明建立對應的資料夾結構，並產生含完整路徑的 FINAL.dat 檔案，方便後續模型訓練與評估。
 
 ## 技術
-該腳本使用 Python 3 標準庫（如 urllib、os、threading）實作多執行緒下載，透過設定 NUMBER_OF_WORKERS 控制平行數量，可調整 IMAGE_HEIGHT、IMAGE_WIDTH、MAX_NUM_OF_FILES_IN_FOLDER 等參數，下載後依照輸入的 .dat 檔案（VesselClassification.dat、IMOTrainAndTest.dat 等）在腳本所在目錄建立 meta 資料夾，並將每筆圖像的相對路徑附加為最後一欄，產出 FINAL.dat 檔案。
+專案主要使用 Python 3，核心為 MARVEL_Download.py 腳本。腳本內部利用多執行緒 (NUMBER_OF_WORKERS = 10) 進行平行下載，透過 urllib 或 requests (依實際程式碼而定) 從 URL 取得圖像，並依據設定的 IMAGE_HEIGHT、IMAGE_WIDTH、ORIGINAL_SIZE 等參數決定是否保留原始尺寸或統一調整至 256×256。下載後的圖像會被放置在與腳本同目錄的資料夾中，並依照輸入的 .dat 檔案 (如 VesselClassification.dat、IMOTrainAndTest.dat 等) 產生對應的 FINAL.dat，其中每行最後一欄為圖像的本地路徑。未見額外的深度學習框架或模型訓練程式碼。
 
 ## 架構
-執行流程為：使用者先選擇對應的 .dat 檔案並取消註解，腳本讀取檔案中的每一行（vessel ID、set index、class label、class label name 等欄位），根據 vessel ID 從線上來源下載圖像，利用多執行緒將圖像存放至以 set index 與 class label 為基礎的資料夾結構中，下載完成後在原始 .dat 每行末追加對應的相對路徑，寫入 FINAL.dat。此檔案可直接作為後續分類、驗證、檢索或辨識任務的輸入；若需進行驗證、檢索或辨識，則必須先產出 IMOTrainAndTest.dat 的 FINAL.dat，因為其他任務的 .dat 檔案僅提供相對索引，依賴該完整路徑檔案來定位實際圖像。若 README 未明確說明多執行緒細節或錯誤處理，以上架構推斷基於所述參數與檔案流程描述。
+系統架構簡單，主要包含三個部分：(1) 輸入的 .dat 檔案，描述船舶 ID、類別、訓練/測試索引等資訊；(2) MARVEL_Download.py 腳本，讀取 .dat 檔案，根據每行組合下載 URL，啟動多執行緒進行圖像下載，並將圖像存放在本地目錄下的子資料夾中；(3) 輸出的 FINAL.dat 檔案，其格式與輸入 .dat 相同，僅在每行末尾追加對應圖像的完整路徑。資料流程為：讀取 .dat → 建立下載任務 → 平行下載圖像 → 儲存圖像 → 產生 FINAL.dat。由於 README 未提供腳本的原始碼細節，以上架構推斷僅基於說明中的參數與檔案說明，若腳本內部實作有所不同則需參考原始程式碼以確認。
 
 ## README 摘錄（節選）
 ```text
