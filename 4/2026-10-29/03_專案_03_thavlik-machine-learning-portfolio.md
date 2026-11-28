@@ -7,17 +7,18 @@
 - License：Apache-2.0
 - Topics：computed-tomography, computer-vision, deep-learning, eeg, electroencephalography, fmri, functional-mri, gan, hemorrhage-detection, machine-learning, magnetic-resonance-imaging, medical, medicine, mri, neurology, neuroscience, radiology, reinforcement-learning, tumor-segmentation, vae
 - 更新時間：2026-10-16T14:31:46+00:00
+- 論文層級：未對應論文
 - 配對論文：https://arxiv.org/abs/1312.6114
 - 品質分數：9/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-此專案是一個醫學影像與訊號的機器學習實作集合，提供多個已完成的實驗（如腦CT出血類型分類、EEG細微運動偵測、腹部CT腫瘤定位）以及正在進行的 fMRI 相關研究。目標使用者為醫學AI研究者、學生與開發者，旨在展示如何將深度學習模型應用於臨床資料，並提供可重現的程式碼、資料集與工具。
+此專案是 Thomas Havlik 的醫學機器學習作品集，包含已完成的 CT 出血分類、EEG 運動偵測與腫瘤定位，以及進行中的 fMRI 特徵推論、MRI 問卷預測與可微分 3D 渲染。目標使用者為醫學影像研究者與學生，核心問題在於將多模態醫學資料與深度學習模型結合，以實現疾病偵測、病灶分割及功能影像解釋。
 
 ## 技術
-專案主要以 Python 實作，透過 src/main.py 讀取 YAML 設定檔執行實驗，支援 Docker 建立可重現的 GPU 環境。實作中使用了深度學習框架（推論為 PyTorch/TensorFlow），涉及 VAE、GAN、β‑VAE、Instance Normalization、Residual 網路等模型，並引用 nonechucks 套件來提升資料載入容錯性。資料流程包括自訂 Dataset、資料增強、模型訓練與評估，且可透過 YAML 的 include 指令快速產生衍生實驗。
+專案主要以 Python 實作，透過 YAML 檔案定義實驗參數，並由 src/main.py 讀取設定啟動訓練或推論。為確保環境可重現，建議使用 Docker，並參考 NVIDIA 指南啟用 GPU。README 中提到的模型包括變分自編碼器（VAE）、生成對抗網路（GAN）、殘差網路（ResNet）以及強化學習方法，這些通常依賴於 PyTorch 或 TensorFlow 等深度學習框架。資料流程方面，實驗會先載入對應的醫學資料集（CT、EEG、fMRI、MRI），經過前處理後送入模型進行分類、分割或特徵推論，結果則寫入日誌或輸出檔案。此外，專案使用 nonechucks 套件來抑制資料載入例外，以提升容錯能力。
 
 ## 架構
-程式碼依實驗分門別類放在 experiments/ 目錄下，每個實驗含獨立的 README 與模型／資料處理程式。執行時，使用者透過 --config 指向對應的 YAML 檔案，main.py 會載入設定、建立資料載器（可能使用 nonechucks 來吞噬例外）、初始化模型、進行訓練迴圈並記錄結果。YAML 支援 include 指令，允許基礎配置被繼承與修改以產生變體實驗。Dockerfile 提供相依性安裝說明，建議使用 nvidia-docker 以啟用 GPU。若未使用容器，則需參考 Dockerfile 手動安裝套件。整體流程為：設定 → 資料 → 模型 → 訓練/評估 → 輸出。
+專案採用模組化結構：頂層目錄包含 experiments/（各任務子目錄）、src/（共用腳本與 main.py）以及工具資料夾（如 transcriber、vpn‑operator、t4vd、midas‑download-tool）。每個實驗在 experiments/<task>/ 中提供獨立的資料集下載、前處理、模型定義與訓練循環，透過 YAML 檔案指定超參數與資料路徑。執行時，使用者呼叫 `python src/main.py --config experiments/<task>/config.yaml`，main.py 讀取設定、初始化資料載器、建構模型（依任務選用 VAE、GAN、ResNet 等）、進行訓練或推論，並將指標與樣本輸出至 runs/ 目錄。Dockerfile 用於封裝相依套件與 CUDA 執行環境。由於 README 未提供詳細的類別圖或序列圖，上述架構推斷基於目錄組織與說明的執行方式。
 
 ## README 摘錄（節選）
 ```text
