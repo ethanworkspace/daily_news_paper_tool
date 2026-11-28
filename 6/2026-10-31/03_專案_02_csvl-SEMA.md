@@ -7,17 +7,18 @@
 - License：BSD-2-Clause
 - Topics：angr, binary-analysis, classification, concolic-execution, ctf, cybersecurity, detection, linux, malware, malware-analysis, malware-detection, malware-research, python, reverse, reverse-engineering, sema, static-analysis, symbolic, symbolic-execution, windows
 - 更新時間：2026-10-08T12:54:10+00:00
+- 論文層級：未對應論文
 - 配對論文：https://doi.org/10.1007/978-3-031-31108-6
 - 品質分數：9/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-SEMA 是一個基於 angr 符號執行引擎的惡意程式分析工具鏈，透過提取系統呼叫依賴圖（SCDG）來建構代表惡意家族的簽名，並利用圖探勘與機器學習（SVM 與圖核）進行惡意程式的分類與偵測，主要面向安全研究人員、惡意程式分析師以及需要自動化惡意程式族群辨識的開發者。
+SEMA 是一個基於 angr 符號執行引擎的惡意程式分析工具鏈，目標是從二進位檔案中提取系統呼叫及其參數，構建系統呼叫依賴圖（SCDG），並利用圖探勘與機器學習方法產生代表性簽名，以實現惡意軟體家族的分類與偵測。適用於安全研究人員、惡意程式分析師以及需要自動化特徵提取與分類的 CTF 參賽者。
 
 ## 技術
-專案主要使用 Python 實作，核心依賴 angr 進行符號執行以提取 API 呼叫及其參數，透過圖啟發式構建 SCDG（節點為系統呼叫，邊為共享參數），使用 gspan 提取最大公共子圖計算相似度，並搭配 SVM 與 INRIA 圖核或 Weisfeiler-Lehman 擴展圖核進行分類。此外還包含 pre-commit 程式碼格式檢查、Makefile 自動化指令以及 SemaWebApp 網頁介面來管理實驗。
+專案主要使用 Python 實作，核心依賴 angr 框架進行符號執行以提取 API 呼叫與參數。透過自訂啟發式規則最佳化符號執行，並將多條執行追蹤合併為系統呼叫依賴圖（SCDG），其中節點為系統呼叫，邊代表參數共享。接著使用 gspan 演算法提取最大公共子圖，並計算相似度分數；分類階段則採用支援向量機（SVM）搭配 INRIA 圖核或 Weisfeiler-Lehman 擴展圖核。此外，提供 SemaWebApp 網頁應用來管理實驗的啟動與結果檢視，並透過 pre-commit 保證程式碼格式與品質，Makefile 簡化工具鏈的使用流程。
 
 ## 架構
-工具鏈流程如下：首先收集標註好的惡意程式二進位檔作為輸入；使用 angr 對每個二進位檔進行符號執行，擷取系統呼叫及其參數的執行追蹤；根據共享參數構建 SCDG，其中節點為系統呼叫，邊表示參數共享；對同一家族的多個 SCDG 進行圖探勘（gspan）提取最大公共子圖，生成該家族的簽名；對待測試樣本重複上述步驟建立其 SCDG，然後透過相似度分數（基於子圖佔比）或 SVM 與圖核進行分類，判定是否屬於已知家族。整個流程由 Makefile 指令協調，並透過 SemaWebApp 提供網頁介面來啟動實驗與檢視結果。README 中未詳細說明圖核的具體實作或 SVM 的特徵向量構成，因此此部分僅根據可見描述進行推斷。
+工具鏈流程如下：首先將標註好的惡意程式二進位檔案作為輸入；接著利用 angr 進行符號執行，在符號執行過程中記錄所有系統呼叫及其參數；在達到預設停止條件後，將這些呼叫與參數構造成 SCDG，節點為系統呼叫，邊表示兩個呼叫之間有共享的參數。接著對同一家族的多個 SCDG 進行圖探勘（使用 gspan）提取最大公共子圖，以此產生代表該家族的簽名。對於未知樣本，重複上述步驟建立其 SCDG，然後與已知家族的簽名圖計算相似度分數（基於子圖包含度），或直接送入 SVM 與圖核進行分類。整個流程可透過 SemaWebApp 網頁介面啟動實驗、檢視圖與分類結果，並由 Makefile 提供一鍵指令簡化操作。
 
 ## README 摘錄（節選）
 ```text

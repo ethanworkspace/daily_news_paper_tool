@@ -7,17 +7,18 @@
 - License：MIT
 - Topics：agentic-ai, ai, artificial-intelligence, cybersecurity, detect-intrusions, infosec, intrusion-detection, llm, log-analysis, machine-learning
 - 更新時間：2026-10-29T17:26:10+00:00
+- 論文層級：未對應論文
 - 配對論文：https://doi.org/10.7910/dvn/3qbyb5
 - 品質分數：10/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-Webhawk/Catch 3.0 是一個無監督學習的安全工具，目標是自動從應用程式日誌（如 HTTP 存取記錄）中發掘可能的攻擊痕跡，無需預先定義規則。它主要服務於安全運營中心（SOC）分析師與需要即時威脅偵測的系統管理員，透過聚類與異常點偵測將可疑記錄標記出來，再利用大型語言模型提供深入分析與可執行的建議，協助使用者快速了解與回應潛在入侵。
+Webhawk 是一個無監督機器學習工具，專為分析應用程式日誌（如 HTTP 存取記錄）而設計，透過 PCA 特徵提取與 DBSCAN 聚類辨識異常點，再利用選擇的 LLM 進行深度分析並提供可執行的建議。其主要使用者為安全運營中心（SOC）人員與資安工程師，旨在減少依賴規則的攻擊偵測負擔。
 
 ## 技術
-專案主要使用 Ruby 作為倉庫語言，核心偵測引擎以 Python 實作，採用 PCA 降維後以 DBSCAN 密度聚類進行無監督分群，將異常點視為潛在攻擊追蹤。偵測結果送至 Ollama 本地運行的 LLM（如 granite4:latest）與 JEV 模型，採用 Agentic AI 進行深度分析與行動建議。提供 Docker Compose 部署的三個服務：偵測 API、網頁 UI 與 Ollama；以及以 Python 編寫的輕量級 agent，負責讀取端點日誌並經 HTTP POST 傳送至偵測 API。網頁 UI 使用網頁前端技術供分析師檢視與管理事件。
+專案主要語言為 Ruby（倉庫語言），但偵測引擎與端點代理均使用 Python 3 實作，依賴 scikit-learn 進行 PCA 特徵轉換與 DBSCAN 密度聚類。偵測完成後會呼叫本地 Ollama 服務運行使用者指定的 LLM（例如 granite4:latest）與 JEV 模型，以產生分析報告與建議。系統透過 Docker Compose 組織三個服務：偵測 API、Ollama 模型容器與網頁 UI，並提供 RESTful API 接收日誌與回報事件。
 
 ## 架構
-系統由四個主要模組組成：(1) Agent：運行在每個監控主機上，讀取指定日誌檔案並透過 HTTP POST 將原始日誌傳送至偵測 API 的 /scan 端點；(2) 偵測 API（Webhawk）：接收日誌後進行數值化編碼，使用 PCA 提取特徵，再以 DBSCAN 進行聚類，將密度低的點標記為異常（潛在攻擊），並將結果寫入資料庫或直接推送至 UI；(3) Ollama 容器：本地運行 LLM 與 JEV 模型，接收偵測 API 的異常紀錄，產生可讀的分析報告與建議；(4) 網頁 UI：提供分析師登入、事件瀏覽、標註與匯出功能，透過 API 取得偵測結果與 LLM 分析內容。所有服務透過 Docker Compose 編排，Agent 僅需能連接到 Docker 主機的 8000 端點即可將日誌送入偵測管線。
+架構由四個主要模組組成：(1) 端點代理（webhawk_agent）負責讀取本機日誌並經 HTTP POST 送至偵測 API 的 /scan 端點；(2) 偵測 API（Webhawk）接收日誌後執行前處理、PCA 特徵提取與 DBSCAN 聚類，將被標記為異常的日誌條目發送至 Ollama 服務進行 LLM 驅動的深度分析；(3) Ollama 容器運行指定的 LLM 與 JEV 模型，回傳分析結果給偵測 API；(4) 網頁 UI（Webhawk web application）在 http://localhost:8080 提供分析師介面，接收偵測 API 透過內部 API 發送的事件，並可將事件轉發至既有的 SIEM 系統。所有服務透過 Docker Compose 一鍵啟動，日誌流程為：端點 → 偵測 API → Ollama LLM → 偵測 API → UI。
 
 ## README 摘錄（節選）
 ```text

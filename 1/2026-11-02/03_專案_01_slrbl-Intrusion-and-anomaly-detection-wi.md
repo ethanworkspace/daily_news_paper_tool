@@ -1,4 +1,4 @@
-# GitHub 專案 02：slrbl/Intrusion-and-anomaly-detection-with-machine-learning
+# GitHub 專案 01：slrbl/Intrusion-and-anomaly-detection-with-machine-learning
 
 - 日期：2026-11-02
 - URL：https://github.com/slrbl/Intrusion-and-anomaly-detection-with-machine-learning
@@ -7,17 +7,18 @@
 - License：MIT
 - Topics：agentic-ai, ai, artificial-intelligence, cybersecurity, detect-intrusions, infosec, intrusion-detection, llm, log-analysis, machine-learning
 - 更新時間：2026-10-29T17:26:10+00:00
+- 論文層級：未對應論文
 - 配對論文：https://doi.org/10.7910/dvn/3qbyb5
 - 品質分數：10/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-Webhawk/Catch 3.0 是一個無監督學習的安全工具，目標是自動從應用程式日誌（如 HTTP 存取記錄）中發掘可能的攻擊痕跡，無需預先定義規則。它主要服務於安全運營中心（SOC）分析師與需要即時威脅偵測的系統管理員，透過聚類與異常點偵測將可疑記錄標記出來，再利用大型語言模型提供深入分析與可執行的建議，協助使用者快速了解與回應潛在入侵。
+Webhawk 是一個無監督學習的入侵與異常偵測工具，專為安全運營中心（SOC）設計，能自動從應用程式日誌（如 HTTP 存取記錄）中發掘可能的攻擊痕跡。它先將原始日誌轉換為數值特徵，利用 PCA 降維後以 DBSCAN 進行聚類，將異常點標記為可疑事件，再透過使用者選擇的大型語言模型（LLM）提供深度分析與具體建議，並提供網頁介面與 API 方便與既有 SIEM 整合。
 
 ## 技術
-專案主要使用 Ruby 作為倉庫語言，核心偵測引擎以 Python 實作，採用 PCA 降維後以 DBSCAN 密度聚類進行無監督分群，將異常點視為潛在攻擊追蹤。偵測結果送至 Ollama 本地運行的 LLM（如 granite4:latest）與 JEV 模型，採用 Agentic AI 進行深度分析與行動建議。提供 Docker Compose 部署的三個服務：偵測 API、網頁 UI 與 Ollama；以及以 Python 編寫的輕量級 agent，負責讀取端點日誌並經 HTTP POST 傳送至偵測 API。網頁 UI 使用網頁前端技術供分析師檢視與管理事件。
+技術上，Webhawk 先以 Python 讀取原始日誌，將欄位（如使用者代理、IP、參數數量）編碼為數值向量，再運用 PCA 提取主要特徵；接著使用 DBSCAN 演算法進行密度基礎聚類，將低密度點標記為異常；異常結果會傳送至本地 Ollama 服務，呼叫使用者指定的 LLM（例如 granite4:latest 或 tev1:0.8b）執行代理 AI 分析，產出可讀的事件說明與修復建議；偵測 API、網頁應用與 Ollama 透過 Docker Compose 組成三容器架構，端點上輕量 Python 代理負責讀取日誌並經 HTTP POST 至 API；網頁介面提供事件瀏覽與帳號管理。
 
 ## 架構
-系統由四個主要模組組成：(1) Agent：運行在每個監控主機上，讀取指定日誌檔案並透過 HTTP POST 將原始日誌傳送至偵測 API 的 /scan 端點；(2) 偵測 API（Webhawk）：接收日誌後進行數值化編碼，使用 PCA 提取特徵，再以 DBSCAN 進行聚類，將密度低的點標記為異常（潛在攻擊），並將結果寫入資料庫或直接推送至 UI；(3) Ollama 容器：本地運行 LLM 與 JEV 模型，接收偵測 API 的異常紀錄，產生可讀的分析報告與建議；(4) 網頁 UI：提供分析師登入、事件瀏覽、標註與匯出功能，透過 API 取得偵測結果與 LLM 分析內容。所有服務透過 Docker Compose 編排，Agent 僅需能連接到 Docker 主機的 8000 端點即可將日誌送入偵測管線。
+架構方面，系統由三個主要 Docker 容器組成：偵測引擎（Webhawk API）負責接收日誌、執行特徵編碼、PCA 降維與 DBSCAN 聚類，產出異常事件；Ollama 容器運行本地大型語言模型，提供代理 AI 的深度分析與建議；網頁應用容器提供介面讓安全分析師檢視、標註與匯出事件，同時透過 REST API 將結果推送至既有 SIEM。每個受監控的主機上部署輕量 Python 代理，代理讀取本地日誌檔案（如 Apache access log）並透過 HTTP POST 將原始日誌傳送至偵測引擎的 /scan 端點；偵測引擎處理完畢後，將事件 ID 及特徵向量送至 Ollama 取得 LLM 分析結果，最後將完整事件資訊寫入網頁應用的資料庫或直接顯示於 UI。整個流程可透過 Docker Compose 一鍵啟動，且支援透過環境變數更換使用的 LLM 模型。
 
 ## README 摘錄（節選）
 ```text
