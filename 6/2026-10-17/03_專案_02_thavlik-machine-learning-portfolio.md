@@ -7,17 +7,18 @@
 - License：Apache-2.0
 - Topics：computed-tomography, computer-vision, deep-learning, eeg, electroencephalography, fmri, functional-mri, gan, hemorrhage-detection, machine-learning, magnetic-resonance-imaging, medical, medicine, mri, neurology, neuroscience, radiology, reinforcement-learning, tumor-segmentation, vae
 - 更新時間：2026-10-16T14:31:46+00:00
+- 論文層級：未對應論文
 - 配對論文：https://arxiv.org/abs/1312.6114
 - 品質分數：9/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-此專案是 Thomas Havlik 的醫學機器學習作品集，收錄了多個已完成的醫學影像與訊號處理任務（如腦內出血分類、EEG 動作偵測、腹部 CT 腫瘤定位）以及正在進行的 fMRI 相關研究，同時提供了用於資料蒐集與標註的工具（例如影片標註平台 t4vd、MRI 下載腳本 MIDAS 下載工具、醫學 e‑Shadowing 轉錄器），目標使用者為對醫學影像分析、腦電圖處理或生成模型感興趣的研究者與學生，核心在於展示如何利用深度學習方法處理真實醫學資料，並提供可重現的實驗設定與開源程式碼。
+本專案是 Thomas Havlik 的醫學機器學習作品集，收錄了多項基於醫療影像與生理訊號的深度學習實作，包括腦部 CT 出血類型分類、EEG 細微運動偵測、腹部 CT 腫瘤定位以及 fMRI 特徵推論等任務。目標使用者為醫學研究者、醫學生與對醫療 AI 感興趣的開發者，旨在提供可重現的範例，說明如何處理醫療資料、設計實驗與評估結果，同時展示資料集蒐集與工具開發經驗。
 
 ## 技術
-專案以 Python 為主要開發語言，深度學習模型參考了 VAE、GAN、Progressive Growing of GANs、beta‑VAE、StyleGAN、Instance Normalization 與 ResNet 等論文，因而可推論使用了 PyTorch 或 TensorFlow 等常見框架進行模型定義與訓練。實驗透過 src/main.py 入口執行，設定採用 YAML 檔案（支援 include 指令）來組合資料、模型與超參數，並提供 Dockerfile 以確保可重現的 GPU 環境。
+專案以 Python 為主要開發語言，實驗透過 YAML 組態檔案進行參數配置，支援 include 指令以減少樣板碼，並由 src/main.py 作為統一入口點。為確保環境可重現，提供 Dockerfile 與建議使用 NVIDIA GPU 的 Docker 運行方式。資料處理流程中使用 nonechucks 庫來抑制資料集例外，提升容錯性。此外，專案還包含自行開發的工具，如用於從 YouTube 建立標註資料集的 t4vd、用於批量下載公開 MRI 的 MIDAS 下載工具，以及用於醫學 e‑Shadowing 的轉錄器與 Kubernetes VPN sidecar 控制器。整體採用深度學習方法進行模型訓練與評估，但未在 README 中具體說明使用的框架版本。
 
 ## 架構
-專案結構以 experiments 目錄為核心，每個子資料夾對應一項任務（如 rsna-intracranial、grasp_and_lift_eeg、deeplesion 等），各自含有專屬的 README 與資料處理腳本。執行流程為：使用者透過 --config 指向 YAML 檔案，main.py 讀取設定後載入對應資料集、建構模型、進行訓練/驗證/測試，並記錄指標與輸出。工具類專案（transcriber、vpn-operator、t4vd、midas-download-tool）為獨立倉庫，主要提供資料蒐集、標註或環境管理功能。若需更細部的模組內部實作細節，README 未提供足夠資訊。
+專案結構主要分為 experiments、tools 與根目錄三部分。每個實驗（如 rsna-intracranial、grasp_and_lift_eeg、deeplesion 等）均具備獨立的 README 與 YAML 組態檔，實驗執行時透過 main.py 讀取組態，進行資料載入（依賴各自的 Dataset 類別）、模型定義、訓練迴圈與驗證評估，最終輸出指標與模型檔案。tools 目錄則提供資料集蒐集、視訊標註、VPN 管理與轉錄等輔助功能，各自有各自的 README 與使用說明。根目錄含 LICENSE、requirements.txt（版本未約束）與 Dockerfile。由於 README 未詳細說明模型內部架構或訓練細節，架構描述僅基於可見的檔案組織與執行流程進行推論。
 
 ## README 摘錄（節選）
 ```text
