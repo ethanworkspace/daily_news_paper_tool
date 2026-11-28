@@ -7,17 +7,18 @@
 - License：Apache-2.0
 - Topics：
 - 更新時間：2026-11-10T00:23:36+00:00
+- 論文層級：未對應論文
 - 配對論文：https://doi.org/10.5281/zenodo.24094763
 - 品質分數：9/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-此專案構建四個臨床決策支援子系統，針對醫療安全的關鍵問題：提前預測 ICU 低氧血症與低血壓、評估主群劃分對模型效能的洩漏成本、驗證光電容積波形心率估計的準確度、以及以理論為基礎的同理心詞彙量測真實醫師‑病人對話。目標使用者為臨床研究員、醫療資料科學家與系統安全工作者，旨在提供可量化、可重現的風險預測與互動分析工具，降低誤決策帶來的系統性後果。
+此專案屬於「Healthcare Safety」支柱，透過機器學習與決策智慧模型，針對臨床風險預測與醫療互動分析，降低錯誤決策帶來的系統性後果。目標使用者為醫院臨床團隊、醫療資訊研究者及政策制定者，核心問題在於現有警報模型校準不足導致過多誤警報或漏報，需提供可驗證、以真實資料為基礎的校準與決策框架。
 
 ## 技術
-主要採用 Python 3，搭配 scikit‑learn 實作 logistic regression 與 gradient boosting 模型；利用 PyHealth/RHealth Extension 提供的 icuflow 套件進行主群劃分、校準與警報比較；透過 pandas、numpy 處理時序生理訊號；使用 Librosa 或自訂濾波器從 PPG 提取心率；建立詞彙加權的同理心分數計算；提供可安裝的 CLI 工具與完整的單元測試（pytest），所有程式碼放在各子專案的 src/ 目錄下，依循統一的 README‑driven 結果紀錄規範。
+主要使用 Python 實作，包含 logistic regression 與 gradient boosting 模型，利用 PhysioNet MIMIC‑IV 與 BIDMC 數據集進行 hypoxemia/hypotension 預測與 PPG 心率估算。透過自行開發的 PyHealth/RHealth Extension（可安裝套件，提供 CLI）實施 subject‑grouped 分割、校準誤差計算及警報比對。臨床共情分析則結合加權同理心詞彙與對話結構特徵。所有實驗結果必須對應結果目錄中的 run log，且僅使用真實資料，未使用模擬數據。
 
 ## 架構
-每個子專案遵守相同的目錄結構：src/ 放置模型實作與特徵工程腳本；data/ 包含真實第三方資料（MIMIC‑IV、BIDMC、MTS‑Dialog）與標註樣本；results/ 儲存每次實驗的最新指標（latest‑real.json）以及對應的 README.md，所有數字必須有對應的運行日誌；tests/ 包含驗證資料切分、校準誤差與警報比較的單元測試；website/ 用於展示專案說明。執行流程為：載入真實資料 → 預處理／特徵抽取 → 按照 subject‑grouped 或隨機劃分訓練／測試集 → 訓練模型（logistic regression、GBDT 等） → 計算校準誤差、AUROC、心率誤差或同理心分數 → 寫入 results/latest‑real.json 並更新 README.md，整個過程由 GitHub Actions 工作流程自動觸發測試與報告。
+儲存庫採用多子專案結構，每個子專案（ICU Early‑Warning Models、PyHealth/RHealth Extension、Physiological Waveform Pipeline、Clinical Empathy Analysis）均含 README、src、data、results、tests、website。資料流程：原始 PhysioNet/MTS‑Dialog 數據放入 data/，經 src/ 中的前處理與特徵工程產生模型輸入；在 src/ 內訓練 logistic regression 或 gradient boosting 模型，或執行波形Pipeline 的 artefact gate 與心率估算；透過 PyHealth/RHealth Extension 進行 subject‑grouped 分割、校準（ECE）與警報比對；最終評估指標寫入 results/（如 latest‑real.json）並於 results/README.md 中標註運行日期。tests/ 提供單元與整合測試，website/ 用於展示說明。此結構確保每項數字皆有對應的運行紀錄，符合「No number without a run log」的規則。
 
 ## README 摘錄（節選）
 ```text

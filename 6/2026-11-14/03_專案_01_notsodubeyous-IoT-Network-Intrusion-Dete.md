@@ -7,17 +7,18 @@
 - License：MIT
 - Topics：classification, cybersecurity, decision-tree-classifier, deep-learning, iot, iot-security, keras, knn, linear-regression, logistic-regression, machine-learning, mlp-classifier, multilayer-perceptron, network-intrusion-detection, network-security, random-forest, supervised-learning, svm-classifier, tensorflow, unsw-nb15
 - 更新時間：2026-11-11T17:45:53+00:00
+- 論文層級：未對應論文
 - 配對論文：https://doi.org/10.1109/milcis.2015.7348942
 - 品質分數：10/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-本專案利用 UNSW-NB15 資料集，實作多種機器學習與深度學習模型（決策樹、KNN、線性回歸、SVM、邏輯回歸、MLP 等），進行二元及多類別網路入侵偵測，旨在協助 IoT 場景中的網路流量異常識別與威脅預警，服務對象為資安研究人員、IoT 系統開發者與安全運維人員。
+本專案利用 UNSW-NB15 資料庫，針對 IoT 基礎智慧城市網路流量進行入侵偵測。透過多種機器學習與深度學習模型（決策樹、K‑鄰居、線性回歸、SVM、邏輯回歸、多層感知器、隨機森林等），將網路連線記錄分類為正常或各種攻擊類型，協助安全分析師與研究者快速識別異常流量、評估模型效能並進行特徵選擇。目標使用者包括網路安全從業人員、資料科學學生以及研究實驗室。
 
 ## 技術
-專案以 Python 為主要語言，以 Jupyter Notebook 為開發環境，引用 scikit-learn、pandas、numpy、matplotlib 與 pickle 進行資料讀取、前處理與模型訓練；資料經過缺失值移除、類別欄位 one‑hot 編碼、LabelEncoder 編碼、MinMax 標準化以及 Pearson 相關係數特徵選取；接著使用決策樹、KNN、線性回歸、SVM、邏輯回歸與 MLP 等模型分別進行二元及多類別入侵偵測，並報告準確率、MAE、MSE、RMSE 與 R² 等評估指標。
+專案以 Python 為主要語言，在 Jupyter Notebook 環境中實作，使用 scikit‑learn、pandas、numpy、matplotlib 與 pickle 進行資料讀取、前處理與模型訓練；亦引用 Keras/TensorFlow 作為深度學習基礎（雖未在摘錄中直接顯示，但專案主題包含）。資料流程包括：缺失值移除、類別特徵（proto、service、state）進行 one‑hot 編碼、數值特徵使用 MinMaxScaler 正規化、以 Pearson 相關係數 >0.3 進行特徵選擇，產生二類與多類資料集，最後分別訓練決策樹、KNN、線性回歸、SVM、邏輯回歸、MLP 與隨機森林等分類器。
 
 ## 架構
-資料流程始於讀取 UNSW_NB15.csv 與特徵說明檔，先移除空值，將 proto、service、state 欄位進行 one‑hot 編碼後合併，得到 61 個特徵；接著依據 label 或 attack_cat 建立二元與多類別資料集，對數值欄位使用 MinMax Scaler 進行正規化；利用 Pearson 相關係數選取與目標高於 0.3 的特徵，得到 bin_data（15 特徵）與 multi_data（16 特徵）；隨機切分訓練/測試集（二元 80/20，多類別 70/30），分別訓練決策樹、KNN、線性回歸、SVM、邏輯回歸與 MLP 模型，最後計算準確率、MAE、MSE、RMSE 與 R² 等指標來評估模型在入侵偵測上的效能。
+架構分為五個主要步驟：1) 資料載入 – 讀取 UNSW_NB15.csv 與特徵說明檔；2) 資料前處理 – 刪除缺失值、將類別欄位 one‑hot 編碼、數值欄位 MinMax 正規化；3) 特徵抽取 – 利用 Pearson 相關係數篩選與目標 label 高相關的欄位，產生 bin_data（61→15 特徵）與 multi_data（69→16 特徵）；4) 資料切分 – 二類資料 80% 訓練/20% 測試，多類資料 70% 訓練/30% 測試；5) 模型訓練與評估 – 對每個分類器進行 fit、預測，計算 Accuracy、MAE、MSE、RMSE、R2 等指標，並將結果寫出或直接在 Notebook 中顯示。若需進一步部署，可將訓練好的模型以 pickle 序列化後載入推論。
 
 ## README 摘錄（節選）
 ```text

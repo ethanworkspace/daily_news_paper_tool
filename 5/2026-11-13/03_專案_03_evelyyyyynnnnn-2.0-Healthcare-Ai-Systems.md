@@ -7,17 +7,18 @@
 - License：Apache-2.0
 - Topics：
 - 更新時間：2026-11-10T00:23:36+00:00
+- 論文層級：未對應論文
 - 配對論文：https://doi.org/10.5281/zenodo.24094763
 - 品質分數：9/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-此專案構建四個臨床決策支援子系統，針對醫療安全的關鍵問題：提前預測 ICU 低氧血症與低血壓、評估主群劃分對模型效能的洩漏成本、驗證光電容積波形心率估計的準確度、以及以理論為基礎的同理心詞彙量測真實醫師‑病人對話。目標使用者為臨床研究員、醫療資料科學家與系統安全工作者，旨在提供可量化、可重現的風險預測與互動分析工具，降低誤決策帶來的系統性後果。
+此專案構建醫療安全決策支援系統，透過整合運籌學、數學優化與應用 AI，針對臨床風險預測與醫療互動分析，提供可量測的校準與誤警報減少工具。目標使用者為醫院臨床醫師、護理人員、病患安全負責人以及研究開發者，核心問題在於降低因決策誤判導致的系統性後果，提升警報校準度、測試主群體分割影響、生理波形品質評估與同理心語言量測。
 
 ## 技術
-主要採用 Python 3，搭配 scikit‑learn 實作 logistic regression 與 gradient boosting 模型；利用 PyHealth/RHealth Extension 提供的 icuflow 套件進行主群劃分、校準與警報比較；透過 pandas、numpy 處理時序生理訊號；使用 Librosa 或自訂濾波器從 PPG 提取心率；建立詞彙加權的同理心分數計算；提供可安裝的 CLI 工具與完整的單元測試（pytest），所有程式碼放在各子專案的 src/ 目錄下，依循統一的 README‑driven 結果紀錄規範。
+專案主要以 Python 實作，使用 scikit-learn 的邏輯回歸與梯度提升樹（XGBoost/LightGBM）進行風險預測，並透過自行開發的 icuflow 包提供主群體分割、校準計算與匹配靈敏度警報比較的 CLI 工具。資料來源包括 PhysioNet MIMIC‑IV（ hypoxemia/hypotension）與 BIDMC（PPG 心率），處理流程倚賴 pandas、numpy 進行特徵工程，使用 matplotlib/seaborn 繪製校準曲線與誤警報圖，並透過 pytest 執行單元測試以確保結果可重現。
 
 ## 架構
-每個子專案遵守相同的目錄結構：src/ 放置模型實作與特徵工程腳本；data/ 包含真實第三方資料（MIMIC‑IV、BIDMC、MTS‑Dialog）與標註樣本；results/ 儲存每次實驗的最新指標（latest‑real.json）以及對應的 README.md，所有數字必須有對應的運行日誌；tests/ 包含驗證資料切分、校準誤差與警報比較的單元測試；website/ 用於展示專案說明。執行流程為：載入真實資料 → 預處理／特徵抽取 → 按照 subject‑grouped 或隨機劃分訓練／測試集 → 訓練模型（logistic regression、GBDT 等） → 計算校準誤差、AUROC、心率誤差或同理心分數 → 寫入 results/latest‑real.json 並更新 README.md，整個過程由 GitHub Actions 工作流程自動觸發測試與報告。
+每個子專案遵守統一目錄結構：src/ 放置資料前處理、特徵建模、模型訓練與評估腳本；data/ 存放原始 PhysioNet 資料與經過樣本切分的訓練/測試集；results/ 保存每次運行的最新指標（如 AUROC、期望校準錯誤、誤警報率）與對應的 run log；tests/ 包含單元與整合測試，驗證資料切分、校準計算與警報比較的正確性；website/ 用於產生說明文件與視覺化報告。資料流程以原始臨床紀錄為起點，經過清洗與特徵抽取後，依據任務分別進行（1）警報校準模型訓練與匹配靈敏度比較，（2）主群體分割與隨機列分割的 AUROC 對比，（3）PPG 訊號濾波、峰值偵測與心率估算，（4）對話斷詞、同理心詞彙加權與結構特徵融合，最終將評估結果寫入 results/ 供後續分析與檢驗。
 
 ## README 摘錄（節選）
 ```text

@@ -7,17 +7,18 @@
 - License：MIT
 - Topics：agentic-ai, ai, artificial-intelligence, cybersecurity, detect-intrusions, infosec, intrusion-detection, llm, log-analysis, machine-learning
 - 更新時間：2026-10-29T17:26:10+00:00
+- 論文層級：未對應論文
 - 配對論文：https://doi.org/10.7910/dvn/3qbyb5
 - 品質分數：10/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-Webhawk 是一個無監督學習結合具代理能力的 AI 工具，專門從應用程式日誌（如 HTTP access log）中自動發掘可能的攻擊痕跡。它先將日誌轉換為數值特徵，使用 PCA 降維後以 DBSCAN 進行聚類，將異常點標記為可疑入侵。偵測結果會傳送至選擇的大型語言模型（透過 Ollama）進行深度分析並給出可執行的建議，最後透過網頁介面讓 SOC 分析師檢視與管理事件，同時也能透過內建 API 將結果匯入現有的 SIEM 系統。目標使用者為安全運營中心人員、資安工程師與需要快速識別未知攻擊行為的團隊。
+Webhawk/Catch 3.0 是一個無監督的 AI 增強型入侵與異常偵測工具，專為分析應用程式日誌（如 HTTP 存取記錄）而設計。它利用非監督式機器學習將日誌條目進行聚類，並辨識離群點作為潛在攻擊痕跡。偵測結果會送至選擇的大型語言模型（LLM）進行深度分析，並透過具代理能力的 AI 產出可執行的建議。目標使用者為安全運營中心（SOC）人員與需要自動化威脅偵測的開發或運維團隊。核心問題在於傳統規則基礎的入侵偵測難以捕捉未知或變形攻擊，而 Webhawk 透過聚類與 LLM 分析提供無規則、適應性的偵測方案。
 
 ## 技術
-專案主要使用 Ruby 作為倉庫語言，偵測引擎與代理端則依賴 Python 3 實作。特徵抽取採用 Principal Component Analysis (PCA)，聚類演算法使用 DBSCAN（Density-Based Spatial Clustering with Noise）來分組日誌並找出離群點。異常偵測後，結果會經由 HTTP 呼叫傳送至 Ollama 容器內的大型語言模型（預設為 granite4:latest 與 tev1:0.8b）進行生成式分析與建議。整體透過 Docker Compose 組織三個服務：偵測 API、Ollama 模型服務與網頁 UI，並提供可安裝於各端點的 Python 代理程式負責讀取日誌並上傳至偵測 API。
+專案主要使用 Python 3 實作偵測引擎與代理（agent），透過 Principal Component Analysis (PCA) 將原始日誌轉換為數值特徵（如使用者代理、IP 位址、參數數量），再採用 DBSCAN（密度基礎空間聚類）演算法進行聚類與離群點偵測。偵測結果會經由 REST API 傳送至 Ollama 容器內的大型語言模型（預設為 granite4:latest 與 tev1:0.8b）進行深度分析與建議生成。網頁介面與偵測 API 皆以 Docker Compose 方式部署，包含三個主要服務：偵測引擎（Webhawk API）、Ollama 模型服務以及 Web UI。代理則是一個可在各端點上執行的 Python 腳本，負責讀取本地日誌並透過 HTTP POST 將資料送至偵測 API。
 
 ## 架構
-系統架構採用微服務方式，由 Docker Compose 啟動三個主要容器：(1) 偵測引擎（Webhawk API）負責接收代理上傳的原始日誌、進行數值編碼、PCA 特徵降維、DBSCAN 聚類、異常點標記，並將偵測結果寫入資料庫或直接轉發至 UI；(2) Ollama 容器內執行選擇的 LLM（granite4:latest）與 JEV 模型（tev1:0.8b），提供異常點的語意分析與可執行建議；(3) 網頁應用程式（Webhawk UI）提供分析師介面，顯示事件列表、詳細報告並允許手動標註或匯出。每個受監控的主機上安裝的 Python 代理程式會讀取指定的日誌檔（如 Apache access log），透過 HTTP POST 將內容傳送至偵測 API 的 /scan 端點。偵測完成後，UI 會從 API 取得事件並展示；同時，API 也可對外提供 RESTful 端點，使現有的 SIEM 或其他安全平台能訂閱或拉取偵測結果。設定透過 webhawk/settings.conf 檔案調整，包括 Ollama 位置、模型名稱、DBSCAN 參數等。若需進一步擴充，專案曾提及考慮使用 Kafka 進行資料傳輸的可能性。
+系統架構由四個主要模組組成：(1) 端點代理（webhawk_agent）負責讀取應用程式日誌並透過 HTTP POST 將日誌上傳至偵測 API；(2) 偵測引擎（Webhawk API）接收日誌後進行特徵編碼、PCA 降維、DBSCAN 聚類，將被判定為離群點的日誌標記為潛在事件；(3) Ollama 服務執行預設的 LLM（granite4:latest）與輔助模型（tev1:0.8b），對偵測引擎傳送的事件進行自然語言分析並產出可操作的建議；(4) Web UI（webhawk_ui）提供分析師介面，顯示偵測結果與 LLM 建議，並允許手動審核與匯出。資料流程為：端點代理 → 偵測 API → 特徵處理與聚類 → 離群點標記 → 呼叫 Ollama LLM → 分析結果回傳 → Web UI 顯示。此外，偵測 API 也可直接將事件推送至既有的 SIEM 系統。若 README 未明確說明某些實作細節（例如 Web UI 的前端框架），則以上說明僅基於可見的服務與資料流程進行合理推斷。
 
 ## README 摘錄（節選）
 ```text

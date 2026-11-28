@@ -7,17 +7,18 @@
 - License：MIT
 - Topics：classification, cybersecurity, decision-tree-classifier, deep-learning, iot, iot-security, keras, knn, linear-regression, logistic-regression, machine-learning, mlp-classifier, multilayer-perceptron, network-intrusion-detection, network-security, random-forest, supervised-learning, svm-classifier, tensorflow, unsw-nb15
 - 更新時間：2026-11-11T17:45:53+00:00
+- 論文層級：未對應論文
 - 配對論文：https://doi.org/10.1109/milcis.2015.7348942
 - 品質分數：10/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-此專案構建基於 UNSW‑NB15 資料集的 IoT 網路入侵偵測系統，透過多種機器學習與深度學習演算法（決策樹、K‑鄰近、線性回歸、SVM、邏輯回歸、多層感知器）進行二元及多類別攻擊分類，旨在協助安全研究人員與網路管理員快速識別異常流量，提升 IoT 環境的威脅偵測能力。目標使用者包括資安研究員、IoT 系統開發者以及網路安全分析師。
+本專案利用 UNSW-NB15 資料庫，針對 IoT 基礎智慧城市網路流量進行入侵偵測。透過多種機器學習與深度學習模型（決策樹、K‑鄰居、線性回歸、SVM、邏輯回歸、多層感知器、隨機森林等），將網路連線記錄分類為正常或各種攻擊類型，協助安全分析師與研究者快速識別異常流量、評估模型效能並進行特徵選擇。目標使用者包括網路安全從業人員、資料科學學生以及研究實驗室。
 
 ## 技術
-專案使用 Python 實作，筆記本以 Jupyter Notebook / Google Colab 為執行環境，主要依賴 scikit‑learn 提供的分類器（DecisionTreeClassifier、KNeighborsClassifier、LinearRegression、SVC、LogisticRegression、MLPClassifier），搭配 pandas、numpy 進行資料處理，matplotlib 視覺化，pickle 儲存模型。資料前處理包括缺失值移除、資料型別轉換、對 proto、service、state 三個類別欄位進行 one‑hot 編碼、MinMax 標準化、LabelEncoder 編碼目標標籤，並以 Pearson 相關係數 (>0.3) 進行特徵選擇，得到 binary 資料集 15 個特徵與 multi‑class 資料集 16 個特徵。
+專案以 Python 為主要語言，在 Jupyter Notebook 環境中實作，使用 scikit‑learn、pandas、numpy、matplotlib 與 pickle 進行資料讀取、前處理與模型訓練；亦引用 Keras/TensorFlow 作為深度學習基礎（雖未在摘錄中直接顯示，但專案主題包含）。資料流程包括：缺失值移除、類別特徵（proto、service、state）進行 one‑hot 編碼、數值特徵使用 MinMaxScaler 正規化、以 Pearson 相關係數 >0.3 進行特徵選擇，產生二類與多類資料集，最後分別訓練決策樹、KNN、線性回歸、SVM、邏輯回歸、MLP 與隨機森林等分類器。
 
 ## 架構
-資料流程先載入 UNSW_NB15.csv 與特徵說明檔，移除空值後轉換欄位型別，對 proto、service、state 進行 one‑hot 編碼並合併，得到 61 個特徵；接著使用 MinMaxScaler 對 58 個數值欄位進行正規化。根據 label 與 attack_cat 建立二元與多類別資料集，分別以 LabelEncoder 編碼目標，並對 multi‑class 進行 one‑hot 編碼 attack_cat。利用 Pearson 相關係數選擇與目標相關度 >0.3 的特徵，binary 得 15 個、multi‑class 得 16 個特徵。隨機切分資料（binary 80%/20%，multi‑class 70%/30%），將訓練集輸入各個分類器進行訓練，然後在測試集上計算 Accuracy、MAE、MSE、RMSE、R² 等評估指標。若 README 未說明模型儲存或推論部署，則僅可推論為在筆記本內完成訓練與評估。
+架構分為五個主要步驟：1) 資料載入 – 讀取 UNSW_NB15.csv 與特徵說明檔；2) 資料前處理 – 刪除缺失值、將類別欄位 one‑hot 編碼、數值欄位 MinMax 正規化；3) 特徵抽取 – 利用 Pearson 相關係數篩選與目標 label 高相關的欄位，產生 bin_data（61→15 特徵）與 multi_data（69→16 特徵）；4) 資料切分 – 二類資料 80% 訓練/20% 測試，多類資料 70% 訓練/30% 測試；5) 模型訓練與評估 – 對每個分類器進行 fit、預測，計算 Accuracy、MAE、MSE、RMSE、R2 等指標，並將結果寫出或直接在 Notebook 中顯示。若需進一步部署，可將訓練好的模型以 pickle 序列化後載入推論。
 
 ## README 摘錄（節選）
 ```text
