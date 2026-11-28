@@ -7,17 +7,18 @@
 - License：MIT
 - Topics：agentic-ai, ai, artificial-intelligence, cybersecurity, detect-intrusions, infosec, intrusion-detection, llm, log-analysis, machine-learning
 - 更新時間：2026-10-29T17:26:10+00:00
+- 論文層級：未對應論文
 - 配對論文：https://doi.org/10.7910/dvn/3qbyb5
 - 品質分數：10/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-Webhawk/Catch 3.0 是一款無監督機器學習工具，專為安全運營中心（SOC）分析師與資訊安全工程師設計，能自動從應用程式日誌（如 HTTP 存取記錄）中發掘攻擊痕跡，無需預先定義規則。透過將日誌轉換為數值特徵、使用 PCA 降維與 DBSCAN 聚類，識別異常點作為潛在攻擊線索；之後利用 Agentic AI 與使用者選擇的大型語言模型（LLM）進行深度分析，提供可執行的修復建議，並透過網頁介面與 API 將結果融入現有的 SIEM 生態系統。
+Webhawk 是一個無監督機器學習工具，專門從應用程式日誌（如 HTTP 存取記錄）中自動偵測攻擊痕跡，無需預先定義規則。它先將原始日誌轉換為數值特徵，使用 PCA 提取關鍵欄位，再以 DBSCAN 群聚演算法將日誌條目分群並標記離群點作為可疑攻擊。偵測結果會送至使用者選擇的 LLM（透過 Ollama）進行深度分析並產出具體建議，同時提供網頁介面與 API 供安全運營中心（SOC）團隊檢視、管理及與既有 SIEM 整合。適合需要自動化威脅偵測與事件分析的安全分析師與運維人員。
 
 ## 技術
-專案主要使用 Python 3 編寫偵測引擎與端點代理，利用 PCA 進行特徵降維並採用 DBSCAN 進行密度基礎聚類以偵測異常日誌。偵測結果會傳送至 Ollama 容器內的大型語言模型（如 granite4:latest、tev1:0.8b）進行 Agentic AI 分析與建議生成。網頁介面透過 Docker Compose 啟動，提供 REST API 接收日誌與回傳事件。整體依賴 Docker、Docker Compose 與 Ollama 來實現模型服務與容器化部署。
+Webhawk 的核心實作以 Python 為主，使用 scikit-learn 提供 PCA 與 DBSCAN 演算法進行無監督特徵降維與聚類；日誌先經過數值編碼（如使用者代理、IP、參數數量）後送入這些模型。偵測完成後，結果會透過 HTTP API 傳送至 Ollama 容器內的 LLM（預設 granite4:latest）與 JEV 模型（tev1:0.8b）進行代理人工智慧（Agentic AI）分析，產出可讀的事件說明與建議。網頁介面與 API 透過 Docker Compose 組織為三個服務：偵測引擎（Webhawk API）、Ollama 模型服務與 Web 應用程式。Agent 以 Python 腳本運行於各端點，讀取本地日誌並 POST 至偵測 API。整個流程依賴 Docker、Docker Compose 與 Python 3。
 
 ## 架構
-系統由三個 Docker 服務組成：偵測 API（Webhawk）、網頁應用程式（Webhawk UI）與 Ollama 模型服務。端點上運行的 Python 代理讀取本地日誌檔案，透過 HTTP POST 將日誌傳送至偵測 API 的 /scan 端點。偵測 API 先將原始日誌轉換為數值向量，使用 PCA 提取主要特徵，接著以 DBSCAN 演算法進行聚類，將不屬於任何密集簇的點標記為異常（潛在攻擊痕跡）。異常點會被封裝後發送至 Ollama 容器內的選定 LLM，利用 Agentic AI 產生可讀的分析報告與修復建議。分析結果經由 API 回傳至網頁應用程式，供安全分析師在 UI 中檢視、管理與匯出；同時亦可透過同一 API 將事件推送至既有的 SIEM 或其他安全平台。所有服務透過 Docker Compose 一鍵啟動，簡化部署與擴展。
+Webhawk 架構由四個主要部分組成：(1) 偵測引擎（Webhawk API），負責接收來自 Agent 的原始日誌，執行數值編碼、PCA 特徵提取與 DBSCAN 聚類，將離群點標記為事件並寫入資料庫；(2) Ollama 服務，運行選定的 LLM（granite4:latest）與 JEV 模型（tev1:0.8b），接收偵測引擎傳送的事件摘要，執行 Agentic AI 分析後回傳建議；(3) 網頁應用程式（Webhawk UI），提供登入、事件瀏覽、過濾與手動標註介面，同時接受偵測引擎寫入的事件；(4) 日誌 Agent，部署於每台產生日誌的主機，讀取本地檔案（如 Apache access log）並透過 HTTP POST 將資料送至偵測引擎的 /scan 端點。資料流程為：Agent → 偵測 API → 特徵處理與聚類 → 事件產出 → UI 儲存 → Ollama LLM/JEV 分析 → 分析結果回到 UI。所有服務透過 Docker Compose 組態啟動，偵測 API 監聽 8000、UI 監聽 8080、Ollama 監聽 11434。Agent 需能連線至 Docker 主機的 8000 端口。
 
 ## README 摘錄（節選）
 ```text

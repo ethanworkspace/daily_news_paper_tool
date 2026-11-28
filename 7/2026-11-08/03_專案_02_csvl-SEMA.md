@@ -7,17 +7,18 @@
 - License：BSD-2-Clause
 - Topics：angr, binary-analysis, classification, concolic-execution, ctf, cybersecurity, detection, linux, malware, malware-analysis, malware-detection, malware-research, python, reverse, reverse-engineering, sema, static-analysis, symbolic, symbolic-execution, windows
 - 更新時間：2026-10-08T12:54:10+00:00
+- 論文層級：未對應論文
 - 配對論文：https://doi.org/10.1007/978-3-031-31108-6
-- 品質分數：9/10 [paper_paired, implementation_signals, stale_seed]
+- 品質分數：9/10 [paper_paired, implementation_signals, stale_backfill]
 
 ## 在做什麼
-SEMA 是一個基於 angr 符號執行引擎的惡意程式分析工具鏈，其目標是從標記好的二進位檔案中自動提取系統呼叫依賴圖（SCDG），並利用圖礦業（gspan）與 SVM 加上圖核心（INRIA 或 Weisfeiler‑Lehman）進行惡意軟體家族的特徵建構與分類。主要使用者為惡意程式研究者、安全工程師與 CTF 參賽者，他們需要一種能夠將符號執行產生的 API 呼叫轉換為可用於機器學習的圖形特徵，以解決傳統靜態特徵難以捕捉行為變異的問題。
+SEMA 是一個基於 angr 符號執行引擎的惡意程式分析工具鏈，目標使用者為惡意程式研究者、逆向工程師與安全分析師。它自動從標記好的二進位檔案中提取系統呼叫及其參數，構建系統呼叫依賴圖（SCDG），並利用圖形挖掘與機器學習（SVM 與圖核）產生代表性簽名，以實現惡意程式家族的分類與偵測。
 
 ## 技術
-SEMA 使用 Python 實作，核心依賴 angr 進行符號執行與半符號（concolic）分析，以提取系統呼叫及其參數；透過自訂啟發式規則最佳化符號執行路徑，將多條執行追蹤合併為系統呼叫依賴圖（SCDG），其中節點為系統呼叫，邊代表參數共享；接著利用 gspan 演算法挖掘最大公共子圖，產生族群特徵簽名；最後採用支援向量機（SVM）搭配 INRIA 圖核心或 Weisfeiler‑Lehman 延伸圖核心進行分類；專案同時提供 Makefile 與 pre‑commit 鉤子以統一建置與程式碼品質，並附帶 SemaWebApp 網頁介面來啟動實驗。
+技術實現主要使用 Python 程式語言，依賴 angr 框架進行二進位檔案的符號執行以擷取系統呼叫及其參數；接著透過圖論啟發式方法將提取的追蹤組合成系統呼叫依賴圖（SCDG），節點為系統呼叫，邊代表共享參數。然後使用 gspan 演算法進行頻繁子圖挖掘，尋找同家族 SCDG 間的最大公共子圖；最後採用支援向量機（SVM）搭配 INRIA 圖核或 Weisfeiler‑Lehman 圖核進行分類，並提供 SemaWebApp 網頁介面來管理實驗的啟動與結果檢視。
 
 ## 架構
-工具鏈流程如下：首先將已標記之惡意程式二進位檔送入 angr 進行符號執行，記錄所有系統呼叫及其引數；依據預設停機條件（如路徑數上限或時間），將收到的追蹤經由圖啟發式規則組合成 SCDG，其中節點為系統呼叫，邊表示兩個呼叫共享至少一個引數；對每個惡意軟體家族的 SCDG 集合執行 gspan 圖礦業，提取最常見的子圖作為該家族的簽名；對於未知樣本，重複上述步驟產生其 SCDG，然後計算其與已知族群簽名之相似度（例如子圖佔比）或直接送入 SVM‑圖核心分類器，得到家族標籤；整個流程可透過 Makefile 指令或 SemaWebApp 網頁介面觸發，使研究者能夠一鍵執行特徵萃取、簽名建立與分類實驗。
+工具鏈流程如下：首先將已標記的惡意程式二進位檔案送入 Angr 進行符號執行，產生系統呼叫追蹤（包括呼叫名稱與參數）；根據預設的停止條件將追蹤轉換為 SCDG，其中每個節點對應一次系統呼叫，當兩個呼叫共享至少一個參數時在它們之間加入有向或無向邊；接著對所有同家族的 SCDG 使用 gspan 挖掘頻繁子圖，提取代表該家族的簽圖；對於待判樣本，重複上述步驟產生其 SCDG，然後計算該圖與已知簽圖之間的相似度（例如 gspan 最大公共子圖佔比或 SVM 圖核得分），依據預設閾值決定是否屬於某個惡意程式家族。此外，專案附帶 SemaWebApp 網頁應用，使用者可透過它上傳樣本、觸發符號執行與圖形挖掘任務，並檢視分類結果與中間產生的圖形。README 未詳細說明網頁應用的具體框架或資料儲存方式，因此上述架構描述僅基於文件中可見的模組與資料流程進行推斷。
 
 ## README 摘錄（節選）
 ```text
