@@ -7,17 +7,18 @@
 - License：Apache-2.0
 - Topics：computed-tomography, computer-vision, deep-learning, eeg, electroencephalography, fmri, functional-mri, gan, hemorrhage-detection, machine-learning, magnetic-resonance-imaging, medical, medicine, mri, neurology, neuroscience, radiology, reinforcement-learning, tumor-segmentation, vae
 - 更新時間：2026-10-16T14:31:46+00:00
+- 論文層級：未對應論文
 - 配對論文：https://arxiv.org/abs/1312.6114
 - 品質分數：9/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-此專案是 Thomas Havlik 的醫學機器學習作品集，收錄了多個已完成的醫學影像與訊號處理任務（如腦內出血分類、EEG 動作偵測、腹部 CT 腫瘤定位）以及正在進行的 fMRI 相關研究，同時提供了用於資料蒐集與標註的工具（例如影片標註平台 t4vd、MRI 下載腳本 MIDAS 下載工具、醫學 e‑Shadowing 轉錄器），目標使用者為對醫學影像分析、腦電圖處理或生成模型感興趣的研究者與學生，核心在於展示如何利用深度學習方法處理真實醫學資料，並提供可重現的實驗設定與開源程式碼。
+此專案是 Thomas Havlik 的醫學機器學習作品集，收錄多項針對醫療影像與生理訊號的深度學習實驗，包括 RSNA 顱內出血分類、EEG 細微運動偵測、腹部 CT 腫瘤定位以及正在進行的 fMRI 特徵推論、MRI 問卷預測與可微分 3D 渲染等任務，目標使用者為醫學研究者、影像科技師以及對醫學 AI 感興趣的開發者，核心在於展示如何利用現有標註資料訓練模型解決臨床相關的分割、偵測與預測問題。
 
 ## 技術
-專案以 Python 為主要開發語言，深度學習模型參考了 VAE、GAN、Progressive Growing of GANs、beta‑VAE、StyleGAN、Instance Normalization 與 ResNet 等論文，因而可推論使用了 PyTorch 或 TensorFlow 等常見框架進行模型定義與訓練。實驗透過 src/main.py 入口執行，設定採用 YAML 檔案（支援 include 指令）來組合資料、模型與超參數，並提供 Dockerfile 以確保可重現的 GPU 環境。
+專案以 Python 為主要開發語言，實驗設定透過 YAML 檔案進行參數化，可透過 include 指令組合衍生實驗；執行入口為 src/main.py，透過 --config 指向對應的 YAML 檔案；為確保環境可重現，提供 Dockerfile 與建議使用 NVIDIA GPU 的 Docker 運行方式；程式中使用了 nonechucks 來提升資料載入容錯性；根據引用的論文（VAE、GAN、殘差網路等），可見實際運用了深度學習框架（如 PyTorch 或 TensorFlow）進行模型構建與訓練。
 
 ## 架構
-專案結構以 experiments 目錄為核心，每個子資料夾對應一項任務（如 rsna-intracranial、grasp_and_lift_eeg、deeplesion 等），各自含有專屬的 README 與資料處理腳本。執行流程為：使用者透過 --config 指向 YAML 檔案，main.py 讀取設定後載入對應資料集、建構模型、進行訓練/驗證/測試，並記錄指標與輸出。工具類專案（transcriber、vpn-operator、t4vd、midas-download-tool）為獨立倉庫，主要提供資料蒐集、標註或環境管理功能。若需更細部的模組內部實作細節，README 未提供足夠資訊。
+專案結構以 experiments 為主要模組，每個子目錄對應一項具體任務（如 rsna-intracranial、grasp_and_lift_eeg、deeplesion 等），內含該任務的 README、資料準備腳本、模型定義與訓練腳本；所有實驗共用 src/main.py 作為統一啟動腳本，透過讀取實驗專屬的 YAML 配置來決定資料路徑、模型超參數與訓練策略；資料流程為：載入醫療影像或生理訊號 → 預處理（歸一化、切片、增強） → 送入對應的深度學習模型（VAE、GAN、CNN 等） → 進行前向計算與損失評估 → 反向傳播更新權重 → 驗證階段產出分割 mask、分類機率或特徵向量；若使用 Docker，則在容器內掛載資料卷並執行相同的指令。
 
 ## README 摘錄（節選）
 ```text
