@@ -7,17 +7,18 @@
 - License：MIT
 - Topics：classification, cybersecurity, decision-tree-classifier, deep-learning, iot, iot-security, keras, knn, linear-regression, logistic-regression, machine-learning, mlp-classifier, multilayer-perceptron, network-intrusion-detection, network-security, random-forest, supervised-learning, svm-classifier, tensorflow, unsw-nb15
 - 更新時間：2026-11-11T17:45:53+00:00
+- 論文層級：未對應論文
 - 配對論文：https://doi.org/10.1109/milcis.2015.7348942
 - 品質分數：10/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-本專案利用 UNSW-NB15 資料庫，針對物聯網 (IoT) 網路流量進行入侵偵測，實作多種機器學習與深度學習分類器（決策樹、K鄰近、線性回歸、SVM、邏輯回歸、多層感知機），將原始特徵經過清理、獨熱編碼、歸一化與 Pearson 相關特徵選取後，分別訓練二元與多類別分類模型，以協助安全研究人員、IoT 系統開發者及學生快速評估不同演算法在惡意流量偵測上的表現，解決 IoT 環境中攻擊識別不易的核心問題。
+本專案利用 UNSW‑NB15 資料庫，針對 IoT 場景的網路流量進行入侵偵測。透過多種機器學習與深度學習模型（決策樹、K‑鄰居、線性回歸、SVM、邏輯回歸、多層感知器、隨機森林），將正常與異常流量自動分類，協助安全研究人員、IoT 系統開發者及教學人員快速評估與改進網路安全防護。
 
 ## 技術
-專案以 Python 為主要語言，使用 Jupyter Notebook 進行互動式開發，核心函式庫包括 pandas、numpy、scikit-learn、matplotlib 與 pickle；模型方面實作 DecisionTreeClassifier、KNeighborsClassifier、LinearRegression、SVC（線性核）、LogisticRegression 與 MLPClassifier（Keras/TensorFlow 背景），資料流程包含缺失值移除、對 proto、service、state 進行獨熱編碼、MinMax 正規化、以 Pearson 相關係數 >0.3 進行特徵選取，最後分別對二元（label）與多類別（attack_cat）資料進行 80/20 或 70/30 訓練‑測試分割，並報告準確率、MAE、MSE、RMSE 與 R² 等評估指標。
+開發環境為 Python 3，使用 Jupyter Notebook 撰寫與執行程式。主要依賴套件包括 scikit‑learn、pandas、numpy、matplotlib 與 pickle，並可選擇使用 TensorFlow/Keras 進行深度學習實驗。資料流程經過缺失值移除、類別特徵 one‑hot 編碼、數值特徵 MinMax 正規化，以及以 Pearson 相關係數 (>0.3) 進行特徵選取，最後分別訓練二元與多分類模型並輸出準確率、MAE、MSE、RMSE、R² 等評估指標。
 
 ## 架構
-架構上，筆記本依序執行以下步驟：1) 載入 UNSW_NB15.csv 與特徵說明檔；2) 資料清理（移除缺失值、根據特徵檔案轉換資料型別）；3) 對三個類別欄位 proto、service、state 進行獨熱編碼並合併回主資料框；4) 使用 MinMaxScaler 對 58 個數值欄位進行正規化；5) 依據 label 與 attack_cat 建立二元與多類別資料集，並分別進行 LabelEncoder 編碼；6) 透過 Pearson 相關係數選取與目標欄位相關度 >0.3 的特徵，得到 bin_data（15 特徵）與 multi_data（16 特徵）；7) 將資料隨機劃分為訓練集與測試集（二元 80/20，多類別 70/30）；8) 對每個資料集依序訓練決策樹、K鄰近、線性回歸、線性 SVM、邏輯回歸與多層感知機模型，並計算準確率、MAE、MSE、RMSE、R²；9) 輸出各模型的評估結果供比較。由於 README 僅提供執行順序與結果，未見明確的模組化程式碼或類別結構，故此架構描述以筆記本セル的執行流程為推斷依據。
+資料首先載入 UNSW_NB15.csv 與特徵說明檔，進行缺失值刪除後，將 proto、service、state 三欄位進行 one‑hot 編碼並合併，得到 61 個特徵。接著對 58 個數值欄位使用 MinMaxScaler 正規化。根據 label（二元）或 attack_cat（九類）建立 bin_data 與 multi_data 兩個資料集，並分別以 Pearson 相關係數選取特徵（bin_data 保留 15 個，multi_data 保留 16 個）。資料隨機切分：bin_data 80% 訓練 / 20% 測試，multi_data 70% 訓練 / 30% 測試。在各個訓練集上依序訓練決策樹、K‑鄰居、線性回歸、線性 SVM、邏輯回歸、多層感知器與隨機森林模型，使用對應的 scikit‑learn API，最後在測試集上計算準確率、MAE、MSE、RMSE、R² 等指標以比較模型表現。若需部署，可將訓練好的模型以 pickle 序列化，在新流量上進行相同前處理後直接呼叫 predict 進行即時偵測。
 
 ## README 摘錄（節選）
 ```text

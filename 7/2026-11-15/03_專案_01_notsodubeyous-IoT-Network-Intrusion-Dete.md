@@ -7,17 +7,18 @@
 - License：MIT
 - Topics：classification, cybersecurity, decision-tree-classifier, deep-learning, iot, iot-security, keras, knn, linear-regression, logistic-regression, machine-learning, mlp-classifier, multilayer-perceptron, network-intrusion-detection, network-security, random-forest, supervised-learning, svm-classifier, tensorflow, unsw-nb15
 - 更新時間：2026-11-11T17:45:53+00:00
+- 論文層級：未對應論文
 - 配對論文：https://doi.org/10.1109/milcis.2015.7348942
 - 品質分數：10/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-本專案利用 UNSW-NB15 資料集，實作多種機器學習與深度學習模型（決策樹、KNN、線性回歸、SVM、邏輯回歸、MLP 等），進行二元及多類別網路入侵偵測，旨在協助 IoT 場景中的網路流量異常識別與威脅預警，服務對象為資安研究人員、IoT 系統開發者與安全運維人員。
+本專案利用 UNSW‑NB15 資料庫，針對 IoT 場景的網路流量進行入侵偵測。透過多種機器學習與深度學習模型（決策樹、K‑鄰居、線性回歸、SVM、邏輯回歸、多層感知器、隨機森林），將正常與異常流量自動分類，協助安全研究人員、IoT 系統開發者及教學人員快速評估與改進網路安全防護。
 
 ## 技術
-專案以 Python 為主要語言，以 Jupyter Notebook 為開發環境，引用 scikit-learn、pandas、numpy、matplotlib 與 pickle 進行資料讀取、前處理與模型訓練；資料經過缺失值移除、類別欄位 one‑hot 編碼、LabelEncoder 編碼、MinMax 標準化以及 Pearson 相關係數特徵選取；接著使用決策樹、KNN、線性回歸、SVM、邏輯回歸與 MLP 等模型分別進行二元及多類別入侵偵測，並報告準確率、MAE、MSE、RMSE 與 R² 等評估指標。
+開發環境為 Python 3，使用 Jupyter Notebook 撰寫與執行程式。主要依賴套件包括 scikit‑learn、pandas、numpy、matplotlib 與 pickle，並可選擇使用 TensorFlow/Keras 進行深度學習實驗。資料流程經過缺失值移除、類別特徵 one‑hot 編碼、數值特徵 MinMax 正規化，以及以 Pearson 相關係數 (>0.3) 進行特徵選取，最後分別訓練二元與多分類模型並輸出準確率、MAE、MSE、RMSE、R² 等評估指標。
 
 ## 架構
-資料流程始於讀取 UNSW_NB15.csv 與特徵說明檔，先移除空值，將 proto、service、state 欄位進行 one‑hot 編碼後合併，得到 61 個特徵；接著依據 label 或 attack_cat 建立二元與多類別資料集，對數值欄位使用 MinMax Scaler 進行正規化；利用 Pearson 相關係數選取與目標高於 0.3 的特徵，得到 bin_data（15 特徵）與 multi_data（16 特徵）；隨機切分訓練/測試集（二元 80/20，多類別 70/30），分別訓練決策樹、KNN、線性回歸、SVM、邏輯回歸與 MLP 模型，最後計算準確率、MAE、MSE、RMSE 與 R² 等指標來評估模型在入侵偵測上的效能。
+資料首先載入 UNSW_NB15.csv 與特徵說明檔，進行缺失值刪除後，將 proto、service、state 三欄位進行 one‑hot 編碼並合併，得到 61 個特徵。接著對 58 個數值欄位使用 MinMaxScaler 正規化。根據 label（二元）或 attack_cat（九類）建立 bin_data 與 multi_data 兩個資料集，並分別以 Pearson 相關係數選取特徵（bin_data 保留 15 個，multi_data 保留 16 個）。資料隨機切分：bin_data 80% 訓練 / 20% 測試，multi_data 70% 訓練 / 30% 測試。在各個訓練集上依序訓練決策樹、K‑鄰居、線性回歸、線性 SVM、邏輯回歸、多層感知器與隨機森林模型，使用對應的 scikit‑learn API，最後在測試集上計算準確率、MAE、MSE、RMSE、R² 等指標以比較模型表現。若需部署，可將訓練好的模型以 pickle 序列化，在新流量上進行相同前處理後直接呼叫 predict 進行即時偵測。
 
 ## README 摘錄（節選）
 ```text
