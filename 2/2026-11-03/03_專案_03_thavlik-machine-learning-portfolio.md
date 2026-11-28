@@ -1,4 +1,4 @@
-# GitHub 專案 04：thavlik/machine-learning-portfolio
+# GitHub 專案 03：thavlik/machine-learning-portfolio
 
 - 日期：2026-11-03
 - URL：https://github.com/thavlik/machine-learning-portfolio
@@ -7,17 +7,18 @@
 - License：Apache-2.0
 - Topics：computed-tomography, computer-vision, deep-learning, eeg, electroencephalography, fmri, functional-mri, gan, hemorrhage-detection, machine-learning, magnetic-resonance-imaging, medical, medicine, mri, neurology, neuroscience, radiology, reinforcement-learning, tumor-segmentation, vae
 - 更新時間：2026-10-16T14:31:46+00:00
+- 論文層級：未對應論文
 - 配對論文：https://arxiv.org/abs/1312.6114
 - 品質分數：9/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-此專案是 Thomas Havlik 的醫學機器學習作品集，收錄了多項完成的實驗與進行中的研究，目標使用者為對醫學影像與訊號（CT、EEG、fMRI）感興趣的研究者與學生，核心在提供可重現的程式碼與資料處理流程，示範如何應用深度學習模型進行腦出血分類、運動偵測、腫瘤定位等醫學任務。
+此專案是 Thomas Havlik 的醫學機器學習作品集，展示了使用深度學習處理腦部 CT、EEG、腹部 CT、fMRI 等醫療影像與生理訊號的實驗。目標使用者為醫學研究者、AI 開發者與學生，核心在於提供可重現的模型來完成腦出血分類、運動偵測、腫瘤分割等任務，並探索 fMRI 解析與影像生成等進行中的挑戰。
 
 ## 技術
-專案主要以 Python 實作，使用 PyTorch 框架進行深度學習模型的建置與訓練，涵蓋變分自編碼器（VAE）、生成對抗網路（GAN）、漸進式 GAN、beta‑VAE、StyleGAN、Instance Normalization 以及殘差網路（ResNet）等架構；實驗設定透過 YAML 檔案與 include 指令組合，主入口為 src/main.py，支援 Docker 容器化運行，並利用 nonechucks 庫提升資料載入容錯性。
+專案以 Python 為主要開發語言，實驗透過 YAML 配置檔案驅動 src/main.py 執行，支援 Docker 容器化以確保環境可重現，並使用 nonechucks 庫提升資料載入的容錯能力。雖未明確指出特定深度學習框架，但根據實驗內容可推論採用了常見的神經網路庫進行模型訓練與推論。
 
 ## 架構
-每個實驗皆放在 experiments/ 目錄下，擁有獨立的 README 與資料準備腳本；使用者透過指定 YAML 配置檔（可透過 include 指令疊加基礎設定），執行 src/main.py 時會讀取 exp_params，建立對應的資料集載入器、模型實例化與訓練/評估迴圈；資料流程為：原始醫學影像或訊號 → 預處理（標準化、切片、增強） → 模型前向傳播 → 損失計算與反向傳播 → 模型更新；工具方面，t4vd 用於從 YouTube 建立標註資料集，midas-download-tool 批次下載公開 MRI，vpn-operator 則為以 Rust 寫成的 Kubernetes VPN sidecar 控制器，提供網路隔離與安全傳輸。
+架構以 experiments 為主要模組，每個子目錄對應一項具體任務（如 RSNA Intracranial Hemorrhage Prediction、Grasp-and-Lift EEG Detection、DeepLesion 等），內含各自的 README 與程式碼。執行流程為：使用者透過 `python src/main.py --config <yaml>` 指定實驗配置，yaml 中定義資料路徑、模型參數與訓練設定；程式會載入對應資料集、建構模型、進行訓練或驗證，並在需要時輸出預測結果或可視化。Dockerfile 提供建置鏡像的步驟，以 GPU 支援的容器運行實驗。若 README 未詳細說明內部模組劃分，則以上描述基於可見的目錄結構與執行說明推斷。
 
 ## README 摘錄（節選）
 ```text

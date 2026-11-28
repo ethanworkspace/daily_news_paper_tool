@@ -1,4 +1,4 @@
-# GitHub 專案 03：csvl/SEMA
+# GitHub 專案 02：csvl/SEMA
 
 - 日期：2026-11-03
 - URL：https://github.com/csvl/SEMA
@@ -7,17 +7,18 @@
 - License：BSD-2-Clause
 - Topics：angr, binary-analysis, classification, concolic-execution, ctf, cybersecurity, detection, linux, malware, malware-analysis, malware-detection, malware-research, python, reverse, reverse-engineering, sema, static-analysis, symbolic, symbolic-execution, windows
 - 更新時間：2026-10-08T12:54:10+00:00
+- 論文層級：未對應論文
 - 配對論文：https://doi.org/10.1007/978-3-031-31108-6
 - 品質分數：9/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-SEMA 是一個基於 angr 符號執行引擎的惡意程式分析工具鏈，旨在從二進位檔案中提取系統呼叫及其參數，構建系統呼叫依賴圖（SCDG），並利用圖探勘與機器學習方法產生代表性簽名，以實現惡意軟體家族的分類與偵測。其目標使用者為惡意程式研究者、安全工程師以及需要進行二進位行為分析的 CTF 參賽者，核心問題在於如何自動化地從執行痕跡中提取具區分力的行為特徵，以克服傳統靜態特徵易被混淆的限制。
+SEMA 是一個基於 angr 符號執行引擎的惡意程式分析工具鏈，目標是從二進位檔案中提取系統呼叫及其參數，構建系統呼叫依賴圖（SCDG），並利用圖探勘與機器學習方法產生代表性簽名，以實現惡意軟體家族的分類與偵測。適用於安全研究人員、惡意程式分析師以及需要自動化特徵提取與分類的 CTF 參賽者。
 
 ## 技術
-SEMA 以 Python 為主要開發語言，核心依賴 angr 框架進行符號執行以取得 API 呼叫及其參數。透過自行設計的啟發式規則最佳化符號執行，並將多條執行痕跡經圖啟發式處理組合成系統呼叫依賴圖（SCDG）。接著使用 gspan 演算法提取最大公共子圖，計算相似度分數；亦支援使用 SVM 搭配 INRIA 圖核或 Weisfeiler-Lehman 擴展圖核進行分類。專案提供 SemaWebApp 網頁應用來管理實驗啟動，並透過 pre-commit 保證程式碼格式與品質，附帶 Makefile 簡化指令操作。
+專案主要使用 Python 實作，核心依賴 angr 框架進行符號執行以提取 API 呼叫與參數。透過自訂啟發式規則最佳化符號執行，並將多條執行追蹤合併為系統呼叫依賴圖（SCDG），其中節點為系統呼叫，邊代表參數共享。接著使用 gspan 演算法提取最大公共子圖，並計算相似度分數；分類階段則採用支援向量機（SVM）搭配 INRIA 圖核或 Weisfeiler-Lehman 擴展圖核。此外，提供 SemaWebApp 網頁應用來管理實驗的啟動與結果檢視，並透過 pre-commit 保證程式碼格式與品質，Makefile 簡化工具鏈的使用流程。
 
 ## 架構
-工具鏈的資料流程如下：首先將標註好的惡意程式二進位檔案作為輸入送入 Angr 進行符號執行，此階段會記錄所有系統呼叫及其參數；接著依據預設的停止條件，將紀錄的系統呼叫作為節點、以共享參數作為邊構建 SCDG；對於同一家族的多個 SCDG，利用圖探勘（gspan）提取最大公共子圖，產生代表該家族的簽名；當需分類新樣本時，先為其建立 SCDG，然後透過相似度度量（子圖佔比）或 SVM+圖核進行分類，判定是否屬於已知家族。整個流程被封裝在 SemaSCDG 與 SemaClassifier 兩個主要模組中，並由 SemaWebApp 提供圖形化介面來啟動實驗、檢視結果與管理資料。專案同時提供完整的文件（README、SCDG、Classifier、Web app）與 Makefile，以方便開發者編譯、測試與部署。
+工具鏈流程如下：首先將標註好的惡意程式二進位檔案作為輸入；接著利用 angr 進行符號執行，在符號執行過程中記錄所有系統呼叫及其參數；在達到預設停止條件後，將這些呼叫與參數構造成 SCDG，節點為系統呼叫，邊表示兩個呼叫之間有共享的參數。接著對同一家族的多個 SCDG 進行圖探勘（使用 gspan）提取最大公共子圖，以此產生代表該家族的簽名。對於未知樣本，重複上述步驟建立其 SCDG，然後與已知家族的簽名圖計算相似度分數（基於子圖包含度），或直接送入 SVM 與圖核進行分類。整個流程可透過 SemaWebApp 網頁介面啟動實驗、檢視圖與分類結果，並由 Makefile 提供一鍵指令簡化操作。
 
 ## README 摘錄（節選）
 ```text

@@ -7,17 +7,18 @@
 - License：Apache-2.0
 - Topics：computed-tomography, computer-vision, deep-learning, eeg, electroencephalography, fmri, functional-mri, gan, hemorrhage-detection, machine-learning, magnetic-resonance-imaging, medical, medicine, mri, neurology, neuroscience, radiology, reinforcement-learning, tumor-segmentation, vae
 - 更新時間：2026-10-16T14:31:46+00:00
+- 論文層級：未對應論文
 - 配對論文：https://arxiv.org/abs/1312.6114
 - 品質分數：9/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-本專案是 Thomas Havlik 的醫學 AI 投資組合，彙總多項針對醫療影像與生理訊號的機器學習實作，已完成的項目包括腦部 CT 出血類型分類、EEG 細微運動偵測與腹部 CT 腫瘤定位；進行中的研究則涉及 fMRI 特徵推論、MRI 問卷預測與單幀可微 3D 渲染。目標使用者為醫學影像研究者、腦科訊號處理學生與醫工人員，核心在於提供可重現的程式碼與資料集，以驗證及擴展深度學習在醫學領域的應用。
+此專案是 Thomas Havlik 的醫學機器學習作品集，展示了使用深度學習處理腦部 CT、EEG、腹部 CT、fMRI 等醫療影像與生理訊號的實驗。目標使用者為醫學研究者、AI 開發者與學生，核心在於提供可重現的模型來完成腦出血分類、運動偵測、腫瘤分割等任務，並探索 fMRI 解析與影像生成等進行中的挑戰。
 
 ## 技術
-該專案以 Python 為主要開發語言，實驗設定透過 YAML 檔案進行，支援 include 指令以組合衍生實驗，入口點為 src/main.py，透過 --config 參數載入設定。實作中使用了 nonechucks 例外抑制庫以提升容錯，並建議使用 Docker 以確保可重現的 GPU 環境，參考 NVIDIA 的 GPU Docker 使用指南。根據 README 中引用的文獻，實作涵蓋變分自編碼器（VAE）、生成對抗網路（GAN）、殘差網路（ResNet）等深度學習模型，適用於影像分類、訊號偵測與分割等任務。資料流程方面，資料集先經過驗證（可透過 exp_params.data.safe 關閉例外抑制），再送入模型進行訓練與驗證，最終輸出預測結果或生成樣本。
+專案以 Python 為主要開發語言，實驗透過 YAML 配置檔案驅動 src/main.py 執行，支援 Docker 容器化以確保環境可重現，並使用 nonechucks 庫提升資料載入的容錯能力。雖未明確指出特定深度學習框架，但根據實驗內容可推論採用了常見的神經網路庫進行模型訓練與推論。
 
 ## 架構
-專案結構以 experiments 目錄為核心，每個子目錄對應一項具體任務（如 rsna-intracranial、grasp_and_lift_eeg、deeplesion 等），內含該任務的 README、實驗設定 YAML 檔案以及所需的腳本或模型定義。所有實驗均透過專案根目錄的 src/main.py 進行啟動，主程式讀取指定的 YAML 配置，透過 include 指令可疊加基礎設定以快速建立衍生實驗。資料載入與前處理依實驗而定，通常在驗證階段會使用 nonechucks 抑制例外以提升容錯，必要時可透過 exp_params.data.safe=false 關閉此行為。訓練流程遵循標準的前向傳播、損失計算與反向傳播，支援 GPU 加速；建議使用 Dockerfile 建立映像，並透過 nvidia-docker 啟用 --gpus all 旗標以獲得完整的 GPU 資源。至於共用的工具（如 transcriber、vpn-operator、t4vd、midas-download-tool）則各自維護獨立的倉庫，主要作為資料蒐集或輔助開發的輔助程式。由於 README 未提供詳細的模型架構圖或具體的類別與函式呼叫關係，以下架構描述主要基於目錄組織與執行方式的推斷。
+架構以 experiments 為主要模組，每個子目錄對應一項具體任務（如 RSNA Intracranial Hemorrhage Prediction、Grasp-and-Lift EEG Detection、DeepLesion 等），內含各自的 README 與程式碼。執行流程為：使用者透過 `python src/main.py --config <yaml>` 指定實驗配置，yaml 中定義資料路徑、模型參數與訓練設定；程式會載入對應資料集、建構模型、進行訓練或驗證，並在需要時輸出預測結果或可視化。Dockerfile 提供建置鏡像的步驟，以 GPU 支援的容器運行實驗。若 README 未詳細說明內部模組劃分，則以上描述基於可見的目錄結構與執行說明推斷。
 
 ## README 摘錄（節選）
 ```text

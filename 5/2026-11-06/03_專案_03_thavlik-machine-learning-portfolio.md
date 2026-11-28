@@ -7,17 +7,18 @@
 - License：Apache-2.0
 - Topics：computed-tomography, computer-vision, deep-learning, eeg, electroencephalography, fmri, functional-mri, gan, hemorrhage-detection, machine-learning, magnetic-resonance-imaging, medical, medicine, mri, neurology, neuroscience, radiology, reinforcement-learning, tumor-segmentation, vae
 - 更新時間：2026-10-16T14:31:46+00:00
+- 論文層級：未對應論文
 - 配對論文：https://arxiv.org/abs/1312.6114
 - 品質分數：9/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-本專案是 Thomas Havlik 的醫學 AI 投資組合，彙總多項針對醫療影像與生理訊號的機器學習實作，已完成的項目包括腦部 CT 出血類型分類、EEG 細微運動偵測與腹部 CT 腫瘤定位；進行中的研究則涉及 fMRI 特徵推論、MRI 問卷預測與單幀可微 3D 渲染。目標使用者為醫學影像研究者、腦科訊號處理學生與醫工人員，核心在於提供可重現的程式碼與資料集，以驗證及擴展深度學習在醫學領域的應用。
+本專案是 Thomas Havlik 的醫學機器學習作品集，收錄了多項基於醫學影像與生理訊號的深度學習實驗，包括腦CT出血類型分類、EEG細微運動偵測、腹部CT腫瘤分割以及正在進行的 fMRI 特徵推論、MRI 問卷預測與可微分 3D 渲染等任務。目標使用者為對醫學影像處理、腦科訊號分析或生醫 AI 感興趣的研究者、學生與開發者，透過開放原始碼展示從資料準備、模型訓練到結果評估的完整流程，解決缺乏公開範例與可重現實驗的問題。
 
 ## 技術
-該專案以 Python 為主要開發語言，實驗設定透過 YAML 檔案進行，支援 include 指令以組合衍生實驗，入口點為 src/main.py，透過 --config 參數載入設定。實作中使用了 nonechucks 例外抑制庫以提升容錯，並建議使用 Docker 以確保可重現的 GPU 環境，參考 NVIDIA 的 GPU Docker 使用指南。根據 README 中引用的文獻，實作涵蓋變分自編碼器（VAE）、生成對抗網路（GAN）、殘差網路（ResNet）等深度學習模型，適用於影像分類、訊號偵測與分割等任務。資料流程方面，資料集先經過驗證（可透過 exp_params.data.safe 關閉例外抑制），再送入模型進行訓練與驗證，最終輸出預測結果或生成樣本。
+專案主要使用 Python 實作，實驗設定透過 YAML 檔案進行，可利用 include 指令組合衍生實驗，執行入口為 src/main.py。為確保環境可重現，建議使用 Docker，並參考 NVIDIA 指南啟用 GPU。資料讀取與例外處理透過 nonechucks library 進行，以提升容錯能力。深度學習模型的具體框架未在 README 中說明，但根據所列任務（分割、分類、生成對抗網路等）可推論為常見的 PyTorch 或 TensorFlow 實作。
 
 ## 架構
-專案結構以 experiments 目錄為核心，每個子目錄對應一項具體任務（如 rsna-intracranial、grasp_and_lift_eeg、deeplesion 等），內含該任務的 README、實驗設定 YAML 檔案以及所需的腳本或模型定義。所有實驗均透過專案根目錄的 src/main.py 進行啟動，主程式讀取指定的 YAML 配置，透過 include 指令可疊加基礎設定以快速建立衍生實驗。資料載入與前處理依實驗而定，通常在驗證階段會使用 nonechucks 抑制例外以提升容錯，必要時可透過 exp_params.data.safe=false 關閉此行為。訓練流程遵循標準的前向傳播、損失計算與反向傳播，支援 GPU 加速；建議使用 Dockerfile 建立映像，並透過 nvidia-docker 啟用 --gpus all 旗標以獲得完整的 GPU 資源。至於共用的工具（如 transcriber、vpn-operator、t4vd、midas-download-tool）則各自維護獨立的倉庫，主要作為資料蒐集或輔助開發的輔助程式。由於 README 未提供詳細的模型架構圖或具體的類別與函式呼叫關係，以下架構描述主要基於目錄組織與執行方式的推斷。
+專案結構以 experiments 為主要模組，每個子資料夾對應一項具體任務（如 rsna-intracranial、grasp_and_lift_eeg、deeplesion 等），內含該任務的 README、資料準備腳本與模型實作。共用的執行腳本位於 src/main.py，透過傳入 YAML 配置檔案的路徑（--config）來決定使用哪個實驗、其超參數與資料路徑。YAML 檔案可透過 include 指令疊加基礎設定，減少重複 boilerplate。資料流程為：載入標註好的 ground truth → 前處理（依模態進行縮放、正規化或切片） → 喂入對應的深度學習網路 → 透過訓練迴圈計算 loss 與更新參數 → 在驗證集上評估指標（如 AUC、Dice、Accuracy） → 最後測試並紀錄結果。若實驗在初始驗證階段掛起，可能是 nonechucks 隱藏例外，可透過設定 exp_params.data.safe: false 關閉。此設計使得新增任務僅需在 experiments 下新增資料夾並提供對應的 YAML 配置即可。
 
 ## README 摘錄（節選）
 ```text
