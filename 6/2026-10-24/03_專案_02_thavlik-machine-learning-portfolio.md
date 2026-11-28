@@ -7,17 +7,18 @@
 - License：Apache-2.0
 - Topics：computed-tomography, computer-vision, deep-learning, eeg, electroencephalography, fmri, functional-mri, gan, hemorrhage-detection, machine-learning, magnetic-resonance-imaging, medical, medicine, mri, neurology, neuroscience, radiology, reinforcement-learning, tumor-segmentation, vae
 - 更新時間：2026-10-16T14:31:46+00:00
+- 論文層級：未對應論文
 - 配對論文：https://arxiv.org/abs/1312.6114
 - 品質分數：9/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-本專案是一個醫學影像與訊號的機器學習實作集合，包含腦內出血類型分類、EEG 細微運動偵測、腹部 CT 腫瘤定位等已完成任務，以及 fMRI 特徵推斷、MRI 問卷預測、可微分 3D 渲染等進行中的研究。目標使用者為醫學 AI 研究者、醫學生與對醫學影像處理感興趣的開發者，核心在於利用深度學習方法解決醫學資料的標註稀疏、模態複雜及小樣本挑戰。
+本專案是 Thomas Havlik 的醫學機器學習作品集，包含已完成的腦部 CT 出血類型分類、EEG 細微運動偵測及腹部 CT 腫瘤定位三個實驗，以及正在進行的 fMRI 特徵推論、MRI 問卷預測與可微分 3D 渲染等工作。目標使用者為醫學研究者與學生，展示如何處理醫療影像與生理訊號，解決標註稀少、模型訓練資源需求高等核心問題。
 
 ## 技術
-專案主要使用 Python 實作，透過 YAML 檔案定義實驗參數，由 src/main.py 讀取配置啟動訓練或推論流程。建議使用 Docker 建立可重現的 GPU 環境，並透過 nonechucks 套件提升資料載入容錯性。根據所引用文獻，實作涵蓋變分自編碼器 (VAE)、生成對抗網路 (GAN)、卷積神經網路 (CNN)、循環神經網路 (RNN) 與強化學習等模型，並支援批次大小調整以適應 11 GiB 顯卡。
+專案主要以 Python 實作，實驗透過 YAML 檔案設定參數，使用 src/main.py 作為統一入口，支援 Docker 建立可重現的 GPU 環境。根據主題列表，涉及深度學習、生成對抗網路（GAN）、變分自編碼器（VAE）、強化學習等技術，並使用 nonechucks 例外抑制庫提升資料載入容錯度。工具部分包括用於標註影片的 t4vd、從 MIDAS 下載 MRI 的腳本以及用於醫學教育的 e‑Shadowing 轉錄器等。
 
 ## 架構
-專案結構以 experiments 為主要模組，每個子目錄對應一個具體任務（如 rsna-intracranial、grasp_and_lift_eeg、deeplesion 等），內含該任務的資料準備、模型定義與訓練腳本。所有實驗透過統一的入口 src/main.py 讀取放置於專案根目錄的 YAML 配置檔，配置中可經由 include 指令組合衍生實驗，以減少重複樣板碼。資料流程為：載入資料集 → 前處理（依需求進行正規化、切片等） → 模型前向傳播 → 損失計算 → 反向傳播與參數更新 → 驗證與指標記錄。Dockerfile 用於建立含 CUDA 與相依套件的映像，確保在不同主機上可重現結果。由於 README 未提供詳細的類別圖或服務間通訊方式，以上架構描述僅基於可見的目錄結構與執行說明。
+架構上，專案將每項實驗放在 experiments/ 目錄下的獨立子資料夾，各自含 README 與對應的程式碼；執行時透過指定 YAML 配置檔案呼叫 src/main.py，該腳本會讀取配置、建立資料載器（可能使用 nonechucks 進行容錯包裝）、初始化模型（依任務選用分割、分類或生成網路），進行訓練或推論，並將結果寫入指定輸出目錄。Dockerfile 提供相依環境，讓實驗在具備 11 GiB 顯存的 GPU 上可重複執行。若無法確定具體模組間的介面細節，則說明為根據 README 可見的檔案組織與執行方式推斷。
 
 ## README 摘錄（節選）
 ```text
