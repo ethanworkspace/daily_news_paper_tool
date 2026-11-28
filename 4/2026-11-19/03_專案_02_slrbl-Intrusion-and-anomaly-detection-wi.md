@@ -1,23 +1,24 @@
-# GitHub 專案 04：slrbl/Intrusion-and-anomaly-detection-with-machine-learning
+# GitHub 專案 02：slrbl/Intrusion-and-anomaly-detection-with-machine-learning
 
-- 日期：2026-11-20
+- 日期：2026-11-19
 - URL：https://github.com/slrbl/Intrusion-and-anomaly-detection-with-machine-learning
 - 描述：Unsupervised, AI-augmented detection of attacks in application logs.
 - Stars：175  |  Forks：74  |  Language：Ruby
 - License：MIT
 - Topics：agentic-ai, ai, artificial-intelligence, cybersecurity, detect-intrusions, infosec, intrusion-detection, llm, log-analysis, machine-learning
 - 更新時間：2026-10-29T17:26:10+00:00
+- 論文層級：未對應論文
 - 配對論文：https://doi.org/10.7910/dvn/3qbyb5
 - 品質分數：10/10 [paper_paired, implementation_signals]
 
 ## 在做什麼
-Webhawk 是一個無監督學習結合具代理能力的 AI 工具，專門從應用程式日誌（如 HTTP access log）中自動尋找可能的攻擊痕跡。它先將日誌轉換為數值特徵，使用 PCA 降維後以 DBSCAN 進行聚類，將異常點標記為可疑入侵。接著透過使用者可選擇的 LLM（透過 Ollama）提供深度分析與可執行的建議，並提供網頁介面讓 SOC 人員檢視與管理事件，同時提供 API 可將結果匯入既有的 SIEM 系統。目標使用者為安全運營中心分析師、資安工程師與需要快速偵測異常流量的系統管理員。
+Webhawk/Catch 3.0 是一個無監督學習結合 AI 增強的入侵與異常偵測工具，專為分析應用程式日誌（如 HTTP 存取記錄）而設計。它不依賴預先定義的規則，而是利用非監督式機器學習將日誌條目分群，找出可能代表攻擊痕跡的離群點，然後透過 Agentic AI 產生深入分析與可執行的建議，並提供友善的網頁介面與 API，方便 SOC 團隊檢視與將結果匯入現有的 SIEM 系統。
 
 ## 技術
-專案主要使用 Ruby 構建網頁介面，偵測引擎與端點代理則以 Python 3 實作。特徵抽取採用 Principal Component Analysis (PCA)，聚類採用 Density-Based Spatial Clustering of Applications with Noise (DBSCAN)。異常點送至 Ollama 服務執行的大型語言模型（如 granite4:latest）進行 Agentic AI 風格的分析與建議生成。服務之間透過 RESTful API 互通，偵測 API 監聽 8000 端點，網頁 UI 監聽 8080 端點，Ollama 監聽 11434 端點。部署採用 Docker Compose，將偵測引擎、網頁應用與 Ollama 三個容器組合；端點代理僅需 Python 與能連線至 Docker 主機的 8000 端點。可見的技術堆疊包括：Ruby、Python、PCA、DBSCAN、Ollama/LLM、Docker、Docker Compose、REST API。
+技術棧主要以 Python 實作，包括使用 scikit-learn 的 Principal Component Analysis (PCA) 降維與 DBSCAN 密度基礎聚類演算法進行無監督異常偵測；偵測結果透過 REST API 傳送至 Ollama 服務，呼叫 Granite4:latest 與 TEV:0.8b 兩個大型語言模型進行 Agentic AI 分析與建議生成；網頁介面透過 Docker Compose 啟動的 Web 應用程式提供分析師操作界面；端點代理則以 Python 腳本讀取日誌並 POST 至偵測 API。
 
 ## 架構
-系統架構由三個 Docker 服務與分散於各主機的端點代理組成。偵測引擎（Webhawk API）負責接收經代理上傳的原始日誌，先進行數值編碼，接著執行 PCA 特徵萃取與 DBSCAN 聚類，將被判定為噪聲或小簇的日誌標記為潛在攻擊事件。這些事件會被送往 Ollama 容器內的 LLM 模型，利用 Agentic AI 產出可讀的分析報告與緩建議。分析結果透過 HTTP POST 發送至網頁應用（Webhawk UI）的 /api/v1/incidents 端點，UI 於 8080 端點提供登入、事件瀏覽與管理介面。端點代理運行於需要監控的主機上，讀取指定的日誌檔（如 Apache access log）並透過 HTTP POST 將檔案上傳至偵測引擎的 /scan 端點；代理僅需 Python 3 與能連線至 Docker 主機的 8000 端點。資料流程為：端點代理 → 偵測 API (PCA+DBSCAN) → Ollama LLM → 網頁 UI。所有服務透過 Docker Compose 啟動，配置檔 settings.conf 用於調整 DBSCAN 參數、選擇 LLM 模型以及設定各服務的 URL。若需進一步擴散，專案曾提及考慮使用 Kafka 進行資料脫鉤，但目前實作仍採用直接 HTTP 傳輸。
+架構採用 Docker Compose 將偵測引擎（Webhawk API）、網頁介面（Webhawk UI）與 Ollama 服務三個容器組合成一個服務單元。偵測引擎提供 REST API (/scan) 接受端點代理傳送的原始日誌，先執行 PCA 特徵萃取，再使用 DBSCAN 進行聚類，將被標記為噪聲或小簇的記錄視為潛在攻擊事件，並寫入資料庫同時推送至 Web UI 供分析師檢視。異常事件同時經由 API 轉發至 Ollama 呼叫 Granite4 與 TEV 模型，產生 Agentic AI 的深度分析與緩建議，結果回傳至 UI 顯示。端點代理以 Python 腳本運行，讀取本機日誌檔案並透過 HTTP POST 將資料送至偵測 API，完成日誌收集與傳輸。
 
 ## README 摘錄（節選）
 ```text
